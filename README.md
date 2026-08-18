@@ -1,8 +1,8 @@
 # Eat & Train
 
-A calorie and training tracker in a single HTML file, built on the **Australian Food
-Composition Database, Release 3** (FSANZ). No build step, no server, no account —
-open `index.html` and it works, including with no signal.
+A calorie and training tracker in a single HTML file, built on **AUSNUT 2023** and the
+**Australian Food Composition Database, Release 3** (FSANZ). No build step, no server,
+no account — open `index.html` and it works, including with no signal.
 
 ## What it does
 
@@ -26,45 +26,66 @@ you find out, so that is where the offer belongs.
 
 ## The food data
 
-Every value comes straight from the official AFCD Release 3 nutrient profiles:
+**4,127 foods**, every value straight from the official FSANZ workbooks.
+
+The base is **AUSNUT 2023**, the survey database: 3,741 foods, and unlike AFCD it does
+not stop at raw commodities. Lasagne, pad thai, a Big Mac, a flat white with reduced-fat
+milk, sushi, a fun-size packet of Maltesers — the things people actually eat and
+therefore actually log. The **386 AFCD Release 3 foods AUSNUT has no entry for** are
+carried over unchanged, so nothing the app already knew about was lost. The two are
+matched on the public food key they share, not on the name, because AUSNUT renames a
+good deal of what it inherits.
 
 - Solids are per 100 g.
-- The 213 foods FSANZ also publishes as liquids are held **per 100 mL** from that
-  sheet, which is the right basis for a drink — a schooner is 425 mL, not 425 g.
-- Energy is the label figure, *energy with dietary fibre, equated*.
-- Foods keep their AFCD classification, which drives the category filters.
+- The **348 foods FSANZ measures by volume** — drinks, milks, oils, stock — are held
+  **per 100 mL**, which is the right basis for a drink: a schooner is 425 mL, not 425 g.
+  The conversion uses each food's own specific gravity, which is how FSANZ derives its
+  own per-100-mL tables.
+- Sour cream, yoghurt, custard and mayonnaise stay per 100 g even though FSANZ gives
+  them a density. They are eaten by the spoon, and putting them on a volume basis would
+  silently fold their density into every entry as a few percent of error. The test is
+  whether FSANZ records a specific gravity *and* the food is something you pour.
+- Energy is the label figure, *energy with dietary fibre*.
+- Foods keep their AUSNUT major group, which drives the category filters. Group 13 is
+  *cereal based products and dishes* — bread, pasta dishes, pizza, sushi, sandwiches —
+  so it is filed as **Grain dishes**, not Baked goods.
 
-FSANZ publishes 213 of those foods per 100 mL as well. Only the 120 that are actually
-poured or drunk use that basis — yoghurt, custard and sauces stay per 100 g, because
-they are eaten by the spoon and mixing the two bases would silently fold their density
-into every entry as a few percent of error.
+AUSNUT also carries three fats AFCD did not: long-chain omega-3 (EPA + DPA + DHA),
+linoleic acid and alpha-linolenic acid. All three are tracked alongside the other
+twenty micronutrients, against the NHMRC Adequate Intakes. The 386 carried-over AFCD
+foods sit at zero for those three, which is the only honest value available for them.
 
 ## Portions
 
-AFCD ships nutrients per 100 g and no serve sizes, so portions are a layer on top: a
-rule table matched against the AFCD name, giving typical Australian household measures
-— a slice of sourdough at 50 g, a schooner at 425 mL, a rasher of bacon at 25 g, a
-tub of yoghurt at 170 g. Pick the portion, say how many, and the grams follow.
+Portions come from **AUSNUT 2023 Food measures** — the household measures the national
+survey actually used, and their weights. **2,604 of the 4,127 foods** have them: a
+regular slice of white bread at 33 g, a thick Abbott's Village slice at 45 g, a small
+wrap at 36 g, a McDonald's Big Mac at 214 g, one Malteser at 2.5 g. Two vessels of the
+same size collapse to one entry, since a 330 mL can and a 330 mL bottle are the same
+portion. Liquids are offered in millilitres to match their basis, so a beer reads as a
+330 mL can rather than the 333 g it weighs.
 
-Anything the rules do not match falls back to the **Australian Dietary Guidelines**
-standard serve for its category: 75 g of vegetables, 150 g of fruit, 65 g of cooked
-meat. Every food also keeps a plain 100 g option and free gram entry, so nothing is
-ever un-loggable.
+Behind those sits the original rule table, matched against the food name, for the 1,523
+foods FSANZ has no measures for and for the local sizes it never recorded — AUSNUT has
+no schooner, middy or pint. Where both apply the FSANZ weight comes first and the rule
+is dropped if it lands within 8% of it, so beer offers can, bottle, schooner, middy and
+pint without offering the same volume twice.
 
-These weights are typical, not official — a real slice varies with the loaf. If FSANZ
-publishes a measures file alongside the nutrient profiles, its weights would be worth
-using in place of these.
+Anything neither covers falls back to the **Australian Dietary Guidelines** standard
+serve for its category: 75 g of vegetables, 150 g of fruit, 65 g of cooked meat. Every
+food also keeps a plain 100 g option and free gram entry, so nothing is ever
+un-loggable.
 
-Search is built for the gap between how AFCD writes names and how people type them.
-AFCD says "Nut, almond" and "Bread, from white flour, sour dough"; you can type
+Search is built for the gap between how FSANZ writes names and how people type them.
+It says "Nut, almond" and "Bread, from white flour, sour dough"; you can type
 "almonds" and "sourdough". Each term is tried verbatim, then singularised, then with
 spacing and punctuation stripped, each fallback ranked below the last. A small synonym
 table covers the rest — yogurt, snags, roo, avo, chook, spuds, fries, cookie.
 
 ### Supermarket products
 
-AFCD covers generic foods, not the branded lines on a Coles or Woolworths shelf. Two
-ways to add those:
+AUSNUT covers named products where the survey met them, but not the whole branded
+shelf at Coles or Woolworths. Two ways to add the rest:
 
 - **One item** — copy its Nutrition Information Panel into **New food**. The panel on
   the box is more authoritative than any database.
@@ -144,7 +165,7 @@ and duplicate rows. Imports land in their own **Packaged** category so FSANZ-sou
 numbers stay visually distinct from crowd-sourced ones.
 
 Open Food Facts is crowd-sourced: coverage is patchy and entries are occasionally
-wrong. Treat it as a convenience layer over AFCD, not a replacement.
+wrong. Treat it as a convenience layer over the FSANZ data, not a replacement.
 
 The [FoodSwitch database](https://www.georgeinstitute.org/our-research/areas/food-policy/foodswitch-data-on-the-worlds-packaged-foods)
 from The George Institute is the better Australian packaged-food source — built from
@@ -238,7 +259,7 @@ shortfall is knowing what to eat more of.
 
 Two honesty notes:
 
-- AFCD populates every nutrient for every food, so a low total is a real shortfall
+- FSANZ populates every nutrient for every food, so a low total is a real shortfall
   rather than a gap in the data. It still only counts what you logged, and knows
   nothing about supplements.
 - Several Upper Levels were written for a supplement form, not for food: magnesium's
@@ -359,12 +380,27 @@ One file, no dependencies. The food table is a pipe-delimited block near the top
 the `<script>`:
 
 ```
-name | AFCD group | kJ | protein | fat | saturated | carbs | sugars | fibre | sodium mg | alcohol g | liquid
+name | food group | kJ | protein | fat | saturated | carbs | sugars | fibre |
+sodium mg | alcohol g | liquid | 23 micronutrients | public food key
 ```
 
-Activities and their MET values sit just below it in `ACTIVITIES`.
+The public food key on the end joins each food to `MEASURES`, the portions block that
+follows it. Activities and their MET values sit below both in `ACTIVITIES`.
 
-## Source
+Both blocks are generated, not hand-edited. `tools/build_ausnut.py` reads the three
+FSANZ workbooks and writes them; it takes the AFCD-only rows from the commit that
+introduced them rather than from the working copy, so re-running it reproduces its own
+output instead of folding it back in. Point the paths at your copies of the workbooks
+and run it.
+
+## Sources
+
+Food Standards Australia New Zealand, *AUSNUT 2023* — food nutrient profiles, food
+details and food measures.
+<https://www.foodstandards.gov.au/science-data/food-nutrient-databases/ausnut>
 
 Food Standards Australia New Zealand, *Australian Food Composition Database — Release 3*.
 <https://www.foodstandards.gov.au/science-data/food-nutrient-databases/afcd/data-files>
+
+National Health and Medical Research Council, *Nutrient Reference Values for Australia
+and New Zealand*. <https://www.nrv.gov.au>
