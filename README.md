@@ -144,6 +144,16 @@ Afterburn (EPOC) is an optional flat 6%, off by default. It is real after hard
 sessions but too variable to state precisely, so it is a labelled choice rather than
 something folded silently into the number.
 
+### Steps
+
+A watch counts every step, training included, and the session is already priced in
+full — so counting both pays for the run twice. Steps taken during logged sessions are
+estimated from cadence and taken back out of the daily total; only what is left is
+added. On an hour-long run that correction is worth over a thousand kilojoules.
+
+Cadence sets the estimate and is adjustable. The figure is stored with the session when
+you log it, so changing cadence later does not rewrite your history.
+
 ## Moving food between meals
 
 Press and hold a logged item to lift it, then drag it to another meal — the target

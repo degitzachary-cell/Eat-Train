@@ -492,8 +492,14 @@ body.dragging{cursor:grabbing}
   </div>
 
   <div class="card">
-    <div class="card-head"><h2>Steps</h2><span class="right">Adds on top of baseline</span></div>
-    <label class="f"><span>Steps today</span><input type="number" id="steps-in" inputmode="numeric" min="0" step="100" placeholder="0"></label>
+    <div class="card-head"><h2>Steps</h2><span class="right">Outside training only</span></div>
+    <div class="grid2">
+      <label class="f"><span>Steps today, as counted</span>
+        <input type="number" id="steps-in" inputmode="numeric" min="0" step="100" placeholder="0"></label>
+      <label class="f"><span>Running cadence spm</span>
+        <input type="number" id="cadence-in" inputmode="numeric" min="120" max="220" step="1"></label>
+    </div>
+    <div id="steps-breakdown"></div>
     <p class="hint" id="steps-note">—</p>
   </div>
 
@@ -2652,7 +2658,7 @@ function blankState(){
   return {
     v:1,
     profile:{sex:'m', age:32, ht:178, wt:82, bf:null, smm:null, smmUnit:'pct',
-             bone:null, water:null, online:false, neat:1.35, goal:'maintain', formula:'auto',
+             bone:null, water:null, online:false, cadence:170, neat:1.35, goal:'maintain', formula:'auto',
              useMeasured:false, ppk:1.8, fpk:0.9, unit:'kj'},
     weights:[], custom:[], fav:[], recent:[], imported:[], days:{}
   };
@@ -2824,6 +2830,33 @@ function workoutKj(met, mins, intensity){
   var netMet = Math.max(m - 1, 0);
   return netMet * 3.5 * kg / 200 * mins * KJ_PER_KCAL;
 }
+/* A watch counts every step, training included. The session is already priced
+   in full, so its steps must come out of the daily total or the run is paid
+   for twice — on a long session that is over a thousand kilojoules. */
+var WALK_CADENCE = 115;
+function workoutSteps(w){
+  if (w.steps != null) return w.steps;
+  var cad = +S.profile.cadence || 170;
+  if (w.type === 'run' && w.blocks){
+    return Math.round(w.blocks.reduce(function(a, b){
+      if (b.kind === 'walk') return a + (b.mins || 0) * WALK_CADENCE;
+      if (b.kind === 'run' || b.km > 0) return a + (b.mins || 0) * cad;
+      return a;
+    }, 0));
+  }
+  if (w.type === 'run') return Math.round((w.mins || 0) * cad);
+  if (w.type === 'strength') return 0;
+  if (/walk|hike|stair/i.test(w.name || '')) return Math.round((w.mins || 0) * WALK_CADENCE);
+  if (/run|jog/i.test(w.name || '')) return Math.round((w.mins || 0) * cad);
+  return 0;
+}
+function daySessionSteps(iso){
+  return dayRO(iso).workouts.reduce(function(a, w){ return a + workoutSteps(w); }, 0);
+}
+function dayNetSteps(iso){
+  return Math.max((dayRO(iso).steps || 0) - daySessionSteps(iso), 0);
+}
+
 function stepsKj(steps){
   var kg = +S.profile.wt || 0;
   var km = steps * 0.000762;
@@ -2849,7 +2882,7 @@ function dayTotals(iso){
 function dayTraining(iso){
   var d = dayRO(iso), kj = 0;
   d.workouts.forEach(function(w){ kj += w.kj || 0; });
-  kj += stepsKj(d.steps || 0);
+  kj += stepsKj(dayNetSteps(iso));
   return kj;
 }
 function dayEnergy(iso){
@@ -3123,7 +3156,8 @@ function renderMeals(){
 
 function renderTrainingList(listId, totalId){
   var d = dayRO(DAY);
-  var stepKj = stepsKj(d.steps || 0);
+  var netSteps = dayNetSteps(DAY);
+  var stepKj = stepsKj(netSteps);
   var total = dayTraining(DAY);
   el(totalId).textContent = total ? fmtE(total, true) : '';
   var rows = d.workouts.map(function(w, i){
@@ -3140,8 +3174,10 @@ function renderTrainingList(listId, totalId){
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M5 5l14 14M19 5L5 19"/></svg></button></div>';
   });
   if (d.steps > 0){
-    rows.push('<div class="row"><div class="row-main"><div class="t">Steps</div>' +
-      '<div class="s">' + g(d.steps) + ' steps · ' + g(d.steps * 0.000762, 1) + ' km</div></div>' +
+    var sess = daySessionSteps(DAY);
+    rows.push('<div class="row"><div class="row-main"><div class="t">Steps outside training</div>' +
+      '<div class="s">' + g(netSteps) + ' of ' + g(d.steps) +
+      (sess ? ' · ' + g(sess) + ' were in sessions' : '') + '</div></div>' +
       '<div class="row-kj">' + fmtE(stepKj) + '</div><div style="width:26px"></div></div>');
   }
   el(listId).innerHTML = rows.length ? rows.join('') : '<div class="empty">Rest day</div>';
@@ -3517,8 +3553,19 @@ function renderTrainView(){
     }).join('');
   }
   el('steps-in').value = dayRO(DAY).steps || '';
-  el('steps-note').textContent = 'A 10,000-step day costs about ' + fmtE(stepsKj(10000), true) +
-    ' at ' + g(S.profile.wt,1) + ' kg. Leave blank if your daily-activity setting already covers your walking.';
+  el('cadence-in').value = +S.profile.cadence || 170;
+  var total = dayRO(DAY).steps || 0;
+  var sess = daySessionSteps(DAY), net = dayNetSteps(DAY);
+  el('steps-breakdown').innerHTML = total > 0
+    ? '<div class="readout"><div class="k">Counted today</div><div class="v num">' + g(total) + '</div></div>' +
+      '<div class="readout"><div class="k">Taken during logged sessions<em>Already paid for in the session itself</em></div>' +
+        '<div class="v num" style="color:var(--ink-3)">− ' + g(sess) + '</div></div>' +
+      '<div class="readout lead"><div class="k">Everything else<em>What actually gets added</em></div>' +
+        '<div class="v num">' + g(net) + ' · ' + fmtE(stepsKj(net), true) + '</div></div>'
+    : '';
+  el('steps-note').textContent = 'Your watch counts training steps too, and the session is already ' +
+    'priced in full — so those come back out. Cadence only sets the estimate; if your watch reports ' +
+    'steps per activity you can trust that figure more.';
   updateWorkoutPreview();
   renderTrainingList('tr-list2', 'tr-total2');
 }
@@ -4738,8 +4785,10 @@ function bind(){
     if (!(r.mins > 0)){ toast('Fill in the session first.'); return; }
     day(DAY).workouts.push({name:r.name, type:'run', mins:Math.round(r.mins*10)/10,
       km:r.km, kj:r.kj, summary:r.summary, blocks:r.blocks.map(function(b){
-        return {label:b.label, mins:Math.round(b.mins*10)/10, km:b.km, kj:b.kj};
+        return {kind:b.kind, label:b.label, mins:Math.round(b.mins*10)/10, km:b.km, kj:b.kj};
       })});
+    var justAdded = day(DAY).workouts[day(DAY).workouts.length - 1];
+    justAdded.steps = workoutSteps(justAdded);
     saveRunLast(); save(); renderAll();
     toast(r.name + ' · ' + g(r.km,1) + ' km logged');
   });
@@ -4770,6 +4819,10 @@ function bind(){
   });
   el('steps-in').addEventListener('change', function(){
     day(DAY).steps = Math.max(+el('steps-in').value || 0, 0);
+    save(); renderAll();
+  });
+  el('cadence-in').addEventListener('change', function(){
+    S.profile.cadence = Math.min(Math.max(+el('cadence-in').value || 170, 120), 220);
     save(); renderAll();
   });
 
