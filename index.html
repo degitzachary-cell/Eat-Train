@@ -3236,8 +3236,10 @@ function renderRunFields(){
     html += '<div class="grid2">' +
       fld('dur', 'Minutes', 'number', saved('run.dur', '45')) +
       fld('pace', 'Pace min/km', 'text', saved('run.pace', '5:30')) +
-      fld('gain', 'Elevation gain m', 'number', saved('run.gain', '')) +
-      fld('actual', 'Actual km from watch', 'number', saved('run.actual', '')) + '</div>';
+      fld('gain', 'Elevation gain m', 'number', saved('run.gain', '')) + '</div>' +
+      '<div class="grid2">' +
+      fld('actual', 'Recorded km', 'number', saved('run.actual', '')) +
+      fld('actualt', 'Recorded time h:mm:ss', 'text', saved('run.actualt', '')) + '</div>';
     var onS = saved('run.strides', '0') === '1';
     html += toggle('str-tog', 'str', [['0','No strides'],['1','+ Strides']], onS ? '1' : '0') +
       '<div id="rf-str-fields"' + (onS ? '' : ' hidden') + '><div class="grid3">' +
@@ -3266,13 +3268,20 @@ function renderRunFields(){
     html += sub('Between intervals') + toggle('between', 'btw', BETWEEN, bt);
     if (bt === 'comp'){
       html += fld('compname', 'Exercise', 'text', saved('wo.compname', 'Squats')) +
-        '<div class="grid2">' +
-          fld('compsec', 'Seconds per set', 'number', saved('wo.compsec', '45')) +
+        '<div class="grid3">' +
+          fld('compsec', 'Seconds per set', 'number', saved('wo.compsec', '40')) +
+          fld('compsets', 'Sets per gap', 'number', saved('wo.compsets', '1')) +
           '<label class="f"><span>Effort</span><select id="rf-compmet">' +
             EX_METS.map(function(m){
               return '<option value="' + m[1] + '"' +
                 (saved('wo.compmet','5') == m[1] ? ' selected' : '') + '>' + m[0] + '</option>';
-            }).join('') + '</select></label></div>';
+            }).join('') + '</select></label></div>' +
+        '<div class="grid2">' +
+          fld('compwalk', 'Walk after each set, sec', 'number', saved('wo.compwalk', '0')) +
+          fld('compwalkp', 'Walk pace min/km', 'text', saved('wo.compwalkp', '9:00')) + '</div>' +
+        '<p class="hint">Set it up the way you actually do it &mdash; two 40-second sets with a ' +
+        '20-second walk after each is <code>40</code> sec × <code>2</code> sets, walk <code>20</code>. ' +
+        'The walk runs on the belt so it earns distance; the sets do not.</p>';
     } else if (bt === 'rest'){
       html += '<div class="grid2">' + fld('recd', 'Duration', 'text', saved('wo.recd', '1:00')) + '</div>';
     } else {
@@ -3286,12 +3295,14 @@ function renderRunFields(){
         fld('cd', 'Minutes', 'number', saved('wo.cd', '15')) +
         fld('cdp', 'Pace min/km', 'text', saved('wo.cdp', '5:30')) + '</div>' +
       sub('Measured') +
-      '<div class="grid2">' +
-        fld('actual', 'Actual km from watch', 'number', saved('wo.actual', '')) +
+      '<div class="grid3">' +
+        fld('actual', 'Distance km', 'number', saved('wo.actual', '')) +
+        fld('actualt', 'Time h:mm:ss', 'text', saved('wo.actualt', '')) +
         fld('gain', 'Elevation gain m', 'number', saved('wo.gain', '')) + '</div>' +
-      '<p class="hint">Optional. A plan only accounts for the running it describes — ' +
-      'jogging between rep starts, drills and ground covered during a carry are all real ' +
-      'distance it cannot see. Enter what your watch said and the energy follows it.</p>';
+      '<p class="hint">Optional, and worth filling in. A plan only prices the running it spells ' +
+      'out; whatever your watch or treadmill recorded beyond it becomes its own block, costed at ' +
+      'the pace those leftover minutes and kilometres imply &mdash; walking if that is what it ' +
+      'works out to.</p>';
   }
 
   html += toggle('epoc', 'epoc', [['0','Session only'],['1','+ 6% afterburn']], saved('epoc','0'));
@@ -3349,10 +3360,19 @@ function buildRun(){
 
     var gaps = Math.max(reps - 1, 0);
     if (bt === 'comp'){
-      var cs = (parseFloat(runVal('compsec', 45)) || 0) / 60;
+      var cs = (parseFloat(runVal('compsec', 40)) || 0) / 60;
+      var nsets = parseFloat(runVal('compsets', 1)) || 1;
       var cmet = parseFloat((el('rf-compmet') || {}).value || 5);
       var cname = runVal('compname', 'Exercise');
-      blocks.push({kind:'ex', label:reps + ' × ' + cname, mins:reps*cs, met:cmet, km:0});
+      var totalSets = reps * nsets;
+      blocks.push({kind:'ex', label:totalSets + ' × ' + cname, mins:totalSets*cs, met:cmet, km:0});
+      var cw = (parseFloat(runVal('compwalk', 0)) || 0) / 60;
+      if (cw > 0){
+        var cwp = parsePace(runVal('compwalkp', '9:00'));
+        var cwm = totalSets * cw;
+        blocks.push({kind:'walk', label:'Walk between sets', mins:cwm,
+                     km:cwp ? cwm * 60 / cwp : 0, pace:cwp, grade:0});
+      }
       parts.push(cname + ' between reps');
       name = 'Compromised session';
     } else if (gaps){
@@ -3380,22 +3400,50 @@ function buildRun(){
      distance, so scaling the moving blocks by the measured ratio prices the
      ground the plan never described — the jog to the start line, the carry
      that travels, a warm up quicker than the one you typed. */
+  /* Reconcile the plan against what the device actually recorded. Extra time
+     and distance become their own block, priced at the pace they imply. When
+     the plan describes more than was recorded, that is reported rather than
+     quietly corrected — the protocol varies, and a stated discrepancy is more
+     use than a silent adjustment. */
   var actual = parseFloat(runVal('actual', '')) || 0;
-  var planned = km2, scaled = false;
-  if (actual > 0 && planned > 0){
-    var ratio = actual / planned;
-    blocks.forEach(function(b){
-      if (b.kind === 'run' || b.kind === 'walk'){ b.km *= ratio; b.kj *= ratio; }
-    });
-    kj = blocks.reduce(function(a, b){ return a + b.kj; }, 0);
-    km2 = actual;
-    scaled = true;
+  var actualMin = (parsePace(runVal('actualt', '')) || 0) / 60;
+  var planned = km2, plannedMin = mins2, gap = null, over = null;
+  if (actual > 0 || actualMin > 0){
+    var dKm  = actual > 0 ? actual - planned : 0;
+    var dMin = actualMin > 0 ? actualMin - plannedMin : 0;
+
+    if (dKm > 0.02 || dMin > 0.05){
+      var gKm = Math.max(dKm, 0), gMin = Math.max(dMin, 0);
+      var gp, kind;
+      if (gKm > 0.02 && gMin > 0.05){
+        gp = gMin * 60 / gKm;                       // its own implied pace
+        kind = gp > 450 ? 'walk' : 'run';
+      } else if (gKm > 0.02){
+        /* Distance with no extra time: it happened inside the planned time,
+           so price it at the session's own average pace. */
+        gp = planned > 0 ? plannedMin * 60 / planned : 300;
+        kind = gp > 450 ? 'walk' : 'run';
+        gMin = gKm * gp / 60;
+      } else {
+        gp = 0; kind = 'rest';                      // time with no ground covered
+      }
+      gap = {kind:kind, label:'Unaccounted', mins:gMin, km:gKm, pace:gp, grade:0};
+      gap.kj = blockKj(gap);
+      blocks.push(gap);
+      kj += gap.kj;
+    }
+    if (dKm < -0.02 || dMin < -0.05) over = {km:-Math.min(dKm,0), mins:-Math.min(dMin,0)};
+
+    if (actual > 0) km2 = actual;
+    if (actualMin > 0) mins2 = actualMin;
   }
+
   var epocOn = el('rf-epoc') &&
                el('rf-epoc').querySelector('[aria-pressed="true"]').dataset.epoc === '1';
   var epocKj = epocOn ? kj * 0.06 : 0;
   return {type:t, name:name, blocks:blocks, kj:kj + epocKj, epoc:epocKj,
-          mins:mins2, km:km2, planned:planned, scaled:scaled, summary:parts.join(' · ')};
+          mins:mins2, km:km2, planned:planned, plannedMin:plannedMin,
+          gap:gap, over:over, summary:parts.join(' · ')};
 }
 
 function updateRun(){
@@ -3406,14 +3454,31 @@ function updateRun(){
   el('run-breakdown').innerHTML = r.blocks.filter(function(b){ return b.mins > 0; }).map(function(b){
     return '<span class="chip">' + esc(b.label) + ' <b>' + fmtE(b.kj) + '</b></span>';
   }).join('') + (r.epoc ? '<span class="chip">Afterburn <b>' + fmtE(r.epoc) + '</b></span>' : '');
-  el('run-note').innerHTML = (r.scaled
-    ? '<strong>Using your measured ' + g(r.km,2) + ' km</strong> against a plan that describes ' +
-      g(r.planned,2) + ' km — energy scaled by ' +
-      (r.km / r.planned >= 1 ? '+' : '') + Math.round((r.km / r.planned - 1) * 100) + '%. ' +
-      'The difference is ground the plan does not mention.<br>'
-    : '') +
-    'Energy from the ACSM running equations at ' + g(S.profile.wt,1) +
-    ' kg, net of the resting cost your baseline already covers. Net running cost works out near ' +
+  /* One statement, both directions: what the device saw, what the plan
+     describes, and what was charged for the difference. */
+  var recon = '';
+  if (r.gap || r.over){
+    recon = 'Recorded <strong>' + g(r.km,2) + ' km in ' + fmtDur(r.mins) + '</strong>; the plan ' +
+      'describes ' + g(r.planned,2) + ' km in ' + fmtDur(r.plannedMin) + '. ';
+    if (r.gap && r.gap.km > 0.02 && r.gap.mins > 0.05 && !r.over)
+      recon += 'The extra ' + g(r.gap.km,2) + ' km over ' + g(r.gap.mins,1) +
+        ' min works out at ' + fmtPace(r.gap.pace) + '/km, priced as ' +
+        (r.gap.kind === 'walk' ? 'walking' : 'running') + ' — ' + fmtE(r.gap.kj, true) + '.';
+    else if (r.gap && r.gap.km > 0.02)
+      recon += 'The extra ' + g(r.gap.km,2) + ' km is charged at ' + fmtPace(r.gap.pace) +
+        '/km — ' + fmtE(r.gap.kj, true) + ' — since it was covered inside the time you logged.';
+    else if (r.gap)
+      recon += 'The extra ' + g(r.gap.mins,1) + ' min covered no ground, so it costs nothing ' +
+        'beyond your baseline.';
+    else
+      recon += 'You covered less than the plan describes, so nothing was added.';
+    if (r.over && r.over.mins > 0.05)
+      recon += ' It also ran ' + g(r.over.mins,1) + ' min quicker than planned, which usually ' +
+        'means a rep or warm-up pace was a touch off.';
+    recon += '<br>';
+  }
+  el('run-note').innerHTML = recon +
+    'Energy from the ACSM running equations at ' + g(S.profile.wt,1) +    ' kg, net of the resting cost your baseline already covers. Net running cost works out near ' +
     '<strong>1 kcal per kg per km</strong> whatever the pace &mdash; pace changes how long you are out ' +
     'there, not much what a kilometre costs.';
   return r;

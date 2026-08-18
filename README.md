@@ -110,12 +110,19 @@ speed-independent on the flat. Pace changes how long you are out there far more 
 it changes what a kilometre costs. Elevation is where a session really departs from
 that, which is why gain is an input.
 
-Both modes take an optional **actual distance from your watch**. A plan only accounts
+A compromised block takes the shape you actually use: seconds per set, **sets per gap**,
+and an optional **walk after each set**. Two 40-second carries with a 20-second walk
+after each is `40` sec × `2` sets, walk `20`. The sets are paused-belt time and earn no
+distance; the walks run on the belt and do.
+
+Both modes take an optional **recorded distance and time**. A plan only accounts
 for the running it describes — jogging between rep starts, drills, and ground covered
-during a loaded carry are all real distance it cannot see. When measured distance is
-entered, the running blocks are scaled to it and the energy follows, which is sound
-because net running cost is close to proportional to distance. Non-running blocks are
-left alone.
+during a loaded carry are all real distance it cannot see. Whatever the device recorded beyond
+what the plan describes becomes its own block, priced at the pace those leftover
+minutes and kilometres imply — walking if that is what it works out to, standing if no
+ground was covered. When the plan describes *more* than was recorded, that is reported
+rather than quietly corrected, because a stated discrepancy is more use than a silent
+adjustment when the protocol varies session to session.
 
 Afterburn (EPOC) is an optional flat 6%, off by default. It is real after hard
 sessions but too variable to state precisely, so it is a labelled choice rather than
