@@ -236,6 +236,32 @@ select{background-image:linear-gradient(45deg,transparent 50%,var(--ink-3) 50%),
 .readout.lead .v{font-size:21px; color:var(--accent)}
 
 /* ---------- modal sheet ---------- */
+/* First-run onboarding. Full screen rather than a sheet: there is nothing
+   behind it worth seeing yet, and a sheet invites dismissal. */
+.ob{position:fixed; inset:0; z-index:80; background:var(--bg); overflow-y:auto;
+  -webkit-overflow-scrolling:touch}
+.ob[hidden]{display:none}
+.ob-inner{box-sizing:border-box; width:100%; max-width:520px; margin:0 auto; min-height:100%;
+  display:flex; flex-direction:column;
+  padding:calc(26px + env(safe-area-inset-top)) 18px calc(24px + env(safe-area-inset-bottom))}
+.ob-dots{display:flex; gap:5px; justify-content:center; height:6px; margin-bottom:24px}
+.ob-dots i{width:6px; height:6px; border-radius:3px; background:var(--line-strong);
+  transition:width .2s, background .2s}
+.ob-dots i.on{background:var(--accent); width:20px}
+.ob-body{flex:1 0 auto}
+.ob h1{font-family:var(--disp); font-size:29px; line-height:1.14; font-weight:600;
+  letter-spacing:-.015em; margin-bottom:11px}
+.ob h2{font-family:var(--disp); font-size:19px; font-weight:600; margin-bottom:9px}
+.ob .lede{color:var(--ink-2); font-size:14px; line-height:1.62; margin-bottom:15px}
+.ob .f{margin-bottom:11px}
+.ob .seg{margin-bottom:13px}
+.ob-foot{flex:0 0 auto; display:flex; gap:9px; margin-top:26px}
+.ob-foot .btn{flex:1}
+.ob-foot .btn[disabled]{opacity:.4; pointer-events:none}
+.ob-skip{background:none; border:none; color:var(--ink-3); font:inherit; font-size:12.5px;
+  text-decoration:underline; text-underline-offset:3px; cursor:pointer; padding:10px;
+  display:block; margin:12px auto 0}
+.ob-num{font-family:var(--mono); font-size:26px; font-weight:500; color:var(--accent)}
 .sheet-bg{position:fixed; inset:0; z-index:60; background:rgba(8,12,17,.5);
   backdrop-filter:blur(2px); display:none}
 .sheet-bg.on{display:block}
@@ -900,6 +926,16 @@ body.dragging{cursor:grabbing}
     <div class="readout"><div class="k">Storage used</div><div class="v num" id="st-size">—</div></div>
     <p class="note" style="margin-top:14px"><strong>On your phone:</strong> open this page in Safari or
       Chrome and use Share → Add to Home Screen. It then launches full screen and works with no signal.</p>
+  </div>
+</div>
+
+<!-- first run -->
+<div class="ob" id="onboard" hidden role="dialog" aria-modal="true" aria-label="Set up">
+  <div class="ob-inner">
+    <div class="ob-dots" id="ob-dots"></div>
+    <div class="ob-body" id="ob-body"></div>
+    <div class="ob-foot" id="ob-foot"></div>
+    <div id="ob-under"></div>
   </div>
 </div>
 
@@ -8002,9 +8038,13 @@ var S, VIEW = 'today', DAY = todayISO(), imported = [];
 function blankState(){
   return {
     v:1,
-    profile:{sex:'m', age:32, ht:178, wt:82, bf:null, smm:null, smmUnit:'pct',
+    /* No body here on purpose. These used to be mine, which meant anyone else
+       opening the app got a 32-year-old, 178 cm, 82 kg male and a set of
+       numbers that looked authoritative and were somebody else's. Onboarding
+       fills them in and will not let you past until it has. */
+    profile:{sex:'', age:null, ht:null, wt:null, bf:null, smm:null, smmUnit:'pct',
              bone:null, water:null, online:false, cadence:170, periodise:'off',
-             neat:1.35, goal:'maintain', formula:'auto',
+             neat:1.35, goal:'maintain', formula:'auto', onboarded:false,
              useMeasured:false, ppk:1.8, fpk:0.9, unit:'kj'},
     weights:[], custom:[], fav:[], recent:[], imported:[], days:{},
     coach:{on:false, target:null, last:null, history:[]}, recipes:[]
@@ -8019,6 +8059,10 @@ function load(){
   var b = blankState();
   for (var k in b) if (!(k in S)) S[k] = b[k];
   for (var k2 in b.profile) if (S.profile[k2] === undefined) S.profile[k2] = b.profile[k2];
+  /* Anyone with a state already saved has been through setup by definition —
+     the flag arrived after they did. Only a genuinely new install onboards,
+     and the weight is the test, since that is what setup exists to collect. */
+  if (raw && S.profile.onboarded !== true && +S.profile.wt > 0) S.profile.onboarded = true;
   _foodCache = null;
   imported = (S.imported || []).map(function(l, i){ return parseFoodLine(l, 'i', i); }).filter(Boolean);
 }
@@ -10693,7 +10737,7 @@ function renderOffResults(q, via){
 /* Bumped on every deploy. When something fails, knowing which build is
    actually loaded is the difference between debugging the bug and debugging
    a stale cache. */
-var APP_VERSION = '2026.08.18-19';
+var APP_VERSION = '2026.08.18-20';
 var SB_URL = 'https://lsrxqviwgqjpuzzcqcpu.supabase.co';
 var SB_KEY = 'sb_publishable_0lk-0UAlfW-tALEgPiqFHg_8vF9Hp63';
 var AUTH_KEY = 'eatandtrain.auth';
@@ -10852,6 +10896,9 @@ function syncNow(){
       if (d.recipes) S.recipes = d.recipes;
       if (d.coach) S.coach = d.coach;
       S.profileU = tsOf(rProf[0].updated_at);
+      /* A profile stored before the flag existed still describes a real body,
+         and pulling it must not send a returning user back through setup. */
+      if (+S.profile.wt > 0) S.profile.onboarded = true;
       pulled++;
     }
 
@@ -11427,13 +11474,260 @@ function setUnit(u){
   if (openSheet === 'sh-qty') updateQty();
 }
 
+/* ----------------------------- first run ---------------------------------
+   The app cannot say anything useful without a body, and until now its
+   defaults were mine. Setup asks instead of guessing, and will not hand over
+   a number until it has enough to compute one honestly.
+
+   An account stays optional, as it always has been: everything works from
+   this browser alone, offline, forever. Signing in is offered first only
+   because someone arriving on a second phone should not be made to re-enter
+   a body the server is already holding.
+   ------------------------------------------------------------------------- */
+var OB_FLOW = ['you','scale','day','done'];   // the steps that show progress
+var obStep = 'welcome', obDraft = null, obBusy = false;
+
+function openOnboard(){
+  obDraft = {sex:'', age:'', ht:'', wt:'', bf:'', smm:'', smmUnit:'pct', bone:'',
+             neat:'1.35', goal:'maintain', unit:S.profile.unit || 'kj',
+             email:'', code:'', sent:false, msg:''};
+  obStep = 'welcome';
+  el('onboard').hidden = false;
+  document.documentElement.style.overflow = 'hidden';
+  renderOnboard();
+}
+function closeOnboard(){
+  el('onboard').hidden = true;
+  document.documentElement.style.overflow = '';
+}
+function obGo(step){ obStep = step; renderOnboard(); el('onboard').scrollTop = 0; }
+
+/* Required is required: weight, height and age drive every number on every
+   screen. The scale figures are not, and saying so plainly is the difference
+   between someone skipping them and someone inventing them. */
+function obReady(){
+  var d = obDraft;
+  return d.sex && +d.age >= 14 && +d.age <= 100 &&
+         +d.ht >= 120 && +d.ht <= 230 && +d.wt >= 30 && +d.wt <= 300;
+}
+
+function obSeg(id, val, opts){
+  return '<div class="seg" data-obseg="' + id + '">' + opts.map(function(o){
+    return '<button type="button" data-v="' + o[0] + '" aria-pressed="' +
+      (String(val) === String(o[0]) ? 'true' : 'false') + '">' + o[1] + '</button>';
+  }).join('') + '</div>';
+}
+function obField(id, label, val, attrs){
+  return '<label class="f"><span>' + label + '</span><input data-ob="' + id +
+    '" value="' + esc(val == null ? '' : String(val)) + '" ' + (attrs || '') + '></label>';
+}
+
+function renderOnboard(){
+  var d = obDraft, body = el('ob-body'), foot = el('ob-foot'), under = el('ob-under');
+  var i = OB_FLOW.indexOf(obStep);
+  el('ob-dots').innerHTML = i < 0 ? '' :
+    OB_FLOW.map(function(s, n){ return '<i class="' + (n <= i ? 'on' : '') + '"></i>'; }).join('');
+  under.innerHTML = '';
+
+  if (obStep === 'welcome'){
+    body.innerHTML =
+      '<h1>Eat &amp; Train</h1>' +
+      '<p class="lede">A food and training diary on the Australian food data — 4,127 foods from ' +
+      'FSANZ, with their own portion weights.</p>' +
+      '<p class="lede">It works out what you burn from the session you actually did: the repeats, ' +
+      'the recoveries, the pace. Not from a step count and a guess.</p>' +
+      '<p class="lede">No account needed. Everything stays in this browser, and all of it works ' +
+      'with no signal.</p>';
+    foot.innerHTML = '<button class="btn" data-ob-go="you">Set up</button>';
+    under.innerHTML = '<button class="ob-skip" data-ob-go="signin">I already have an account</button>';
+    return;
+  }
+
+  if (obStep === 'signin'){
+    body.innerHTML =
+      '<h2>Sign in</h2>' +
+      '<p class="lede">A six-digit code is emailed to you — there is no password to invent. ' +
+      'If you have used this before, your body, diary and weigh-ins come back with it.</p>' +
+      '<label class="f"><span>Email</span><input data-ob="email" type="email" inputmode="email" ' +
+        'autocomplete="email" placeholder="you@example.com" value="' + esc(d.email) + '"></label>' +
+      (d.sent ? '<label class="f"><span>Six-digit code</span><input data-ob="code" type="text" ' +
+        'inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="123456" value="' +
+        esc(d.code) + '"></label>' : '') +
+      (d.msg ? '<p class="hint">' + esc(d.msg) + '</p>' : '');
+    foot.innerHTML =
+      '<button class="btn ghost" data-ob-go="welcome">Back</button>' +
+      (d.sent
+        ? '<button class="btn" id="ob-verify"' + (obBusy ? ' disabled' : '') + '>Sign in</button>'
+        : '<button class="btn" id="ob-send"' + (obBusy || !d.email ? ' disabled' : '') + '>Email me a code</button>');
+    under.innerHTML = '<button class="ob-skip" data-ob-go="you">Set up without an account</button>';
+    return;
+  }
+
+  if (obStep === 'you'){
+    body.innerHTML =
+      '<h2>You</h2>' +
+      '<p class="lede">Everything downstream rests on these four. Sex and age also set your ' +
+      'vitamin and mineral targets, which are the Australian NRVs and differ by both.</p>' +
+      obSeg('unit', d.unit, [['kj','Kilojoules'],['kcal','Calories']]) +
+      obSeg('sex', d.sex, [['m','Male'],['f','Female']]) +
+      obField('age', 'Age', d.age, 'type="number" inputmode="numeric" min="14" max="100" placeholder="—"') +
+      obField('ht', 'Height (cm)', d.ht, 'type="number" inputmode="decimal" min="120" max="230" step="0.5" placeholder="—"') +
+      obField('wt', 'Weight (kg)', d.wt, 'type="number" inputmode="decimal" min="30" max="300" step="0.1" placeholder="—"');
+    foot.innerHTML =
+      '<button class="btn ghost" data-ob-go="welcome">Back</button>' +
+      '<button class="btn" data-ob-go="scale"' + (obReady() ? '' : ' disabled') + '>Continue</button>';
+    return;
+  }
+
+  if (obStep === 'scale'){
+    body.innerHTML =
+      '<h2>Scale numbers</h2>' +
+      '<p class="lede">If you weigh in on a smart scale — a Garmin Index S2 or similar — these ' +
+      'let the resting-rate estimate work from your lean mass rather than your total weight, ' +
+      'which is a materially better answer.</p>' +
+      '<p class="lede">All optional. Skip it and a bodyweight equation is used instead; the app ' +
+      'will tell you which one it is using and why.</p>' +
+      obField('bf', 'Body fat (%)', d.bf, 'type="number" inputmode="decimal" min="3" max="60" step="0.1" placeholder="—"') +
+      obField('smm', 'Muscle mass', d.smm, 'type="number" inputmode="decimal" min="1" max="120" step="0.1" placeholder="—"') +
+      obSeg('smmUnit', d.smmUnit, [['pct','% of weight'],['kg','Kilograms']]) +
+      obField('bone', 'Bone mass (kg)', d.bone, 'type="number" inputmode="decimal" min="0.5" max="8" step="0.1" placeholder="—"');
+    foot.innerHTML =
+      '<button class="btn ghost" data-ob-go="you">Back</button>' +
+      '<button class="btn" data-ob-go="day">Continue</button>';
+    under.innerHTML = '<button class="ob-skip" data-ob-go="day">I don’t have these</button>';
+    return;
+  }
+
+  if (obStep === 'day'){
+    body.innerHTML =
+      '<h2>Your day</h2>' +
+      '<p class="lede">Pick how your day goes <strong>outside</strong> training. Sessions are ' +
+      'added on top of this, so counting them here too would count them twice.</p>' +
+      '<label class="f"><span>How your day goes</span><select data-ob="neat">' +
+        [['1.2','Desk job, little walking'],['1.35','Mostly seated, some walking'],
+         ['1.5','On your feet most of the day'],['1.7','Manual labour / trade']].map(function(o){
+          return '<option value="' + o[0] + '"' + (d.neat === o[0] ? ' selected' : '') + '>' + o[1] + '</option>';
+        }).join('') + '</select></label>' +
+      '<h2 style="margin-top:22px">Goal</h2>' +
+      '<p class="lede">This shifts the target away from what you burn. It can be changed any ' +
+      'day, and the app works from your own intake and weight trend once there is enough of ' +
+      'both to be worth reading.</p>' +
+      obSeg('goal', d.goal, [['cut','Lose'],['lean','Lose slow'],['maintain','Maintain'],['gain','Gain']]);
+    foot.innerHTML =
+      '<button class="btn ghost" data-ob-go="scale">Back</button>' +
+      '<button class="btn" id="ob-finish">Done</button>';
+    return;
+  }
+
+  /* done — the payoff screen. Show the number they came for, and say which
+     model produced it, so it reads as a calculation rather than an oracle. */
+  var e = dayEnergy(DAY);
+  var am = activeModel();
+  body.innerHTML =
+    '<h2>Ready</h2>' +
+    '<p class="lede">Here is what the app makes of you. Nothing is logged yet, so this is a ' +
+    'rest day.</p>' +
+    '<div class="card"><div class="readout"><div class="k">Resting metabolic rate<em>' +
+      esc(MODEL_NAMES[am] || '') + '</em></div><div class="v num">' + fmtE(rmr(), true) + '</div></div>' +
+    '<div class="readout"><div class="k">Baseline expenditure<em>RMR × your day, before training</em></div>' +
+      '<div class="v num">' + fmtE(e.base, true) + '</div></div>' +
+    '<div class="readout"><div class="k">Today’s target<em>' + esc(e.goal.label) +
+      '</em></div><div class="v num">' + fmtE(e.target, true) + '</div></div></div>' +
+    '<p class="lede" style="margin-top:15px">Log a session and the target moves with it. Weigh in ' +
+    'a few times and the app stops trusting the formula and starts using your own numbers.</p>';
+  foot.innerHTML = '<button class="btn" id="ob-start">Start logging</button>';
+  under.innerHTML = (auth ? '' :
+    '<button class="ob-skip" data-ob-go="signin">Sign in to sync this across devices</button>');
+}
+
+/* Nothing is written to the profile until every required answer is in, so
+   abandoning setup halfway leaves no half-built body behind. */
+function obCommit(){
+  var d = obDraft, p = S.profile;
+  function opt(v){ return v === '' || v == null ? null : +v; }
+  p.sex = d.sex; p.age = +d.age; p.ht = +d.ht; p.wt = +d.wt;
+  p.bf = opt(d.bf); p.smm = opt(d.smm); p.smmUnit = d.smmUnit; p.bone = opt(d.bone);
+  p.neat = +d.neat; p.goal = d.goal; p.onboarded = true;
+  /* The weight they just typed is also their first weigh-in. Without this the
+     trend line has nothing to start from and the charts open empty. */
+  S.weights = S.weights.filter(function(w){ return w.d !== DAY; });
+  S.weights.push({d:DAY, kg:p.wt, bf:p.bf, smm:p.smm, smmUnit:p.smmUnit, bone:p.bone, water:null});
+  setUnit(d.unit);          // saves, re-renders and refills the Me tab inputs
+}
+
+function bindOnboard(){
+  var root = el('onboard');
+  root.addEventListener('click', function(ev){
+    var go = ev.target.closest('[data-ob-go]');
+    if (go){
+      var to = go.dataset.obGo;
+      if (to === 'day' && obStep === 'scale') { obGo('day'); return; }
+      obGo(to); return;
+    }
+    var seg = ev.target.closest('[data-obseg] button');
+    if (seg){
+      obDraft[seg.parentNode.dataset.obseg] = seg.dataset.v;
+      renderOnboard(); return;
+    }
+    if (ev.target.closest('#ob-finish')){ obCommit(); obGo('done'); return; }
+    if (ev.target.closest('#ob-start')){ closeOnboard(); switchView('today'); return; }
+    if (ev.target.closest('#ob-send')){ obSend(); return; }
+    if (ev.target.closest('#ob-verify')){ obVerify(); return; }
+  });
+  root.addEventListener('input', function(ev){
+    var f = ev.target.closest('[data-ob]'); if (!f) return;
+    obDraft[f.dataset.ob] = f.value;
+    /* Only the Continue button depends on what was typed, so re-rendering the
+       whole step would steal focus mid-word for no reason. */
+    var cont = el('ob-foot').querySelector('[data-ob-go="scale"]');
+    if (cont) cont.disabled = !obReady();
+    var send = el('ob-send');
+    if (send) send.disabled = obBusy || !obDraft.email;
+  });
+}
+
+function obSend(){
+  var d = obDraft;
+  obBusy = true; d.msg = 'Sending…'; renderOnboard();
+  sbSendCode(d.email.trim()).then(function(){
+    obBusy = false; d.sent = true; d.msg = 'Code sent to ' + d.email.trim() + '.';
+    renderOnboard();
+  }).catch(function(err){
+    obBusy = false; d.msg = 'Could not send that code. ' + (err && err.message ? err.message : '');
+    renderOnboard();
+  });
+}
+function obVerify(){
+  var d = obDraft;
+  obBusy = true; d.msg = 'Checking…'; renderOnboard();
+  sbVerify(d.email.trim(), d.code).then(function(){
+    d.msg = 'Signed in. Pulling your data…'; renderOnboard();
+    return syncNow();
+  }).then(function(){
+    obBusy = false;
+    renderCats(); renderAll(); renderSync();
+    /* A returning account already has a body, so setup has nothing to ask. */
+    if (+S.profile.wt > 0){ closeOnboard(); toast('Signed in.'); return; }
+    obDraft.msg = '';
+    obGo('you');
+  }).catch(function(err){
+    obBusy = false;
+    d.msg = (err && /token|otp|expired|invalid/i.test(err.message || ''))
+      ? 'That code did not work. Check it, or send another.'
+      : 'Signed in, but the sync did not finish. You can retry it from Me.';
+    renderOnboard();
+  });
+}
+
 /* -------------------------------- init ----------------------------------- */
 load();
 loadAuth();
 renderCats();
 bind();
+bindOnboard();
 setUnit(S.profile.unit || 'kj');
 renderAll();
+if (!S.profile.onboarded) openOnboard();
 if (auth) syncNow().catch(function(){ setSyncState('Offline'); });
 </script>
 </body>

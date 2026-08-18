@@ -24,6 +24,36 @@ it mid-flow when something is missing, so it lives behind a glyph in the header,
 every search result list ends with *"Not there? Scan or add it"*. That is the moment
 you find out, so that is where the offer belongs.
 
+## First run
+
+The app cannot say anything useful without a body, and until now its defaults were
+mine — anyone else opening it got a 32-year-old, 178 cm, 82 kg male and a set of
+numbers that looked authoritative and belonged to someone else. Setup asks instead,
+and will not hand over a number until it has enough to compute one honestly.
+
+Four screens. **You** takes sex, age, height and weight, and nothing continues until
+all four are in — sex and age also pick the Australian NRV band for the vitamin and
+mineral targets, which differ by both. **Scale numbers** takes body fat, muscle mass
+and bone mass off a Garmin Index S2 or similar, all optional and openly skippable,
+because an invented body-fat number is worse than none. **Your day** takes the
+non-exercise activity level and the goal. Then it shows you the answer: resting rate,
+baseline expenditure, today's target, and which of the three models produced it —
+tissue-level if you gave it the scale numbers, Katch-McArdle on body fat alone,
+Mifflin-St Jeor otherwise.
+
+The weight typed during setup is also recorded as the first weigh-in, so the trend
+line and the charts have something to start from rather than opening empty.
+
+**An account stays optional.** Everything works from this browser alone, offline,
+indefinitely. Signing in is offered first only so that someone arriving on a second
+phone is not made to re-enter a body the server is already holding — and if they pick
+it, setup closes as soon as the sync brings that body back. Every screen that offers
+sign-in also offers a way past it.
+
+Nothing is written to the profile until every required answer is in, so abandoning
+setup halfway leaves no half-built body behind. Anyone with a diary saved before this
+existed is not sent through it.
+
 ## The food data
 
 **4,127 foods**, every value straight from the official FSANZ workbooks.
