@@ -581,6 +581,15 @@ body.dragging{cursor:grabbing}
   </div>
 
   <div class="card">
+    <div class="card-head"><h2>Coach</h2><span class="right" id="coach-state">Off</span></div>
+    <div class="seg" id="coach-tog" role="group" aria-label="Coach" style="margin-bottom:12px">
+      <button data-coach="0" aria-pressed="true">Fixed targets</button>
+      <button data-coach="1" aria-pressed="false">Adjust weekly</button>
+    </div>
+    <div id="coach-body"></div>
+  </div>
+
+  <div class="card">
     <div class="card-head"><h2>Goal</h2></div>
     <div class="seg" id="p-goal" role="group" aria-label="Goal">
       <button data-goal="cut" aria-pressed="false">Lose</button>
@@ -2675,9 +2684,11 @@ function blankState(){
   return {
     v:1,
     profile:{sex:'m', age:32, ht:178, wt:82, bf:null, smm:null, smmUnit:'pct',
-             bone:null, water:null, online:false, cadence:170, neat:1.35, goal:'maintain', formula:'auto',
+             bone:null, water:null, online:false, cadence:170, periodise:'off',
+             neat:1.35, goal:'maintain', formula:'auto',
              useMeasured:false, ppk:1.8, fpk:0.9, unit:'kj'},
-    weights:[], custom:[], fav:[], recent:[], imported:[], days:{}
+    weights:[], custom:[], fav:[], recent:[], imported:[], days:{},
+    coach:{on:false, target:null, last:null, history:[]}, recipes:[]
   };
 }
 function load(){
@@ -2777,24 +2788,67 @@ var ORGAN_REF = {
 };
 var MODEL_NAMES = {mifflin:'Mifflin-St Jeor', katch:'Katch-McArdle', tissue:'Tissue-level'};
 
+/* ---------------------------- trend weight -------------------------------
+   A scale reading is body mass plus water, gut contents and yesterday. Feeding
+   the raw number into a target means a dehydrated post-run weigh-in rewrites
+   the whole day. An exponentially weighted moving average keeps the signal and
+   drops the noise, and the half-life is expressed in days so a gap between
+   weigh-ins is weighted correctly rather than treated as one step.
+   ------------------------------------------------------------------------- */
+var TREND_HALFLIFE = 10;
+function trendSeries(){
+  var ws = (S.weights || []).filter(function(w){ return +w.kg > 0; })
+    .sort(function(a,b){ return a.d < b.d ? -1 : 1; });
+  var out = [], t = null;
+  for (var i = 0; i < ws.length; i++){
+    if (t === null) t = +ws[i].kg;
+    else {
+      var gap = Math.max(daysBetween(ws[i-1].d, ws[i].d), 1);
+      var a = 1 - Math.pow(0.5, gap / TREND_HALFLIFE);
+      t = t + a * (+ws[i].kg - t);
+    }
+    out.push({d:ws[i].d, kg:+ws[i].kg, trend:t});
+  }
+  return out;
+}
+/* The weight every calculation should use. */
+function bodyKg(){
+  var s = trendSeries();
+  if (!s.length) return +S.profile.wt || 0;
+  return s[s.length - 1].trend;
+}
+/* Rate of change in kg per week, from the trend rather than the readings. */
+function trendRate(days){
+  var s = trendSeries();
+  if (s.length < 2) return null;
+  var end = s[s.length - 1];
+  var cutoff = shiftISO(end.d, -(days || 21));
+  var start = null;
+  for (var i = 0; i < s.length; i++) if (s[i].d >= cutoff){ start = s[i]; break; }
+  if (!start || start.d === end.d) return null;
+  var span = daysBetween(start.d, end.d);
+  if (span < 5) return null;
+  return (end.trend - start.trend) / span * 7;
+}
+
 function bsa(kg, cm){ return 0.007184 * Math.pow(cm, 0.725) * Math.pow(kg, 0.425); }
 function has(v){ return v != null && v !== '' && +v > 0; }
 function fatKg(){
   var p = S.profile;
-  return has(p.bf) ? (+p.wt) * (+p.bf) / 100 : null;
+  return has(p.bf) ? bodyKg() * (+p.bf) / 100 : null;
 }
 function muscleKg(){
   var p = S.profile;
   if (!has(p.smm)) return null;
-  return p.smmUnit === 'kg' ? +p.smm : (+p.wt) * (+p.smm) / 100;
+  return p.smmUnit === 'kg' ? +p.smm : bodyKg() * (+p.smm) / 100;
 }
 function mifflinKcal(){
   var p = S.profile;
-  return 10 * (+p.wt || 0) + 6.25 * (+p.ht || 0) - 5 * (+p.age || 0) + (p.sex === 'm' ? 5 : -161);
+  return 10 * bodyKg() + 6.25 * (+p.ht || 0) - 5 * (+p.age || 0) + (p.sex === 'm' ? 5 : -161);
 }
 function katchKcal(){
   var fm = fatKg(); if (fm === null) return null;
-  return 370 + 21.6 * ((+S.profile.wt) - fm);
+  return 370 + 21.6 * (bodyKg() - fm);
 }
 /* Burn each tissue at its own rate. Brain mass is near-constant in adults, so
    only the size-dependent organs scale with body surface area. Bone sits inside
@@ -2803,11 +2857,11 @@ function tissueKcal(){
   var p = S.profile, fm = fatKg(), mm = muscleKg();
   if (fm === null || mm === null) return null;
   var ref = ORGAN_REF[p.sex === 'f' ? 'f' : 'm'];
-  var scale = bsa(+p.wt, +p.ht) / bsa(ref.wt, ref.ht);
+  var scale = bsa(bodyKg(), +p.ht) / bsa(ref.wt, ref.ht);
   var organ = {brain:ref.brain, liver:ref.liver * scale,
                heart:ref.heart * scale, kidney:ref.kidney * scale};
   var organMass = organ.brain + organ.liver + organ.heart + organ.kidney;
-  var residual = (+p.wt) - fm - mm - organMass;
+  var residual = bodyKg() - fm - mm - organMass;
   if (residual < 0) return null;
   return TISSUE.muscle * mm + TISSUE.fat * fm +
          TISSUE.brain * organ.brain + TISSUE.liver * organ.liver +
@@ -2844,7 +2898,7 @@ function measuredBaseline(){
 }
 
 function workoutKj(met, mins, intensity){
-  var kg = +S.profile.wt || 0;
+  var kg = bodyKg();
   var m = met * (intensity || 1);
   var netMet = Math.max(m - 1, 0);
   return netMet * 3.5 * kg / 200 * mins * KJ_PER_KCAL;
@@ -2877,7 +2931,7 @@ function dayNetSteps(iso){
 }
 
 function stepsKj(steps){
-  var kg = +S.profile.wt || 0;
+  var kg = bodyKg();
   var km = steps * 0.000762;
   return 0.45 * kg * km * KJ_PER_KCAL;    // net walking cost
 }
@@ -2911,17 +2965,120 @@ function dayEnergy(iso){
   var burn = base + train;
   var eaten = dayTotals(iso).kj;
   var goal = GOALS[S.profile.goal] || GOALS.maintain;
-  var target = Math.max(burn * goal.mult, rmr());   // never target below resting
+  /* A coached target is a measured answer and beats the formula, but it is a
+     resting-day number: today's own training still gets added to it. */
+  var coach = S.coach && S.coach.on && S.coach.target;
+  var target = coach
+    ? Math.max(S.coach.target + train, rmr())
+    : Math.max(burn * goal.mult, rmr());
   return {base:base, train:train, burn:burn, eaten:eaten, target:target,
-          remaining:target - eaten, balance:burn - eaten, goal:goal, measured:mb !== null};
+          remaining:target - eaten, balance:burn - eaten, goal:goal,
+          measured:mb !== null, coached:!!coach};
 }
 function macroTargets(targetKj){
-  var kg = +S.profile.wt || 0;
+  var kg = bodyKg();
   var pg = (+S.profile.ppk || 0) * kg;
   var fg = (+S.profile.fpk || 0) * kg;
   var left = targetKj - pg * 17 - fg * 37;
   var cg = Math.max(left / 16, 0);
   return {p:pg, f:fg, c:cg};
+}
+
+/* -------------------------------- coach -----------------------------------
+   Carbon's insight is that a tracker only becomes useful when something acts
+   on the numbers. Once a week: compare the trend rate against the rate the
+   goal implies, and move the target by the difference — but only if the week
+   was actually logged, because adjusting against a half-recorded week is
+   fitting noise.
+   ------------------------------------------------------------------------- */
+var GOAL_RATE = {                 // fraction of body weight per week
+  cut:      -0.0075,
+  lean:     -0.0035,
+  maintain:  0,
+  gain:      0.0025
+};
+var CHECK_DAYS = 7;
+var MAX_STEP = 0.08;              // never move a target more than 8% at once
+
+function coachState(){
+  if (!S.coach) S.coach = {on:false, target:null, last:null, history:[]};
+  return S.coach;
+}
+function coachDue(){
+  var c = coachState();
+  if (!c.on) return false;
+  if (!c.last) return true;
+  return daysBetween(c.last, todayISO()) >= CHECK_DAYS;
+}
+/* Adherence: how much of the week was actually recorded, and how close intake
+   sat to what was asked. Both matter — a fully logged week at 60% of target is
+   not adherence, it is a different diet. */
+function coachAdherence(){
+  var days = lastDays(CHECK_DAYS, todayISO());
+  var logged = days.filter(function(d){ return dayTotals(d).kj > 0; });
+  var c = coachState();
+  var ref = c.target || dayEnergy(todayISO()).target;
+  var hits = logged.filter(function(d){
+    var k = dayTotals(d).kj;
+    return ref > 0 && Math.abs(k - ref) / ref <= 0.15;
+  });
+  return {logged:logged.length, days:CHECK_DAYS, onTarget:hits.length,
+          coverage: logged.length / CHECK_DAYS,
+          meanKj: logged.length ? logged.reduce(function(a,d){ return a + dayTotals(d).kj; }, 0) / logged.length : 0};
+}
+
+function coachProposal(){
+  var c = coachState();
+  var adh = coachAdherence();
+  var rate = trendRate(21);
+  var goal = S.profile.goal || 'maintain';
+  var want = (GOAL_RATE[goal] || 0) * bodyKg();          // kg per week wanted
+  var cur = c.target || dayEnergy(todayISO()).target;
+  var out = {adh:adh, rate:rate, want:want, current:cur, next:cur, delta:0, why:'', ok:false};
+
+  if (adh.coverage < 0.7){
+    out.why = 'Only ' + adh.logged + ' of ' + CHECK_DAYS + ' days were logged. Targets are not ' +
+      'moved on a partial week — the change would be fitting gaps, not your metabolism.';
+    return out;
+  }
+  if (rate === null){
+    out.why = 'Not enough weigh-ins yet to read a trend. Two or more spread over at least five days.';
+    return out;
+  }
+  /* The gap between the rate you are getting and the rate you want, priced in
+     energy: one kilogram of body mass is about 32,200 kJ. */
+  var gapKgWk = want - rate;
+  var deltaKj = gapKgWk * KJ_PER_KG_FAT / 7;
+  var capped = Math.max(Math.min(deltaKj, cur * MAX_STEP), -cur * MAX_STEP);
+  var next = Math.max(cur + capped, rmr());
+  out.next = next; out.delta = next - cur; out.ok = true;
+  out.why = 'Trend is ' + (rate >= 0 ? '+' : '') + g(rate, 2) + ' kg/wk against a target of ' +
+    (want >= 0 ? '+' : '') + g(want, 2) + '. ' +
+    (Math.abs(out.delta) < cur * 0.01
+      ? 'That is close enough — holding.'
+      : (out.delta > 0 ? 'Adding ' : 'Taking off ') + fmtE(Math.abs(out.delta), true) + ' a day.') +
+    (Math.abs(deltaKj) > Math.abs(capped) + 1
+      ? ' Capped at ' + Math.round(MAX_STEP * 100) + '% — big jumps overshoot.' : '');
+  return out;
+}
+
+function coachAccept(){
+  var p = coachProposal();
+  var c = coachState();
+  if (!p.ok) return;
+  c.history = c.history || [];
+  c.history.unshift({d:todayISO(), from:c.target || p.current, to:p.next,
+                     rate:p.rate, want:p.want, logged:p.adh.logged});
+  if (c.history.length > 26) c.history.length = 26;
+  c.target = p.next;
+  c.last = todayISO();
+  save(); renderAll();
+  toast('Target set to ' + fmtE(p.next, true) + ' a day.');
+}
+function coachSkip(){
+  var c = coachState();
+  c.last = todayISO(); save(); renderAll();
+  toast('Skipped. Next check-in in a week.');
 }
 
 /* ------------------------------ rendering -------------------------------- */
@@ -3250,7 +3407,7 @@ function walkKcalMin(secPerKm, kg, grade){
 function exKcalMin(met, kg){ return Math.max(met - 1, 0) * 3.5 * kg / 200; }
 
 function blockKj(b){
-  var kg = +S.profile.wt || 0, kcal = 0;
+  var kg = bodyKg(), kcal = 0;
   if (b.kind === 'run')  kcal = runKcalMin(b.pace, kg, b.grade) * b.mins;
   if (b.kind === 'walk') kcal = walkKcalMin(b.pace, kg, b.grade) * b.mins;
   if (b.kind === 'ex')   kcal = exKcalMin(b.met, kg) * b.mins;
@@ -3541,7 +3698,7 @@ function updateRun(){
     recon += '<br>';
   }
   el('run-note').innerHTML = recon +
-    'Energy from the ACSM running equations at ' + g(S.profile.wt,1) +    ' kg, net of the resting cost your baseline already covers. Net running cost works out near ' +
+    'Energy from the ACSM running equations at ' + g(bodyKg(),1) +    ' kg, net of the resting cost your baseline already covers. Net running cost works out near ' +
     '<strong>1 kcal per kg per km</strong> whatever the pace &mdash; pace changes how long you are out ' +
     'there, not much what a kilometre costs.';
   return r;
@@ -3601,6 +3758,7 @@ function updateWorkoutPreview(){
 
 function renderBodyView(){
   renderAccountCard();
+  renderCoach();
   var p = S.profile;
   el('p-sex').value = p.sex; el('p-age').value = p.age; el('p-ht').value = p.ht;
   el('p-wt').value = p.wt;
@@ -3681,7 +3839,8 @@ function renderBodyView(){
   });
 
   /* weigh-in history */
-  el('wt-count').textContent = S.weights.length + (S.weights.length === 1 ? ' entry' : ' entries');
+  el('wt-count').textContent = S.weights.length
+    ? 'trend ' + g(bodyKg(),2) + ' kg' : 'no entries';
   var ws = S.weights.slice().sort(function(a,b){ return b.d < a.d ? -1 : 1; });
   el('wt-list').innerHTML = ws.length ? ws.slice(0, 30).map(function(w, i){
     var prev = ws[i+1];
@@ -3718,6 +3877,71 @@ function renderAccountCard(){
       '<div class="btn" style="margin-top:11px">Sign in to sync</div>' +
       '<p class="hint" style="margin-top:7px">A six-digit code by email. No password.</p>';
   }
+}
+
+function renderCoach(){
+  var c = coachState(), st = el('coach-state'), body = el('coach-body');
+  if (!st || !body) return;
+  press('coach-tog', 'coach', c.on ? '1' : '0');
+
+  if (!c.on){
+    st.textContent = 'Off';
+    body.innerHTML = '<p class="note">Targets come straight from the formula and never move. ' +
+      'Switch this on and once a week the target is compared against what your weight trend ' +
+      'actually did, and adjusted by the difference — the thing a coach does that a calculator ' +
+      'does not.</p>';
+    return;
+  }
+
+  var p = coachProposal();
+  st.textContent = c.target ? fmtE(c.target, true) + ' base' : 'Awaiting first check-in';
+  var due = coachDue();
+
+  var rows =
+    '<div class="readout"><div class="k">Trend weight<em>Smoothed, ' + TREND_HALFLIFE +
+      '-day half-life</em></div><div class="v num">' + g(bodyKg(),2) + ' kg</div></div>' +
+    '<div class="readout"><div class="k">Trend rate<em>Last three weeks</em></div>' +
+      '<div class="v num">' + (p.rate === null ? '—' :
+        (p.rate >= 0 ? '+' : '') + g(p.rate,2) + ' kg/wk') + '</div></div>' +
+    '<div class="readout"><div class="k">Wanted<em>' + (GOALS[S.profile.goal] || GOALS.maintain).label +
+      '</em></div><div class="v num">' + (p.want >= 0 ? '+' : '') + g(p.want,2) + ' kg/wk</div></div>' +
+    '<div class="readout"><div class="k">Week logged</div><div class="v num">' +
+      p.adh.logged + '/' + CHECK_DAYS + '</div></div>';
+
+  if (due){
+    rows += '<div class="card" style="background:var(--surface-2);box-shadow:none;margin:12px 0 0">' +
+      '<div class="card-head"><h2>Check-in due</h2></div>' +
+      '<p class="note">' + p.why + '</p>' +
+      (p.ok
+        ? '<div class="readout lead" style="margin-top:8px"><div class="k">New daily base<em>Before training is added</em></div>' +
+          '<div class="v num">' + fmtE(p.next, true) + '</div></div>' +
+          '<div class="btnrow" style="margin-top:10px">' +
+            '<button class="btn sm" id="coach-accept" style="flex:1">Accept</button>' +
+            '<button class="btn sm ghost" id="coach-skip" style="flex:1">Not this week</button></div>'
+        : '<div class="btnrow" style="margin-top:10px">' +
+            '<button class="btn sm ghost" id="coach-skip" style="flex:1">Dismiss for a week</button></div>') +
+      '</div>';
+  } else {
+    var nxt = c.last ? CHECK_DAYS - daysBetween(c.last, todayISO()) : 0;
+    rows += '<p class="hint" style="margin-top:10px">Next check-in in ' + nxt +
+      ' day' + (nxt === 1 ? '' : 's') + '. ' + esc(p.why) + '</p>';
+  }
+
+  if (c.history && c.history.length){
+    rows += '<div class="card-head" style="margin:16px 0 2px"><h2>Adjustments</h2></div>' +
+      c.history.slice(0, 6).map(function(x){
+        var d = x.to - x.from;
+        return '<div class="readout"><div class="k">' +
+          isoToDate(x.d).toLocaleDateString('en-AU',{day:'numeric',month:'short'}) +
+          '<em>' + (x.rate >= 0 ? '+' : '') + g(x.rate,2) + ' kg/wk, ' + x.logged + '/7 logged</em></div>' +
+          '<div class="v num" style="color:' + (d > 0 ? 'var(--fib)' : d < 0 ? 'var(--carb)' : 'var(--ink-3)') + '">' +
+          (d >= 0 ? '+' : '') + fmtE(d) + '</div></div>';
+      }).join('');
+  }
+  body.innerHTML = rows;
+
+  if (el('coach-accept')) el('coach-accept').addEventListener('click', coachAccept);
+  if (el('coach-skip')) el('coach-skip').addEventListener('click', coachSkip);
 }
 
 function press(groupId, attr, val){
@@ -4728,7 +4952,7 @@ function renderOffResults(q, via){
 /* Bumped on every deploy. When something fails, knowing which build is
    actually loaded is the difference between debugging the bug and debugging
    a stale cache. */
-var APP_VERSION = '2026.08.18-10';
+var APP_VERSION = '2026.08.18-11';
 var SB_URL = 'https://lsrxqviwgqjpuzzcqcpu.supabase.co';
 var SB_KEY = 'sb_publishable_0lk-0UAlfW-tALEgPiqFHg_8vF9Hp63';
 var AUTH_KEY = 'eatandtrain.auth';
@@ -5286,6 +5510,11 @@ function bind(){
   el('p-formula').addEventListener('click', function(ev){
     var b = ev.target.closest('[data-f]'); if (!b) return;
     S.profile.formula = b.dataset.f; save(); renderAll();
+  });
+  el('coach-tog').addEventListener('click', function(ev){
+    var b = ev.target.closest('[data-coach]'); if (!b) return;
+    coachState().on = b.dataset.coach === '1';
+    save(); renderAll();
   });
   el('p-goal').addEventListener('click', function(ev){
     var b = ev.target.closest('[data-goal]'); if (!b) return;
