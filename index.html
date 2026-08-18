@@ -363,14 +363,18 @@ select{background-image:linear-gradient(45deg,transparent 50%,var(--ink-3) 50%),
   </div>
 
   <div class="card">
-    <div class="card-head"><h2>Add a packaged product</h2></div>
-    <p class="note">AFCD covers generic foods, not every supermarket line. For a branded product,
-      copy its Nutrition Information Panel into <strong>New food</strong>. To bring in a whole list at
-      once, load a CSV with a name column and any of energy, protein, fat, carbs, sugars, fibre or
-      sodium &mdash; columns are matched by name.</p>
+    <div class="card-head"><h2>Supermarket products</h2></div>
+    <p class="note">AFCD covers generic foods, not the branded lines on a Coles shelf. For those,
+      <strong>Open Food Facts</strong> is the open, barcode-level database &mdash; filter it by brand
+      or country on their advanced search, download the result as CSV, and load it here. Tab-separated
+      exports, sodium in grams and salt-only rows are all handled.</p>
+    <p class="note" style="margin-top:8px">It is crowd-sourced, so coverage is patchy and the odd entry
+      is wrong &mdash; imports stay under their own <strong>Packaged</strong> category so you always know
+      which numbers came from FSANZ and which did not. For a single item, the panel on the box beats
+      any database: use <strong>New food</strong>.</p>
     <div class="btnrow" style="margin-top:11px">
       <label class="btn sm ghost" style="flex:1; cursor:pointer">
-        Choose CSV<input type="file" id="csv-in" accept=".csv,text/csv" hidden>
+        Choose CSV<input type="file" id="csv-in" accept=".csv,.tsv,text/csv,text/tab-separated-values" hidden>
       </label>
       <button class="btn sm danger" id="csv-clear" style="flex:none">Clear imported</button>
     </div>
@@ -2320,7 +2324,7 @@ var CATS = {
   '19':'Dairy', '20':'Plant-based', '21':'Soup', '22':'Nuts & seeds',
   '23':'Sauces', '24':'Vegetables', '25':'Legumes', '26':'Snacks',
   '27':'Sweets', '28':'Confectionery', '29':'Alcohol', '30':'Supplements',
-  '31':'Herbs & spices', '32':'Other', '33':'Game meat'
+  '31':'Herbs & spices', '32':'Other', '33':'Game meat', '90':'Packaged'
 };
 var SOLID_PRESETS = [30, 50, 100, 150, 200, 250];
 var LIQUID_PRESETS = [100, 150, 250, 375, 425, 600];
@@ -2829,8 +2833,9 @@ function press(groupId, attr, val){
 function renderFoodView(){
   el('db-count').textContent = allFoods().length + ' foods';
   el('csv-status').textContent = imported.length
-    ? imported.length.toLocaleString('en-AU') + ' foods imported from your CSV.'
-    : 'No imported database loaded.';
+    ? (S.importNote || imported.length.toLocaleString('en-AU') + ' products imported.') +
+      ' They sit under the Packaged category, kept separate from AFCD.'
+    : 'No imported foods.';
   el('custom-count').textContent = S.custom.length;
   el('custom-list').innerHTML = S.custom.length ? S.custom.map(function(c, i){
     return '<div class="row"><div class="row-main"><div class="t">' + esc(c.name) + '</div>' +
@@ -3245,7 +3250,14 @@ function updateQty(){
 }
 
 /* ------------------------------- CSV ------------------------------------- */
-function parseCSV(text){
+/* Open Food Facts exports are tab-separated; most other exports are commas.
+   Sniff the header line rather than guessing wrong and shredding every row. */
+function sniffDelimiter(text){
+  var line = text.slice(0, 20000).split('\n')[0] || '';
+  return (line.split('\t').length > line.split(',').length) ? '\t' : ',';
+}
+function parseCSV(text, sep){
+  sep = sep || ',';
   var rows = [], row = [], cur = '', q = false;
   text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
   for (var i = 0; i < text.length; i++){
@@ -3254,7 +3266,7 @@ function parseCSV(text){
       if (ch === '"'){ if (text[i+1] === '"'){ cur += '"'; i++; } else q = false; }
       else cur += ch;
     } else if (ch === '"') q = true;
-    else if (ch === ','){ row.push(cur); cur = ''; }
+    else if (ch === sep){ row.push(cur); cur = ''; }
     else if (ch === '\n'){ row.push(cur); rows.push(row); row = []; cur = ''; }
     else cur += ch;
   }
@@ -3262,50 +3274,92 @@ function parseCSV(text){
   return rows.filter(function(r){ return r.some(function(c){ return c.trim() !== ''; }); });
 }
 function importCSV(text){
-  var rows = parseCSV(text);
+  var sep = sniffDelimiter(text);
+  var rows = parseCSV(text, sep);
   if (rows.length < 2){ toast('That file has no data rows.'); return; }
+
   var hdrRow = 0;
   for (var i = 0; i < Math.min(rows.length, 12); i++){
-    if (rows[i].some(function(c){ return /food name|^name$|description/i.test(c.trim()); })){ hdrRow = i; break; }
+    if (rows[i].some(function(c){ return /product_name|food name|^name$|description/i.test(c.trim()); })){ hdrRow = i; break; }
   }
   var hdr = rows[hdrRow].map(function(c){ return c.toLowerCase().replace(/\s+/g,' ').trim(); });
-  function find(test){ for (var j = 0; j < hdr.length; j++) if (test(hdr[j])) return j; return -1; }
-  var iName = find(function(h){ return /food name|^name$|description/.test(h); });
-  if (iName < 0){ toast('No food-name column found in that CSV.'); return; }
-  var iKj   = find(function(h){ return /energ/.test(h) && /kj/.test(h) && !/without/.test(h); });
-  if (iKj < 0) iKj = find(function(h){ return /energ/.test(h) && /kj/.test(h); });
-  var iKcal = find(function(h){ return /energ/.test(h) && /(kcal|calorie)/.test(h); });
-  var iP    = find(function(h){ return /protein/.test(h); });
-  var iSat  = find(function(h){ return /saturat/.test(h) && /\(g\)|g$|^total sat/.test(h); });
-  if (iSat < 0) iSat = find(function(h){ return /saturat/.test(h) && !/%/.test(h); });
-  var iF    = find(function(h){ return /fat/.test(h) && !/saturat|mono|poly|trans|%/.test(h); });
-  var iC    = find(function(h){ return /available carbohydrate/.test(h); });
-  if (iC < 0) iC = find(function(h){ return /carbohydrate|carbs/.test(h); });
-  var iSug  = find(function(h){ return /total sugar/.test(h); });
-  if (iSug < 0) iSug = find(function(h){ return /sugar/.test(h) && !/added|free|alcohol/.test(h); });
-  var iFib  = find(function(h){ return /fibre|fiber/.test(h); });
-  var iNa   = find(function(h){ return /sodium/.test(h); });
-  var iAlc  = find(function(h){ return /^alcohol/.test(h); });
+
+  /* Exports carry the same nutrient several times over — per 100 g, per serving,
+     as prepared. Score the candidates so the per-100 g column always wins. */
+  function find(test){
+    var best = -1, bestScore = -1;
+    for (var j = 0; j < hdr.length; j++){
+      var col = hdr[j];
+      if (!test(col)) continue;
+      var s = 0;
+      if (/_100g$/.test(col)) s += 10;
+      if (/_serving$|_prepared|_value$|_unit$/.test(col)) s -= 10;
+      if (s > bestScore){ bestScore = s; best = j; }
+    }
+    return best;
+  }
+  var iName  = find(function(c){ return /^product_name$|^food name$|^name$|^description$/.test(c); });
+  if (iName < 0) iName = find(function(c){ return /product_name|food name|description/.test(c); });
+  if (iName < 0){ toast('No product-name column found in that file.'); return; }
+  var iGeneric = find(function(c){ return /^generic_name$|abbreviated_product_name/.test(c); });
+  var iBrand = find(function(c){ return /^brands$|^brand$/.test(c); });
+  var iKj    = find(function(c){ return /energ/.test(c) && /kj/.test(c) && !/without/.test(c); });
+  var iKcal  = find(function(c){ return /energ/.test(c) && /(kcal|calorie)/.test(c); });
+  var iP     = find(function(c){ return /protein/.test(c); });
+  var iSat   = find(function(c){ return /saturat/.test(c) && !/%|ratio/.test(c); });
+  var iF     = find(function(c){ return /(^|[^a-z])fat/.test(c) && !/saturat|mono|poly|trans|omega|%|ratio/.test(c); });
+  var iC     = find(function(c){ return /available carbohydrate/.test(c); });
+  if (iC < 0) iC = find(function(c){ return /^carbohydrates?(_|$)|carbohydrate|carbs/.test(c); });
+  var iSug   = find(function(c){ return /total sugar|^sugars?(_|$)/.test(c); });
+  if (iSug < 0) iSug = find(function(c){ return /sugar/.test(c) && !/added|free|alcohol/.test(c); });
+  var iFib   = find(function(c){ return /fibre|fiber/.test(c); });
+  var iAlc   = find(function(c){ return /^alcohol/.test(c); });
+
+  /* Sodium units differ by source: AFCD gives mg, Open Food Facts gives grams,
+     and some exports only carry salt. Getting this wrong is a 1000x error. */
+  var iNa = find(function(c){ return /sodium/.test(c); });
+  var iSalt = find(function(c){ return /^salt(_|$)|salt_100g/.test(c); });
+  var naInGrams = iNa >= 0 && !/\(mg\)|_mg|mg\)/.test(hdr[iNa]) && /_100g$|_value$/.test(hdr[iNa]);
 
   function n(r, idx){
-    if (idx < 0 || !r[idx]) return 0;
+    if (idx < 0 || r[idx] == null || r[idx] === '') return 0;
     var m = String(r[idx]).replace(/,/g,'').match(/-?\d*\.?\d+/);
-    return m ? Math.max(parseFloat(m[0]), 0) : 0;
+    var v = m ? parseFloat(m[0]) : 0;
+    return isFinite(v) && v > 0 ? v : 0;
   }
-  var out = [];
+  var out = [], seen = {}, skipped = 0, capped = 0, CAP = 8000;
   for (var k = hdrRow + 1; k < rows.length; k++){
     var r = rows[k];
-    var nm = (r[iName] || '').trim().replace(/\|/g, '/');
-    if (!nm) continue;
+    var nm = String(r[iName] == null ? '' : r[iName]).trim();
+    if (!nm && iGeneric >= 0) nm = String(r[iGeneric] || '').trim();
+    if (!nm) { skipped++; continue; }
+    var brand = iBrand >= 0 ? String(r[iBrand] || '').split(',')[0].trim() : '';
+    if (brand && nm.toLowerCase().indexOf(brand.toLowerCase()) < 0) nm = brand + ' ' + nm;
+    nm = nm.replace(/\|/g, '/').replace(/\s+/g, ' ').slice(0, 90);
+
     var kj = n(r, iKj);
     if (!kj && iKcal >= 0) kj = n(r, iKcal) * KJ_PER_KCAL;
-    out.push([nm, '32', Math.round(kj), n(r,iP), n(r,iF), n(r,iSat), n(r,iC),
-              n(r,iSug), n(r,iFib), Math.round(n(r,iNa)), n(r,iAlc), '0'].join('|'));
+    var prot = n(r,iP), fat = n(r,iF), carb = n(r,iC);
+    if (!kj && !prot && !fat && !carb){ skipped++; continue; }   // empty crowd-sourced entry
+
+    var na = iNa >= 0 ? n(r, iNa) * (naInGrams ? 1000 : 1) : 0;
+    if (!na && iSalt >= 0) na = n(r, iSalt) * 1000 / 2.5;        // salt -> sodium, 1 g salt = 400 mg Na
+
+    var key = nm.toLowerCase();
+    if (seen[key]){ skipped++; continue; }
+    seen[key] = 1;
+    if (out.length >= CAP){ capped++; continue; }
+    out.push([nm, '90', Math.round(kj), prot, fat, n(r,iSat), carb,
+              n(r,iSug), n(r,iFib), Math.round(na), n(r,iAlc), '0'].join('|'));
   }
-  if (!out.length){ toast('No usable rows in that CSV.'); return; }
-  S.imported = out; save(); load();
-  renderCats(); renderFoodView();
-  toast(out.length.toLocaleString('en-AU') + ' foods imported.');
+  if (!out.length){ toast('No usable rows — no energy or macros found.'); return; }
+
+  var msg = out.length.toLocaleString('en-AU') + ' products imported';
+  if (skipped) msg += ', ' + skipped.toLocaleString('en-AU') + ' skipped as blank or duplicate';
+  if (capped)  msg += ', ' + capped.toLocaleString('en-AU') + ' over the ' + CAP.toLocaleString('en-AU') + ' cap';
+  S.imported = out; S.importNote = msg + '.'; save(); load();
+  invalidateFoods(); renderCats(); renderFoodView();
+  toast(msg + '.');
 }
 
 /* ------------------------------ backup ----------------------------------- */

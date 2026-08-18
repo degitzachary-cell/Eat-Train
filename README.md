@@ -25,9 +25,31 @@ Every value comes straight from the official AFCD Release 3 nutrient profiles:
 - Energy is the label figure, *energy with dietary fibre, equated*.
 - Foods keep their AFCD classification, which drives the category filters.
 
-AFCD covers generic foods, not every supermarket line. For a branded product, copy its
-Nutrition Information Panel into **New food**, or load a CSV of them at once — columns
-are matched by name.
+### Supermarket products
+
+AFCD covers generic foods, not the branded lines on a Coles or Woolworths shelf. Two
+ways to add those:
+
+- **One item** — copy its Nutrition Information Panel into **New food**. The panel on
+  the box is more authoritative than any database.
+- **A whole list** — [Open Food Facts](https://au.openfoodfacts.org/) is the open,
+  barcode-level product database, ODbL licensed. Filter its advanced search by brand
+  or country, download the result as CSV, and load it under **Supermarket products**.
+
+The importer is built for that export specifically. It sniffs tab vs comma separators,
+prefers `_100g` columns over `_serving` decoys, converts sodium from grams to
+milligrams, derives sodium from `salt_100g` when a row has no sodium of its own
+(1 g salt = 400 mg sodium), prefixes the brand onto the product name, and drops blank
+and duplicate rows. Imports land in their own **Packaged** category so FSANZ-sourced
+numbers stay visually distinct from crowd-sourced ones.
+
+Open Food Facts is crowd-sourced: coverage is patchy and entries are occasionally
+wrong. Treat it as a convenience layer over AFCD, not a replacement.
+
+The [FoodSwitch database](https://www.georgeinstitute.org/our-research/areas/food-policy/foodswitch-data-on-the-worlds-packaged-foods)
+from The George Institute is the better Australian packaged-food source — built from
+in-store audits at Coles, Woolworths, ALDI and IGA — but it is available by research
+request rather than open download.
 
 ## How the energy maths works
 
