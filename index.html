@@ -4544,32 +4544,47 @@ var offResults = [];
 /* Per the API docs: full-text search does not exist in v2 or v3 — only
    Search-a-licious and the legacy CGI path. Product reads should be v3, with
    v2 kept as a fallback while it is still supported. */
+/* Verified against the published sources rather than guessed:
+
+   Search — search-a-licious app/api.py defines both POST /search (JSON body)
+   and GET /search (query params), and its CORS middleware allows any origin
+   with OPTIONS, so a browser can use either. Parameters come from
+   QuerySearchParameters and ResultSearchParameters: q, page_size, page,
+   fields, sort_by, langs, index_id — and the model sets extra="forbid", so
+   an invented parameter name is a hard 422 rather than something ignored.
+   Responses carry `hits`. Its Open Food Facts index config indexes exactly
+   the nutriments read below, energy-kj_100g through alcohol_100g.
+
+   Product — the v3 OpenAPI spec gives the path as /api/v3/product/{code}
+   with no .json suffix, and `fields` defaulting to "all" on reads, so
+   nutriments arrive without asking. */
 function offEndpoints(q){
   var digits = q.replace(/\s/g, '');
   var list;
   if (/^\d{8,14}$/.test(digits)){
     var c = encodeURIComponent(digits);
     list = [
-      {u:OFF_BASE + '/api/v3/product/' + c + '.json?fields=' + OFF_FIELDS, name:'v3 product', kind:'read'},
-      {u:OFF_BASE + '/api/v2/product/' + c + '.json?fields=' + OFF_FIELDS, name:'v2 product', kind:'read'}
+      {u:OFF_BASE + '/api/v3/product/' + c, name:'v3 product', kind:'read'},
+      {u:OFF_BASE + '/api/v3/product/' + c + '.json', name:'v3 product .json', kind:'read'},
+      {u:OFF_BASE + '/api/v2/product/' + c + '.json', name:'v2 product', kind:'read'}
     ];
   } else {
     var e = encodeURIComponent(q), SAL = 'https://search.openfoodfacts.org';
-    /* Search-a-licious documents POST /search. GET is tried first because it
-       needs no CORS preflight, so it fails faster and cheaper when it is not
-       the right shape. */
     list = [
+      /* POST first: the body takes `fields` as a real array, trimming the
+         response to what is actually used. */
+      {u:SAL + '/search', name:'POST /search', kind:'search', method:'POST',
+       body:{q:q, page_size:20,
+             fields:['code','product_name','brands','quantity','nutriments']}},
+      /* GET carries no `fields`: it is typed list[str], which in a query
+         string means repeating the parameter, and getting that wrong is a
+         422 under extra="forbid". Not worth the risk for a smaller payload. */
       {u:SAL + '/search?q=' + e + '&page_size=20', name:'GET /search', kind:'search'},
-      {u:SAL + '/search', name:'POST /search', kind:'search',
-       method:'POST', body:{q:q, page_size:20}},
-      {u:SAL + '/api/v1/search?q=' + e + '&page_size=20', name:'GET /api/v1/search', kind:'search'},
       {u:OFF_BASE + '/cgi/search.pl?search_terms=' + e +
          '&search_simple=1&action=process&json=1&page_size=20&fields=' + OFF_FIELDS,
        name:'legacy cgi', kind:'search'}
     ];
   }
-  /* Every attempt costs a request against a rate limit that bans, so once a
-     route answers, put it first from then on. Steady state is one request. */
   var last = S.offRoute;
   if (last){
     var i = list.findIndex(function(x){ return x.name === last; });
@@ -4580,6 +4595,7 @@ function offEndpoints(q){
 
 function offRows(j){
   if (!j) return [];
+  if (Array.isArray(j.errors) && j.errors.length && !j.hits) return [];
   if (Array.isArray(j.hits)) return j.hits;
   if (Array.isArray(j.products)) return j.products;
   if (j.product) return [j.product];

@@ -77,7 +77,13 @@ Built to their published API rules:
 - **Product reads use v3**, the current version; v2 is deprecated and kept only as a
   fallback. Barcodes go straight to the product endpoint.
 - **Full-text search does not exist in v2 or v3.** Only Search-a-licious and the legacy
-  CGI path offer it, so those are the two routes tried, in that order.
+  CGI path offer it. Search-a-licious defines both `POST /search` and `GET /search`,
+  allows any origin with `OPTIONS`, and takes `q`, `page_size`, `page`, `fields`,
+  `sort_by`. Its parameter model sets `extra="forbid"`, so an invented parameter name
+  is a hard 422 rather than something quietly ignored. Responses carry `hits`, and its
+  Open Food Facts index holds exactly the nutriments this app reads.
+- Whichever route answers is remembered and tried first next time, so falling through
+  several shapes costs extra requests once rather than on every search.
 - **Rate limits are 10 searches and 15 product reads per minute per IP**, enforced with
   IP bans. Lookups are one deliberate tap — never as you type, which their docs single
   out as the fastest way to get blocked — and a client-side cap of 8 searches a minute
