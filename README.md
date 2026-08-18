@@ -232,6 +232,27 @@ worth switching to as soon as it is available.
 It then launches full screen and runs with no network. Fonts come from Google Fonts
 when online and fall back cleanly when not.
 
+## Sync
+
+Data lives on this device first and always. Sign in under the database icon and it is
+also kept on Supabase, so a new phone or a laptop picks up where you left off.
+
+Sign-in is a six-digit code emailed to you — no password to invent, lose or reuse.
+
+Sync is a **two-way merge, per row, newest wins**. A day edited on the phone and a
+different day edited on the laptop both survive; the same day edited on both keeps the
+later one. Days, weigh-ins and your own foods are each their own row, so a conflict is
+scoped to the thing that actually conflicts rather than the whole history. Bulk CSV
+imports stay local — they are a convenience cache, not your data, and thousands of rows
+do not belong on a server.
+
+Every table is protected by row-level security keyed to the signed-in user. The
+publishable key in the source is meant to be public; RLS is what makes that safe. The
+`anon` role can neither read nor write any of it — verified, not assumed.
+
+Sync needs the page to reach Supabase, so like the Open Food Facts lookup it works from
+GitHub Pages or the saved file, and not in the claude.ai artifact preview.
+
 ## Your data
 
 Everything is kept in that browser's local storage on that device. Nothing is sent

@@ -742,6 +742,11 @@ body.dragging{cursor:grabbing}
 <div class="sheet" id="sh-data" role="dialog" aria-modal="true" aria-label="Data">
   <div class="sheet-head"><h2>Your data</h2><button class="iconbtn sheet-close" aria-label="Close">✕</button></div>
   <div class="sheet-body">
+    <div class="card" style="background:var(--surface-2); box-shadow:none; margin:0 0 14px">
+      <div class="card-head"><h2>Sync</h2><span class="right" id="sync-state">Not signed in</span></div>
+      <div id="sync-body"></div>
+    </div>
+
     <p class="note">Everything lives in this browser's storage on this device. Nothing is sent anywhere,
       and there is no account. Clearing site data wipes it — so keep a backup.</p>
     <div class="btnrow" style="margin-top:12px">
@@ -2677,6 +2682,8 @@ function load(){
 }
 function save(){
   _adapt = null;
+  stampChanges();
+  scheduleSync();
   try { localStorage.setItem(KEY, JSON.stringify(S)); }
   catch(e){ toast('Storage is full — export a backup and clear old data.'); }
 }
@@ -4564,6 +4571,265 @@ function renderOffResults(q){
     }).join('');
 }
 
+/* -------------------------------- sync ------------------------------------
+   Supabase over plain REST — no client library, so the file stays
+   self-contained and works with no network. The publishable key below is
+   meant to be public; row-level security is what protects the data, scoping
+   every row to the signed-in user.
+
+   Local storage stays the source of truth while you use the app. Sync is a
+   merge in both directions, per row, newest timestamp winning — so a day
+   edited on the phone and a different day edited on the laptop both survive.
+   ------------------------------------------------------------------------- */
+var SB_URL = 'https://lsrxqviwgqjpuzzcqcpu.supabase.co';
+var SB_KEY = 'sb_publishable_0lk-0UAlfW-tALEgPiqFHg_8vF9Hp63';
+var AUTH_KEY = 'eatandtrain.auth';
+var auth = null;
+
+function loadAuth(){
+  try { auth = JSON.parse(localStorage.getItem(AUTH_KEY) || 'null'); } catch(e){ auth = null; }
+}
+function saveAuth(a){
+  auth = a;
+  if (a) localStorage.setItem(AUTH_KEY, JSON.stringify(a));
+  else localStorage.removeItem(AUTH_KEY);
+}
+function sbHeaders(withAuth){
+  var hd = {'apikey': SB_KEY, 'Content-Type': 'application/json'};
+  if (withAuth && auth && auth.access_token) hd['Authorization'] = 'Bearer ' + auth.access_token;
+  return hd;
+}
+function sbJson(res){
+  if (res.status === 204) return null;
+  return res.text().then(function(t){
+    var j = null;
+    try { j = t ? JSON.parse(t) : null; } catch(e){}
+    if (!res.ok){
+      var msg = (j && (j.msg || j.message || j.error_description || j.error)) || ('HTTP ' + res.status);
+      var err = new Error(msg); err.status = res.status; throw err;
+    }
+    return j;
+  });
+}
+/* Access tokens last an hour; refresh a little early rather than letting a
+   sync fail on a boundary. */
+function sbEnsureToken(){
+  if (!auth) return Promise.reject(new Error('Not signed in'));
+  if (auth.expires_at && Date.now() < auth.expires_at - 60000) return Promise.resolve();
+  return fetch(SB_URL + '/auth/v1/token?grant_type=refresh_token', {
+    method:'POST', headers:sbHeaders(false),
+    body: JSON.stringify({refresh_token: auth.refresh_token})
+  }).then(sbJson).then(function(j){
+    saveAuth({access_token:j.access_token, refresh_token:j.refresh_token,
+              expires_at: Date.now() + (j.expires_in || 3600) * 1000,
+              email: auth.email, user_id: (j.user && j.user.id) || auth.user_id});
+  });
+}
+function sbRest(path, opts){
+  return sbEnsureToken().then(function(){
+    opts = opts || {};
+    var hd = sbHeaders(true);
+    if (opts.prefer) hd['Prefer'] = opts.prefer;
+    return fetch(SB_URL + '/rest/v1/' + path, {
+      method: opts.method || 'GET', headers: hd,
+      body: opts.body ? JSON.stringify(opts.body) : undefined
+    }).then(sbJson);
+  });
+}
+
+function sbSendCode(email){
+  return fetch(SB_URL + '/auth/v1/otp', {
+    method:'POST', headers:sbHeaders(false),
+    body: JSON.stringify({email: email, create_user: true})
+  }).then(sbJson);
+}
+function sbVerify(email, token){
+  return fetch(SB_URL + '/auth/v1/verify', {
+    method:'POST', headers:sbHeaders(false),
+    body: JSON.stringify({email: email, token: String(token).trim(), type: 'email'})
+  }).then(sbJson).then(function(j){
+    saveAuth({access_token:j.access_token, refresh_token:j.refresh_token,
+              expires_at: Date.now() + (j.expires_in || 3600) * 1000,
+              email: email, user_id: j.user && j.user.id});
+    return j;
+  });
+}
+
+/* ---- change stamping ----------------------------------------------------
+   Rows carry a local timestamp so a merge can tell which side is newer.
+   Rather than stamping at every mutation site, each save compares against a
+   snapshot and stamps only what actually changed — the timestamp itself is
+   excluded from the comparison, or everything would look dirty forever. */
+var _snap = null;
+function bodyOf(o){
+  var c = {};
+  for (var k in o) if (k !== 'u') c[k] = o[k];
+  return JSON.stringify(c);
+}
+function stampChanges(){
+  var now = Date.now();
+  var prev = _snap || {days:{}, weights:{}, foods:{}, profile:''};
+  var next = {days:{}, weights:{}, foods:{}, profile:''};
+
+  Object.keys(S.days).forEach(function(d){
+    var b = bodyOf(S.days[d]); next.days[d] = b;
+    if (prev.days[d] !== b) S.days[d].u = now;
+    else if (!S.days[d].u) S.days[d].u = now;
+  });
+  (S.weights || []).forEach(function(w){
+    var b = bodyOf(w); next.weights[w.d] = b;
+    if (prev.weights[w.d] !== b || !w.u) w.u = now;
+  });
+  (S.custom || []).forEach(function(f){
+    var b = bodyOf(f); next.foods[f.name] = b;
+    if (prev.foods[f.name] !== b || !f.u) f.u = now;
+  });
+  var pb = JSON.stringify({p:S.profile, fav:S.fav, recent:S.recent, runLast:S.runLast});
+  next.profile = pb;
+  if (prev.profile !== pb) S.profileU = now;
+  else if (!S.profileU) S.profileU = now;
+  _snap = next;
+}
+
+function tsOf(v){ return v ? new Date(v).getTime() : 0; }
+
+function syncNow(){
+  if (!auth) return Promise.reject(new Error('Not signed in'));
+  var uid = auth.user_id;
+  setSyncState('Syncing…');
+  return Promise.all([
+    sbRest('et_days?select=d,data,updated_at'),
+    sbRest('et_weights?select=*'),
+    sbRest('et_foods?select=name,data,updated_at'),
+    sbRest('et_profile?select=data,updated_at')
+  ]).then(function(r){
+    var rDays = r[0] || [], rWts = r[1] || [], rFoods = r[2] || [], rProf = r[3] || [];
+    var pulled = 0;
+
+    rDays.forEach(function(row){
+      var local = S.days[row.d], rt = tsOf(row.updated_at);
+      if (!local || rt > (local.u || 0)){ S.days[row.d] = row.data; S.days[row.d].u = rt; pulled++; }
+    });
+    rWts.forEach(function(row){
+      var i = S.weights.findIndex(function(w){ return w.d === row.d; });
+      var rt = tsOf(row.updated_at);
+      if (i < 0 || rt > (S.weights[i].u || 0)){
+        var w = {d:row.d, kg:row.kg, bf:row.bf, smm:row.smm, smmUnit:row.smm_unit,
+                 bone:row.bone, water:row.water, u:rt};
+        if (i < 0) S.weights.push(w); else S.weights[i] = w;
+        pulled++;
+      }
+    });
+    rFoods.forEach(function(row){
+      var i = S.custom.findIndex(function(f){ return f.name === row.name; });
+      var rt = tsOf(row.updated_at);
+      if (i < 0 || rt > (S.custom[i].u || 0)){
+        var f = row.data; f.name = row.name; f.u = rt;
+        if (i < 0) S.custom.push(f); else S.custom[i] = f;
+        pulled++;
+      }
+    });
+    if (rProf.length && tsOf(rProf[0].updated_at) > (S.profileU || 0)){
+      var d = rProf[0].data || {};
+      if (d.p) S.profile = d.p;
+      if (d.fav) S.fav = d.fav;
+      if (d.recent) S.recent = d.recent;
+      if (d.runLast) S.runLast = d.runLast;
+      S.profileU = tsOf(rProf[0].updated_at);
+      pulled++;
+    }
+
+    /* Push whatever is newer here than there. */
+    var remoteDay = {}, remoteWt = {}, remoteFood = {};
+    rDays.forEach(function(x){ remoteDay[x.d] = tsOf(x.updated_at); });
+    rWts.forEach(function(x){ remoteWt[x.d] = tsOf(x.updated_at); });
+    rFoods.forEach(function(x){ remoteFood[x.name] = tsOf(x.updated_at); });
+
+    var pushDays = Object.keys(S.days).filter(function(d){
+      return (S.days[d].u || 0) > (remoteDay[d] || 0);
+    }).map(function(d){
+      var c = {}; for (var k in S.days[d]) if (k !== 'u') c[k] = S.days[d][k];
+      return {user_id:uid, d:d, data:c, updated_at:new Date(S.days[d].u).toISOString()};
+    });
+    var pushWts = S.weights.filter(function(w){ return (w.u || 0) > (remoteWt[w.d] || 0); })
+      .map(function(w){
+        return {user_id:uid, d:w.d, kg:w.kg, bf:w.bf, smm:w.smm, smm_unit:w.smmUnit,
+                bone:w.bone, water:w.water, updated_at:new Date(w.u).toISOString()};
+      });
+    var pushFoods = S.custom.filter(function(f){ return (f.u || 0) > (remoteFood[f.name] || 0); })
+      .map(function(f){
+        var c = {}; for (var k in f) if (k !== 'u') c[k] = f[k];
+        return {user_id:uid, name:f.name, data:c, updated_at:new Date(f.u).toISOString()};
+      });
+    var pushed = pushDays.length + pushWts.length + pushFoods.length;
+
+    var jobs = [];
+    var UP = {method:'POST', prefer:'resolution=merge-duplicates,return=minimal'};
+    function chunk(arr, n){ var o = []; for (var i = 0; i < arr.length; i += n) o.push(arr.slice(i, i+n)); return o; }
+    chunk(pushDays, 200).forEach(function(c){ jobs.push(sbRest('et_days', {method:UP.method, prefer:UP.prefer, body:c})); });
+    chunk(pushWts, 200).forEach(function(c){ jobs.push(sbRest('et_weights', {method:UP.method, prefer:UP.prefer, body:c})); });
+    chunk(pushFoods, 200).forEach(function(c){ jobs.push(sbRest('et_foods', {method:UP.method, prefer:UP.prefer, body:c})); });
+    if (!rProf.length || (S.profileU || 0) > tsOf(rProf[0].updated_at)){
+      jobs.push(sbRest('et_profile', {method:UP.method, prefer:UP.prefer, body:[{
+        user_id:uid, data:{p:S.profile, fav:S.fav, recent:S.recent, runLast:S.runLast},
+        updated_at:new Date(S.profileU || Date.now()).toISOString()}]}));
+    }
+    return Promise.all(jobs).then(function(){
+      S.lastSync = Date.now(); save(); _foodCache = null;
+      renderAll(); renderSync();
+      return {pulled:pulled, pushed:pushed};
+    });
+  });
+}
+
+var syncTimer = null;
+function scheduleSync(){
+  if (!auth) return;
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(function(){
+    syncNow().catch(function(e){ setSyncState('Sync failed'); });
+  }, 4000);
+}
+
+function setSyncState(t){ var e = el('sync-state'); if (e) e.textContent = t; }
+
+function renderSync(){
+  var body = el('sync-body'); if (!body) return;
+  if (!auth){
+    setSyncState('Not signed in');
+    body.innerHTML =
+      '<p class="note">Sign in to keep this on a server instead of only in this browser, and to pick ' +
+      'it up on another device. A six-digit code is emailed to you — no password to invent or forget.</p>' +
+      '<label class="f" style="margin-top:11px"><span>Email</span>' +
+        '<input type="email" id="sync-email" inputmode="email" autocomplete="email" placeholder="you@example.com"></label>' +
+      '<button class="btn" id="sync-send">Email me a code</button>' +
+      '<div id="sync-code" hidden style="margin-top:12px">' +
+        '<label class="f"><span>Six-digit code</span>' +
+          '<input type="text" id="sync-token" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="123456"></label>' +
+        '<button class="btn" id="sync-verify">Sign in</button></div>' +
+      '<p class="hint" id="sync-msg" style="margin-top:8px"></p>';
+  } else {
+    setSyncState(S.lastSync ? 'Synced ' + timeAgo(S.lastSync) : 'Signed in');
+    body.innerHTML =
+      '<div class="readout"><div class="k">Account</div><div class="v" style="font-size:13px;font-family:var(--body)">' +
+        esc(auth.email || '') + '</div></div>' +
+      '<div class="readout"><div class="k">Last sync</div><div class="v" style="font-size:13px;font-family:var(--body)">' +
+        (S.lastSync ? timeAgo(S.lastSync) : 'never') + '</div></div>' +
+      '<div class="btnrow" style="margin-top:12px">' +
+        '<button class="btn sm" id="sync-now" style="flex:1">Sync now</button>' +
+        '<button class="btn sm ghost" id="sync-out" style="flex:1">Sign out</button></div>' +
+      '<p class="hint" id="sync-msg" style="margin-top:8px">Changes sync a few seconds after you make ' +
+      'them. Nothing is lost offline — it goes up next time you have signal.</p>';
+  }
+}
+function timeAgo(ms){
+  var s = Math.max(Math.round((Date.now() - ms) / 1000), 0);
+  if (s < 60) return 'just now';
+  if (s < 3600) return Math.round(s/60) + ' min ago';
+  if (s < 86400) return Math.round(s/3600) + ' h ago';
+  return Math.round(s/86400) + ' d ago';
+}
+
 /* ------------------------------ backup ----------------------------------- */
 function backupText(){ return JSON.stringify(S); }
 function restore(json){
@@ -4575,7 +4841,18 @@ function restore(json){
     closeSheet();
   } catch(e){ toast('That does not look like an Eat & Train backup.'); }
 }
+/* A sync failure is usually the page not being allowed out, not a bad code. */
+function syncErr(e){
+  var m = String((e && e.message) || e);
+  if (/failed to fetch|networkerror|load failed/i.test(m))
+    return 'Could not reach the server. In the claude.ai preview that is expected — it blocks ' +
+           'other hosts. Use the GitHub Pages copy or the saved file.';
+  if (/expired|invalid/i.test(m)) return 'That code was wrong or has expired. Send another.';
+  return m;
+}
+
 function renderDataSheet(){
+  renderSync();
   el('bk-text').value = backupText();
   el('st-days').textContent = loggedDays().length;
   var bytes = backupText().length;
@@ -4879,6 +5156,48 @@ function bind(){
   });
 
   /* data */
+  el('sync-body').addEventListener('click', function(ev){
+    var t = ev.target;
+    var msg = el('sync-msg');
+    if (t.closest('#sync-send')){
+      var em = (el('sync-email').value || '').trim();
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)){ msg.textContent = 'That does not look like an email address.'; return; }
+      msg.textContent = 'Sending…';
+      sbSendCode(em).then(function(){
+        el('sync-code').hidden = false;
+        msg.textContent = 'Code sent to ' + em + '. It expires in an hour.';
+        el('sync-token').focus();
+      }).catch(function(e){ msg.textContent = syncErr(e); });
+      return;
+    }
+    if (t.closest('#sync-verify')){
+      var em2 = (el('sync-email').value || '').trim();
+      var code = (el('sync-token').value || '').trim();
+      if (!code){ msg.textContent = 'Enter the code from your inbox.'; return; }
+      msg.textContent = 'Checking…';
+      sbVerify(em2, code).then(function(){
+        renderSync();
+        return syncNow();
+      }).then(function(r){
+        toast('Signed in — ' + r.pulled + ' pulled, ' + r.pushed + ' pushed.');
+      }).catch(function(e){
+        var m = el('sync-msg'); if (m) m.textContent = syncErr(e);
+      });
+      return;
+    }
+    if (t.closest('#sync-now')){
+      msg.textContent = 'Syncing…';
+      syncNow().then(function(r){
+        msg.textContent = 'Up to date — ' + r.pulled + ' pulled, ' + r.pushed + ' pushed.';
+      }).catch(function(e){ msg.textContent = syncErr(e); });
+      return;
+    }
+    if (t.closest('#sync-out')){
+      saveAuth(null); renderSync();
+      toast('Signed out. Your data stays on this device.');
+      return;
+    }
+  });
   el('bk-copy').addEventListener('click', function(){
     var txt = backupText();
     el('bk-text').value = txt;
@@ -4922,10 +5241,12 @@ function setUnit(u){
 
 /* -------------------------------- init ----------------------------------- */
 load();
+loadAuth();
 renderCats();
 bind();
 setUnit(S.profile.unit || 'kj');
 renderAll();
+if (auth) syncNow().catch(function(){ setSyncState('Offline'); });
 </script>
 </body>
 </html>
