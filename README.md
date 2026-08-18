@@ -78,6 +78,17 @@ from The George Institute is the better Australian packaged-food source — buil
 in-store audits at Coles, Woolworths, ALDI and IGA — but it is available by research
 request rather than open download.
 
+## Moving food between meals
+
+Press and hold a logged item to lift it, then drag it to another meal — the target
+highlights and a line shows where it will land, including the position within that
+meal. A short swipe still scrolls the list, so the gesture only takes over once the
+long press completes.
+
+This is built on pointer events rather than HTML5 drag-and-drop, which never fires on
+touch devices. Every row also carries a move button that opens a meal picker, so
+dragging is never the only way to do it.
+
 ## Vitamins and minerals
 
 Eighteen nutrients tracked against the **Nutrient Reference Values for Australia and

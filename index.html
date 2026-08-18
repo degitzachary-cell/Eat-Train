@@ -258,6 +258,27 @@ select{background-image:linear-gradient(45deg,transparent 50%,var(--ink-3) 50%),
 .star{color:var(--ink-3); flex:none; width:24px; height:24px; display:grid; place-items:center}
 .star.on{color:var(--carb)}
 
+/* ---------- drag between meals ---------- */
+/* pan-y keeps the list scrollable: a drag only takes over once the long-press
+   fires, and touchmove is cancelled from then on. */
+.row[data-meal]{touch-action:pan-y; -webkit-user-select:none; user-select:none;
+  -webkit-touch-callout:none; transition:opacity .15s}
+.row.lifted{opacity:.3}
+.drag-ghost{position:fixed; z-index:75; pointer-events:none; left:0; top:0;
+  background:var(--surface); border:1px solid var(--accent); border-radius:11px;
+  box-shadow:0 12px 30px -8px rgba(0,0,0,.45); display:flex; align-items:center;
+  gap:10px; padding:9px 14px; transform-origin:center;
+  animation:lift .16s cubic-bezier(.2,.8,.3,1) forwards}
+@keyframes lift{from{transform:scale(1)}to{transform:scale(1.03)}}
+.meal.drop-in .meal-head{background:var(--accent-soft)}
+.meal.drop-in .meal-head h3{color:var(--accent)}
+.drop-line{height:2px; background:var(--accent); border-radius:2px; margin:0 12px;
+  box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent)}
+.row-move{color:var(--ink-3); width:26px; height:26px; border-radius:6px;
+  display:grid; place-items:center; flex:none}
+.row-move:hover{color:var(--accent); background:var(--surface-2)}
+body.dragging{cursor:grabbing}
+
 /* ---------- micronutrient grid ---------- */
 .mgrid{display:grid; grid-template-columns:repeat(3,1fr); gap:9px 10px}
 .mcell{min-width:0}
@@ -672,6 +693,12 @@ select{background-image:linear-gradient(45deg,transparent 50%,var(--ink-3) 50%),
       switch to <strong>Per serve</strong> and enter the serve size — the rest is worked out for you.</p>
     <button class="btn" id="c-save" style="margin-top:10px">Save food</button>
   </div>
+</div>
+
+<!-- move to meal -->
+<div class="sheet" id="sh-move" role="dialog" aria-modal="true" aria-label="Move to meal">
+  <div class="sheet-head"><h2 id="move-title">Move</h2><button class="iconbtn sheet-close" aria-label="Close">&#10005;</button></div>
+  <div class="sheet-body" id="move-body"></div>
 </div>
 
 <!-- micronutrient detail -->
@@ -3052,14 +3079,18 @@ function renderMeals(){
     var key = m[0], list = d.meals[key];
     var sum = list.reduce(function(a, x){ return a + x.kj; }, 0);
     var rows = list.length ? list.map(function(x, i){
-      return '<div class="row"><div class="row-main"><div class="t">' + esc(x.name) + '</div>' +
+      return '<div class="row" data-meal="' + key + '" data-idx="' + i + '">' +
+        '<div class="row-main"><div class="t">' + esc(x.name) + '</div>' +
         '<div class="s">' + portionLabel(x) +
         ' · P ' + g(x.p,1) + ' · C ' + g(x.c,1) + ' · F ' + g(x.f,1) + '</div></div>' +
         '<div class="row-kj">' + fmtE(x.kj) + '</div>' +
+        '<button class="row-move" data-move="' + key + ':' + i + '" aria-label="Move ' + esc(x.name) + ' to another meal">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" width="14" height="14">' +
+        '<path d="M8 6L4 10l4 4M4 10h16M16 18l4-4-4-4M20 14H4"/></svg></button>' +
         '<button class="row-del" data-del-food="' + key + ':' + i + '" aria-label="Remove ' + esc(x.name) + '">' +
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M5 5l14 14M19 5L5 19"/></svg></button></div>';
     }).join('') : '<div class="empty">Nothing logged</div>';
-    return '<div class="meal"><div class="meal-head"><h3>' + m[1] + '</h3>' +
+    return '<div class="meal" data-mealsec="' + key + '"><div class="meal-head"><h3>' + m[1] + '</h3>' +
       '<span class="kj">' + (sum ? fmtE(sum, true) : '') + '</span>' +
       '<button class="add" data-addto="' + key + '" aria-label="Add to ' + m[1] + '">+</button></div>' + rows + '</div>';
   }).join('');
@@ -3491,6 +3522,165 @@ function renderWeekly(){
   el('weekly').innerHTML = rows.length ? rows.join('') : '<div class="empty">Log a few days to see weekly averages</div>';
 }
 
+/* ---------------------------- drag between meals --------------------------
+   HTML5 drag-and-drop never fires on touch, so this is pointer events. A row
+   only lifts after a long press, and only if the finger has stayed put —
+   otherwise the gesture was someone scrolling the list.
+   ------------------------------------------------------------------------- */
+var drag = null;
+var LIFT_MS = 320, SLOP = 9;
+
+function moveEntry(fromMeal, fromIdx, toMeal, toIdx){
+  var meals = day(DAY).meals;
+  var item = meals[fromMeal][fromIdx];
+  if (!item) return false;
+  meals[fromMeal].splice(fromIdx, 1);
+  if (fromMeal === toMeal && toIdx > fromIdx) toIdx--;
+  toIdx = Math.max(0, Math.min(toIdx, meals[toMeal].length));
+  meals[toMeal].splice(toIdx, 0, item);
+  save();
+  return true;
+}
+
+function endDrag(commit){
+  if (!drag) return;
+  clearTimeout(drag.timer);
+  if (drag.active){
+    if (drag.ghost) drag.ghost.remove();
+    if (drag.line) drag.line.remove();
+    document.body.classList.remove('dragging');
+    var t = drag.target;
+    if (commit && t && !(t.meal === drag.meal && (t.idx === drag.idx || t.idx === drag.idx + 1))){
+      moveEntry(drag.meal, drag.idx, t.meal, t.idx);
+      renderToday();
+      toast('Moved to ' + mealName(t.meal));
+    } else {
+      renderToday();
+    }
+    suppressClick = true;
+    setTimeout(function(){ suppressClick = false; }, 60);
+  }
+  drag = null;
+}
+function mealName(k){
+  for (var i = 0; i < MEALS.length; i++) if (MEALS[i][0] === k) return MEALS[i][1];
+  return k;
+}
+
+function beginDrag(){
+  var row = drag.row;
+  var r = row.getBoundingClientRect();
+  var ghost = document.createElement('div');
+  ghost.className = 'drag-ghost';
+  ghost.style.width = r.width + 'px';
+  ghost.innerHTML = row.innerHTML;
+  var mv = ghost.querySelector('.row-move'); if (mv) mv.remove();
+  var dl = ghost.querySelector('.row-del'); if (dl) dl.remove();
+  document.body.appendChild(ghost);
+  drag.ghost = ghost;
+  drag.offY = drag.y - r.top;
+  drag.w = r.width;
+  drag.active = true;
+  row.classList.add('lifted');
+  document.body.classList.add('dragging');
+  drag.line = document.createElement('div');
+  drag.line.className = 'drop-line';
+  positionGhost();
+  hitTest();
+}
+function positionGhost(){
+  if (!drag || !drag.ghost) return;
+  drag.ghost.style.transform = 'translate(' + (drag.x - drag.w / 2) + 'px,' +
+                               (drag.y - drag.offY) + 'px) scale(1.03)';
+}
+
+/* Where would this land? Prefer the row under the pointer, split at its
+   midpoint; otherwise the meal section as a whole. */
+function hitTest(){
+  var elx = document.elementFromPoint(drag.x, drag.y);
+  var sec = elx && elx.closest ? elx.closest('.meal[data-mealsec]') : null;
+  Array.prototype.forEach.call(document.querySelectorAll('.meal.drop-in'), function(m){
+    m.classList.remove('drop-in');
+  });
+  if (!sec){ drag.target = null; if (drag.line.parentNode) drag.line.remove(); return; }
+  sec.classList.add('drop-in');
+  var meal = sec.dataset.mealsec;
+  var rows = Array.prototype.filter.call(sec.querySelectorAll('.row[data-meal]'), function(r){
+    return !r.classList.contains('lifted');
+  });
+  var idx = rows.length, before = null;
+  for (var i = 0; i < rows.length; i++){
+    var rr = rows[i].getBoundingClientRect();
+    if (drag.y < rr.top + rr.height / 2){ idx = i; before = rows[i]; break; }
+  }
+  /* data-idx is the live array index, so the row you are hovering names the
+     insertion point directly; past the last row it appends. */
+  drag.target = {meal:meal,
+    idx: before ? +before.dataset.idx : day(DAY).meals[meal].length};
+
+  if (before) before.parentNode.insertBefore(drag.line, before);
+  else sec.appendChild(drag.line);
+}
+
+var suppressClick = false;
+
+function bindDrag(){
+  var meals = el('meals');
+  meals.addEventListener('pointerdown', function(ev){
+    if (ev.button !== undefined && ev.button !== 0) return;
+    var row = ev.target.closest ? ev.target.closest('.row[data-meal]') : null;
+    if (!row) return;
+    if (ev.target.closest('.row-del, .row-move')) return;
+    drag = {row:row, meal:row.dataset.meal, idx:+row.dataset.idx,
+            x:ev.clientX, y:ev.clientY, x0:ev.clientX, y0:ev.clientY,
+            active:false, target:null, id:ev.pointerId};
+    drag.timer = setTimeout(function(){ if (drag) beginDrag(); }, LIFT_MS);
+  });
+  document.addEventListener('pointermove', function(ev){
+    if (!drag) return;
+    drag.x = ev.clientX; drag.y = ev.clientY;
+    if (!drag.active){
+      if (Math.abs(drag.x - drag.x0) > SLOP || Math.abs(drag.y - drag.y0) > SLOP){
+        clearTimeout(drag.timer); drag = null;    // they were scrolling
+      }
+      return;
+    }
+    positionGhost();
+    hitTest();
+    /* nudge the page when dragging near an edge */
+    var vh = window.innerHeight;
+    if (drag.y < 90) window.scrollBy(0, -12);
+    else if (drag.y > vh - 110) window.scrollBy(0, 12);
+  });
+  document.addEventListener('pointerup', function(){ endDrag(true); });
+  document.addEventListener('pointercancel', function(){ endDrag(false); });
+  document.addEventListener('keydown', function(ev){
+    if (ev.key === 'Escape' && drag && drag.active) endDrag(false);
+  });
+  /* while lifted, the finger must not also scroll the page */
+  document.addEventListener('touchmove', function(ev){
+    if (drag && drag.active) ev.preventDefault();
+  }, {passive:false});
+}
+
+/* Tap alternative — dragging is not the only way, and not everyone can. */
+function openMove(meal, idx){
+  var item = day(DAY).meals[meal][idx];
+  if (!item) return;
+  el('move-title').textContent = item.name.split(',')[0];
+  el('move-body').innerHTML = '<p class="note" style="margin-bottom:12px">Currently in ' +
+    mealName(meal).toLowerCase() + '. You can also press and hold a row to drag it.</p>' +
+    MEALS.map(function(m){
+      var cur = m[0] === meal;
+      return '<button class="btn ' + (cur ? 'ghost' : '') + '" data-moveto="' + m[0] +
+        '" style="margin-bottom:8px"' + (cur ? ' disabled' : '') + '>' +
+        (cur ? 'Already in ' + m[1] : 'Move to ' + m[1]) + '</button>';
+    }).join('');
+  moveCtx = {meal:meal, idx:idx};
+  sheet('sh-move');
+}
+var moveCtx = null;
+
 /* ------------------------------- sheets ---------------------------------- */
 var openSheet = null;
 function sheet(id){
@@ -3877,7 +4067,19 @@ function bind(){
 
   /* delegated: everything that lives in re-rendered HTML */
   document.addEventListener('click', function(ev){
+    if (suppressClick){ ev.stopPropagation(); ev.preventDefault(); return; }
     var t = ev.target;
+
+    var mv = t.closest('[data-move]');
+    if (mv){ var mp = mv.dataset.move.split(':'); openMove(mp[0], +mp[1]); return; }
+    var mt = t.closest('[data-moveto]');
+    if (mt && moveCtx){
+      var dest = mt.dataset.moveto;
+      moveEntry(moveCtx.meal, moveCtx.idx, dest, day(DAY).meals[dest].length);
+      moveCtx = null; renderToday(); closeSheet();
+      toast('Moved to ' + mealName(dest));
+      return;
+    }
     var addTo = t.closest('[data-addto]');
     if (addTo){ openSearch(addTo.dataset.addto); return; }
 
@@ -3946,6 +4148,7 @@ function bind(){
   });
 
   /* food tab */
+  bindDrag();
   el('micro-card').addEventListener('click', function(){ renderMicroDetail(); sheet('sh-micro'); });
   el('btn-browse').addEventListener('click', function(){ openSearch('snack'); });
   el('btn-newfood').addEventListener('click', function(){ sheet('sh-custom'); });
