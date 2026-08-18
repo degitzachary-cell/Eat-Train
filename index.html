@@ -4500,8 +4500,12 @@ function offToFood(p, i){
   if (!kj) kj = offNum(n['energy_100g']);
   var na = n['sodium_100g'] != null ? offNum(n['sodium_100g']) * 1000
          : (n['salt_100g'] != null ? offNum(n['salt_100g']) * 1000 / 2.5 : 0);
-  var name = String(p.product_name || p.generic_name || '').trim();
-  var brand = String(p.brands || '').split(',')[0].trim();
+  var raw = p.product_name || p.generic_name || '';
+  if (raw && typeof raw === 'object') raw = raw.en || raw['en:'] || raw[Object.keys(raw)[0]] || '';
+  var name = String(raw).trim();
+  var brandRaw = p.brands;
+  if (Array.isArray(brandRaw)) brandRaw = brandRaw[0] || '';
+  var brand = String(brandRaw || '').split(',')[0].trim();
   if (brand && name.toLowerCase().indexOf(brand.toLowerCase()) < 0) name = brand + ' ' + name;
   if (p.quantity) name += ' (' + String(p.quantity).trim() + ')';
   name = name.replace(/\s+/g, ' ').trim().slice(0, 90);
@@ -4529,38 +4533,72 @@ function offFetch(url){
 }
 
 var offResults = [];
+
+/* Open Food Facts has three search paths of different vintages, and which one
+   a browser can actually use comes down to CORS headers I cannot check from
+   here. So try them in order, newest first, and take the first that answers
+   with something usable. A barcode goes straight to the product endpoint. */
+function offEndpoints(q){
+  var digits = q.replace(/\s/g, '');
+  if (/^\d{8,14}$/.test(digits))
+    return [{u:OFF_BASE + '/api/v2/product/' + encodeURIComponent(digits) + '.json?fields=' + OFF_FIELDS,
+             name:'barcode'}];
+  var e = encodeURIComponent(q);
+  return [
+    {u:'https://search.openfoodfacts.org/api/v1/search?q=' + e + '&page_size=20', name:'search-a-licious'},
+    {u:OFF_BASE + '/api/v2/search?search_terms=' + e + '&page_size=20&fields=' + OFF_FIELDS, name:'api v2'},
+    {u:OFF_BASE + '/cgi/search.pl?search_terms=' + e +
+       '&search_simple=1&action=process&json=1&page_size=20&fields=' + OFF_FIELDS, name:'legacy cgi'}
+  ];
+}
+/* Every shape they have ever returned: hits, products, or a single product. */
+function offRows(j){
+  if (!j) return [];
+  if (Array.isArray(j.hits)) return j.hits;
+  if (Array.isArray(j.products)) return j.products;
+  if (j.product) return [j.product];
+  return [];
+}
+
 function offSearch(q){
   var box = el('off-slot');
   if (box) box.innerHTML = '<div class="empty">Asking Open Food Facts…</div>';
-  var digits = /^\d{8,14}$/.test(q.replace(/\s/g, ''));
-  var url = digits
-    ? OFF_BASE + '/api/v2/product/' + encodeURIComponent(q.replace(/\s/g, '')) +
-      '.json?fields=' + OFF_FIELDS
-    : OFF_BASE + '/cgi/search.pl?search_terms=' + encodeURIComponent(q) +
-      '&search_simple=1&action=process&json=1&page_size=20&fields=' + OFF_FIELDS;
+  var eps = offEndpoints(q), tried = [];
 
-  offFetch(url).then(function(j){
-    var list = digits ? (j.product ? [j.product] : []) : (j.products || []);
-    offResults = list.map(offToFood).filter(Boolean);
-    renderOffResults(q);
+  function attempt(i){
+    if (i >= eps.length) return Promise.reject(new Error('all endpoints failed: ' + tried.join(', ')));
+    return offFetch(eps[i].u).then(function(j){
+      var rows = offRows(j);
+      if (!rows.length && i < eps.length - 1){ tried.push(eps[i].name + ' empty'); return attempt(i + 1); }
+      return {rows:rows, via:eps[i].name};
+    }).catch(function(err){
+      tried.push(eps[i].name + ' ' + (err.message || 'failed'));
+      if (i < eps.length - 1) return attempt(i + 1);
+      throw new Error(tried.join(' · '));
+    });
+  }
+
+  attempt(0).then(function(r){
+    offResults = r.rows.map(offToFood).filter(Boolean);
+    renderOffResults(q, r.via);
   }).catch(function(err){
     var b = el('off-slot'); if (!b) return;
-    var msg = /abort/i.test(String(err))
-      ? 'Open Food Facts did not answer in time.'
-      : 'Could not reach Open Food Facts.';
-    b.innerHTML = '<div class="empty" style="padding:16px 18px">' + msg +
-      '<br><span style="font-size:11px">If you are reading this in the claude.ai preview, that is ' +
-      'expected — it blocks other hosts. The saved file on your phone can reach it.</span></div>';
+    b.innerHTML = '<div class="empty" style="padding:16px 18px;text-align:left">' +
+      '<strong>Open Food Facts did not answer.</strong><br>' +
+      '<span style="font-size:11px">Every route was tried: ' + esc(String(err.message)) + '.<br>' +
+      'A “Failed to fetch” usually means the browser blocked it rather than the service being down. ' +
+      'The claude.ai preview blocks all outside hosts by design — on the Pages copy it should work, ' +
+      'so if you see this there it is worth telling me which route failed.</span></div>';
   });
 }
-function renderOffResults(q){
+function renderOffResults(q, via){
   var b = el('off-slot'); if (!b) return;
   if (!offResults.length){
-    b.innerHTML = '<div class="empty">Open Food Facts has nothing for “' + esc(q) + '”.</div>';
+    b.innerHTML = '<div class="empty">Open Food Facts has nothing usable for “' + esc(q) + '”.</div>';
     return;
   }
   b.innerHTML = '<div class="meal-head"><h3>Open Food Facts</h3><span class="kj num">' +
-    offResults.length + '</span></div>' +
+    offResults.length + (via ? ' · ' + esc(via) : '') + '</span></div>' +
     offResults.map(function(f, i){
       return '<button class="fres" data-off="' + i + '">' +
         '<span class="star" style="opacity:.5"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" ' +
