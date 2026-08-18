@@ -25,6 +25,33 @@ Every value comes straight from the official AFCD Release 3 nutrient profiles:
 - Energy is the label figure, *energy with dietary fibre, equated*.
 - Foods keep their AFCD classification, which drives the category filters.
 
+FSANZ publishes 213 of those foods per 100 mL as well. Only the 120 that are actually
+poured or drunk use that basis — yoghurt, custard and sauces stay per 100 g, because
+they are eaten by the spoon and mixing the two bases would silently fold their density
+into every entry as a few percent of error.
+
+## Portions
+
+AFCD ships nutrients per 100 g and no serve sizes, so portions are a layer on top: a
+rule table matched against the AFCD name, giving typical Australian household measures
+— a slice of sourdough at 50 g, a schooner at 425 mL, a rasher of bacon at 25 g, a
+tub of yoghurt at 170 g. Pick the portion, say how many, and the grams follow.
+
+Anything the rules do not match falls back to the **Australian Dietary Guidelines**
+standard serve for its category: 75 g of vegetables, 150 g of fruit, 65 g of cooked
+meat. Every food also keeps a plain 100 g option and free gram entry, so nothing is
+ever un-loggable.
+
+These weights are typical, not official — a real slice varies with the loaf. If FSANZ
+publishes a measures file alongside the nutrient profiles, its weights would be worth
+using in place of these.
+
+Search is built for the gap between how AFCD writes names and how people type them.
+AFCD says "Nut, almond" and "Bread, from white flour, sour dough"; you can type
+"almonds" and "sourdough". Each term is tried verbatim, then singularised, then with
+spacing and punctuation stripped, each fallback ranked below the last. A small synonym
+table covers the rest — yogurt, snags, roo, avo, chook, spuds, fries, cookie.
+
 ### Supermarket products
 
 AFCD covers generic foods, not the branded lines on a Coles or Woolworths shelf. Two

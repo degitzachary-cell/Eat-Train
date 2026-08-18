@@ -604,18 +604,19 @@ select{background-image:linear-gradient(45deg,transparent 50%,var(--ink-3) 50%),
 <div class="sheet" id="sh-qty" role="dialog" aria-modal="true" aria-label="Set quantity">
   <div class="sheet-head"><h2 id="qty-name">Food</h2><button class="iconbtn sheet-close" aria-label="Close">&#10005;</button></div>
   <div class="sheet-body">
-    <div class="chips" id="qty-presets" style="margin-bottom:12px"></div>
     <div class="grid2">
-      <label class="f"><span id="qty-amt-lbl">Amount (g)</span>
-        <input type="number" id="qty-amt" inputmode="decimal" min="1" step="1" value="100"></label>
-      <label class="f"><span>Meal</span><select id="qty-meal">
-        <option value="breakfast">Breakfast</option><option value="lunch">Lunch</option>
-        <option value="dinner">Dinner</option><option value="snack">Snacks</option></select></label>
+      <label class="f"><span>Portion</span><select id="qty-serve"></select></label>
+      <label class="f"><span id="qty-amt-lbl">How many</span>
+        <input type="number" id="qty-amt" inputmode="decimal" min="0.1" step="0.5" value="1"></label>
     </div>
+    <div class="chips" id="qty-quick" style="margin:-2px 0 12px"></div>
+    <label class="f"><span>Meal</span><select id="qty-meal">
+      <option value="breakfast">Breakfast</option><option value="lunch">Lunch</option>
+      <option value="dinner">Dinner</option><option value="snack">Snacks</option></select></label>
     <div class="card" style="background:var(--surface-2); box-shadow:none; margin:2px 0 12px">
       <div class="budget-top" style="margin-bottom:9px">
         <div><div class="budget-label">Energy</div><div class="num" id="qty-kj" style="font-size:26px;font-weight:600;letter-spacing:-.03em">&mdash;</div></div>
-        <div class="budget-side"><b class="num" id="qty-per100">&mdash;</b><span id="qty-per100-lbl">per 100 g</span></div>
+        <div class="budget-side"><b class="num" id="qty-g">&mdash;</b><span id="qty-per100-lbl">total</span></div>
       </div>
       <div class="chips" id="qty-macros"></div>
     </div>
@@ -686,9 +687,11 @@ var KJ_PER_KG_FAT = 32200;   // ~7700 kcal of tissue per kg of body mass change
 /* -------------------------------------------------------------------------
    Australian Food Composition Database, Release 3 (FSANZ).
    Every row is verbatim from the official "Nutrient profiles" workbook:
-   solids per 100 g, and the 213 foods FSANZ also publishes as liquids are
-   taken per 100 mL from that sheet instead, which is the right basis for a
-   drink. Energy is the label figure — "energy with dietary fibre, equated".
+   solids per 100 g. FSANZ also publishes 213 foods per 100 mL; the 120 of
+   those that are actually poured or drunk use that basis, since a schooner is
+   a volume. Yoghurt, custard and sauces stay per 100 g — they are spoonable,
+   and mixing the bases would quietly add their density as an error.
+   Energy is the label figure — "energy with dietary fibre, equated".
    name | AFCD group | kJ | protein | fat | saturated | carbs | sugars | fibre | sodium mg | alcohol g | liquid
    ------------------------------------------------------------------------- */
 var AFCD = `
@@ -721,7 +724,7 @@ Baking soda (bicarbonate), dry powder|31|0|0|0|0|0|0|0|27360|0|0
 Cream of tartar, dry powder|31|2|0|0|0|0|0|0.2|52|0|0
 Lecithin, soy, granules|31|2620|6|62.4|14.5|4.9|4.4|15.1|11|0|0
 Gelatine, all types|31|1449|84.4|0.4|0.2|0|0|0|330|0|0
-Vanilla, artificial or imitation|31|231|0|0|0|14.4|14.4|0|3|0|1
+Vanilla, artificial or imitation|31|231|0|0|0|14.4|14.4|0|3|0|0
 Vanilla bean extract|31|1203|0.1|0.1|0|12.6|12.6|0|9|34.4|0
 Yeast, dry powder|31|1126|36.4|5|0.8|6.3|0|26.9|170|0|0
 Beer, high alcohol (5% v/v & above)|29|176|0.5|0|0|2.1|0.2|0|4|4.6|1
@@ -761,7 +764,7 @@ Beverage, chocolate flavour, from Nesquik powder, with regular fat cow's milk|11
 Beverage, chocolate flavour, from drinking chocolate, with regular fat cow's milk|11|365|3.6|3.6|2.4|10.6|10.4|0.1|45|0|1
 Protein powder, hemp seed based|30|1400|35.8|13.5|1.5|4.4|4.2|27.8|0|0|0
 Protein powder, whey based, protein >70%, unfortified|30|1568|85|2.2|1.2|1.6|1.3|1.8|200|0|0
-Protein powder, whey based, protein >70%, unfortified, prepared with water|30|264|14.3|0.4|0.2|0.3|0.2|0.3|36|0|1
+Protein powder, whey based, protein >70%, unfortified, prepared with water|30|261|14.2|0.4|0.2|0.3|0.2|0.3|36|0|0
 Coffee, instant, dry powder or granules|11|588|18|0.3|0.1|3.6|3.4|20.6|61|0|0
 Coffee, instant, dry powder or granules, decaffeinated|11|588|18|0.3|0.1|3.6|3.4|20.6|61|0|0
 Coffee mix, with beverage whitener & sugar, dry powder|11|1645|13.1|12.7|11.9|56.1|38.3|3.6|380|0|0
@@ -1089,44 +1092,44 @@ Spring roll, meat & vegetable filling, commercial, deep fried|13|1047|7.5|11.7|3
 Pastry, danish, sweet, all types|13|1300|7.5|15|8.8|35.6|16.4|3.7|264|0|0
 Pie, sweet, apple, commercial|13|1059|3|12.9|6.2|31.4|15.1|1.3|200|0|0
 Tart, custard, commercial|13|1014|6.3|10.7|5.2|30.2|11.4|1|270|0|0
-Dressing, French or Italian, regular fat, commercial|23|976|0.1|20.2|2.1|12|11.7|0|999|0|1
-Dressing, thousand island, regular fat, commercial|23|1614|1.1|34.3|3.6|17.9|15.9|1.5|948|0|1
-Mayonnaise, traditional (>65% fat), commercial|23|2625|0.8|66.5|8.2|8.6|7.8|0.5|475|0|1
-Mayonnaise, low fat, commercial|23|555|0.5|1.9|0.2|29.3|22.1|0|732|0|1
+Dressing, French or Italian, regular fat, commercial|23|948|0.1|19.6|2|11.7|11.4|0|970|0|0
+Dressing, thousand island, regular fat, commercial|23|1494|1|31.8|3.4|16.6|14.7|1.4|878|0|0
+Mayonnaise, traditional (>65% fat), commercial|23|2651|0.8|67.2|8.3|8.7|7.9|0.5|480|0|0
+Mayonnaise, low fat, commercial|23|514|0.5|1.8|0.2|27.1|20.5|0|678|0|0
 Gravy powder, dry mix|23|1311|8.9|6.2|2.9|54.7|0.7|0.1|6020|0|0
-Gravy, prepared from dry powder with water|23|110|0.7|0.5|0.2|4.6|0|0|507|0|1
-Mustard, cream style|23|366|6.1|3.2|0.1|6.5|3.8|4.3|1491|0|1
+Gravy, prepared from dry powder with water|23|109|0.7|0.5|0.2|4.5|0|0|502|0|0
+Mustard, cream style|23|348|5.8|3.1|0.1|6.2|3.6|4.1|1420|0|0
 Paste, Indian style curry, commercial|23|864|2.9|14.1|1.5|14.2|7.3|5.4|1802|0|0
 Paste, green curry, commercial|23|461|2.4|7.9|1.4|6.3|3.4|3|1807|0|0
 Paste, soybean|25|766|12.9|5.1|0.7|19.7|10.4|4.3|3800|0|0
 Paste, shrimp|15|394|21|1|0.4|0|0|0|6000|0|0
-Sauce, barbecue, commercial|23|819|0.9|0.1|0|47.7|43.4|1|802|0|1
-Sauce, butter chicken, commercial|23|465|1.5|8.5|3.5|6.6|4.1|2.1|522|0|1
-Sauce, cranberry, commercial|23|759|0|0|0|46.8|46.8|1.3|58|0|1
-Sauce, fish, commercial|23|260|8.3|0.4|0|5.4|5.4|1.5|10071|0|1
-Sauce, hoi sin (hoisin), commercial|23|996|1.8|5.8|0.9|40.2|36.2|11.2|1674|0|1
-Sauce, oyster, commercial|23|574|3.4|1.2|0.2|25.6|19|0.4|4624|0|1
-Sauce, pasta or simmer, commercial, low fat|23|271|0.9|3.3|0.3|7.4|4|1.5|318|0|1
-Sauce, pasta, basil pesto, commercial|23|1838|6.1|42.7|8|8.5|2.4|1.7|1439|0|1
+Sauce, barbecue, commercial|23|725|0.8|0.1|0|42.2|38.4|0.9|710|0|0
+Sauce, butter chicken, commercial|23|412|1.3|7.6|3.1|5.8|3.6|1.9|462|0|0
+Sauce, cranberry, commercial|23|649|0|0|0|40|40|1.1|50|0|0
+Sauce, fish, commercial|23|213|6.8|0.3|0|4.4|4.4|1.2|8255|0|0
+Sauce, hoi sin (hoisin), commercial|23|922|1.6|5.4|0.8|37.2|33.5|10.4|1550|0|0
+Sauce, oyster, commercial|23|471|2.8|1|0.2|21|15.6|0.3|3790|0|0
+Sauce, pasta or simmer, commercial, low fat|23|240|0.8|2.9|0.3|6.6|3.5|1.3|281|0|0
+Sauce, pasta, basil pesto, commercial|23|1598|5.3|37.1|6.9|7.4|2.1|1.5|1251|0|0
 Sauce, pasta, bolognese, homemade using beef mince & homemade tomato based sauce|18|388|8.8|4.5|1.5|3.8|3.2|1.4|56|0|0
 Sauce, pasta, bolognese, homemade using beef mince & commercial tomato based sauce|18|471|10|6.2|2|3.9|3.3|1.1|180|0|0
-Sauce, pasta, cheese or cream-based, commercial|23|384|1.4|7.2|2.9|5.6|2.9|0.1|511|0|1
-Sauce, pasta, tomato-based, commercial, heated|23|248|1.8|1.6|0.2|8.2|6.9|2|413|0|1
-Sauce, plum, commercial|23|1236|0.2|1|0.5|72.9|62.2|0.8|1226|0|1
-Sauce, rogan josh, commercial|23|333|1.7|4.6|2.1|7|3.5|2.1|574|0|1
-Sauce, salsa, tomato-based, commercial|23|160|1.4|0|0|6.9|5.4|1.8|528|0|1
-Sauce, simmer for chicken, commercial|23|433|0.9|8.5|1.1|5.4|3.7|1.9|240|0|1
-Sauce, simmer, curry flavoured, commercial|23|558|2.4|7.8|3.5|12.1|8|2.6|576|0|1
-Sauce, soy, commercial|23|219|7.2|0|0|3.4|2.3|0|5880|1.5|1
-Sauce, soy, commercial, reduced salt|23|219|7.2|0|0|3.4|2.3|0|4131|1.5|1
-Sauce, tabasco, commercial|23|56|1.3|0.7|0.1|0.1|0.1|0.6|620|0|1
-Sauce, tomato, commercial|23|454|1.4|0|0|25.1|24.6|1.4|905|0|1
-Sauce, tomato, commercial, reduced salt|23|454|1.4|0|0|25.1|24.6|1.4|550|0|1
-Sauce, tomato, reduced sugar & salt, commercial|23|240|1.4|0|0|11.7|11.3|1.4|527|0|1
-Sauce, white, savoury, homemade|23|795|4.2|14.3|9.8|11.5|5.4|0.2|138|0|1
-Sauce, Worcestershire, commercial|23|380|1.5|0.2|0.1|21.5|20.6|0|1293|0|1
-Vinegar (except balsamic vinegar)|23|66|0|0|0|0|0|0|5|0|1
-Vinegar, balsamic|23|333|0.5|0|0|15.2|15.2|2.1|23|0|1
+Sauce, pasta, cheese or cream-based, commercial|23|363|1.4|6.8|2.8|5.3|2.7|0.1|482|0|0
+Sauce, pasta, tomato-based, commercial, heated|23|226|1.6|1.5|0.2|7.5|6.2|1.8|375|0|0
+Sauce, plum, commercial|23|958|0.1|0.8|0.4|56.5|48.2|0.6|950|0|0
+Sauce, rogan josh, commercial|23|295|1.5|4.1|1.9|6.2|3.1|1.9|508|0|0
+Sauce, salsa, tomato-based, commercial|23|146|1.3|0|0|6.3|4.9|1.6|480|0|0
+Sauce, simmer for chicken, commercial|23|383|0.8|7.5|0.9|4.8|3.3|1.7|212|0|0
+Sauce, simmer, curry flavoured, commercial|23|494|2.1|6.9|3.1|10.7|7.1|2.3|510|0|0
+Sauce, soy, commercial|23|209|6.8|0|0|3.2|2.2|0|5600|1.4|0
+Sauce, soy, commercial, reduced salt|23|209|6.8|0|0|3.2|2.2|0|3934|1.4|0
+Sauce, tabasco, commercial|23|57|1.3|0.8|0.1|0.1|0.1|0.6|633|0|0
+Sauce, tomato, commercial|23|437|1.3|0|0|24.1|23.7|1.3|870|0|0
+Sauce, tomato, commercial, reduced salt|23|437|1.3|0|0|24.1|23.7|1.3|529|0|0
+Sauce, tomato, reduced sugar & salt, commercial|23|231|1.3|0|0|11.3|10.9|1.3|507|0|0
+Sauce, white, savoury, homemade|23|750|3.9|13.5|9.3|10.8|5.1|0.2|130|0|0
+Sauce, Worcestershire, commercial|23|311|1.3|0.2|0|17.6|16.9|0|1060|0|0
+Vinegar (except balsamic vinegar)|23|65|0|0|0|0|0|0|5|0|0
+Vinegar, balsamic|23|330|0.5|0|0|15|15|2.1|23|0|0
 Peanut butter, smooth & crunchy, added sugar & salt|22|2495|22.2|49.6|8.8|14.3|8.6|5.8|477|0|0
 Peanut butter, smooth & crunchy, no added sugar or salt|22|2628|24.3|54.3|9.4|9.4|5.2|6.5|12|0|0
 Spread, yeast, marmite|31|624|13.3|0.9|0.1|16.6|11.8|11.8|3400|0|0
@@ -1152,12 +1155,12 @@ Cheese, parmesan, dried, finely grated|19|1949|40.6|33.3|21.1|0|0|0|1300|0|0
 Cheese, parmesan, fresh, regular fat|19|1565|32|27|18.7|0|0|0|1000|0|0
 Cheese, ricotta|19|636|10.4|11|7.2|2.7|2.7|0|170|0|0
 Cheese, hard, dairy alternative|20|1230|0.9|23.3|19.7|19.1|0|2.6|800|0|0
-Cream, thickened, regular fat (~35%)|19|1465|2.1|37.6|24.2|2.5|2.5|0|28|0|1
-Cream, sour, regular fat|19|1386|1.9|35.6|23|2|2|0|19|0|1
-Cream, sour, light (~18% fat)|19|886|3.7|20.1|13|4.6|4.6|0|19|0|1
-Cream, imitation (non-dairy)|19|1119|1|22|19.5|17.9|16.5|0|58|0|1
-Ice cream, vanilla flavour, regular fat|19|443|2|6.1|4.1|11.3|10.1|0|26|0|1
-Ice cream, vanilla flavour, premium or rich (~15% fat)|19|577|2|8.5|5.6|14.2|12.4|0|23|0|1
+Cream, thickened, regular fat (~35%)|19|1422|2|36.5|23.5|2.4|2.4|0|27|0|0
+Cream, sour, regular fat|19|1414|1.9|36.3|23.5|2|2|0|19|0|0
+Cream, sour, light (~18% fat)|19|868|3.6|19.7|12.7|4.5|4.5|0|19|0|0
+Cream, imitation (non-dairy)|19|1108|1|21.8|19.3|17.7|16.3|0|57|0|0
+Ice cream, vanilla flavour, regular fat|19|806|3.7|11.1|7.5|20.5|18.4|0|48|0|0
+Ice cream, vanilla flavour, premium or rich (~15% fat)|19|916|3.2|13.5|8.9|22.5|19.7|0|37|0|0
 Ice confection, stick, milk-based, various flavours|19|563|2.9|5.3|3.6|19.8|19.8|0.2|40|0|0
 Ice confection, stick, water-based, various flavours|27|280|0.2|0|0|17.1|17.1|0|6|0|0
 Ice confection, stick or tub, fruit juice or fruit flavoured|27|306|0.2|0.1|0|18.7|18.7|0|6|0|0
@@ -1179,35 +1182,35 @@ Milk, cow, powder, regular fat, unfortified|19|2048|25.3|25.2|16.8|43|43|0|310|0
 Milk, cow, powder, regular fat, added vitamins A & D|19|2128|25.3|27.3|18.3|43|43|0|310|0|0
 Milk, cow, powder, skim|19|1519|34.9|0.8|0.5|56|56|0|420|0|0
 Milk, human/breast, mature, fluid|32|298|1.4|4.4|2|7.1|7.1|0|18|0|1
-Custard, vanilla, regular fat|19|460|3.5|3.4|2.2|16.4|13.8|1.3|60|0|1
+Custard, vanilla, regular fat|19|411|3.2|3|2|14.6|12.3|1.2|54|0|0
 Custard powder, vanilla, dry mix|12|1414|0.5|0.4|0.1|81.5|0.4|0.5|392|0|0
-Custard, vanilla, prepared from dry mix|19|480|4|4.1|2.8|15.6|10.8|0|66|0|1
-Yoghurt, natural, regular fat (~3%)|19|318|5.3|3.3|2.3|5.2|5.1|0.1|60|0|1
-Yoghurt, natural, sheep's milk|19|408|6.1|6.8|4.8|2.3|2.3|0|51|0|1
-Yoghurt, flavoured, high fat (~5%)|19|502|4.6|5.1|3.5|13.4|13|0.6|49|0|1
-Yoghurt, apricot pieces or flavoured, regular fat (~3%)|19|402|4.4|3.3|2.1|11.5|11.5|0.1|68|0|1
-Yoghurt, strawberry pieces or flavoured, regular fat (~3%)|19|421|5.1|3.2|2.1|12.1|12.1|0.1|63|0|1
-Yoghurt, flavoured, low fat (~2%)|19|355|4.8|1.4|0.9|12.7|11.8|0.3|62|0|1
-Yoghurt, vanilla flavoured (~2%)|19|425|5.2|2|1.3|15|14|0.2|54|0|1
-Yoghurt, flavoured, low fat (0.2%), intense sweetened, increased protein|19|236|10|0.3|0.2|2.4|1.7|0.4|36|0|1
-Yoghurt, vanilla flavoured, low fat (<0.5%)|19|383|6.1|0.5|0.3|14.5|13.2|0.2|69|0|1
-Yoghurt, almond based, flavoured|20|399|2.7|4.7|0.4|9.6|5.7|1.9|5|0|1
-Yoghurt, coconut based, flavoured|20|540|1.1|9.4|8.4|9.6|4.9|1.4|19|0|1
-Yoghurt, soy based, berry flavoured, regular fat (~3%)|20|433|3.8|3.8|0.5|13.1|8.7|0.2|57|0|1
-Yoghurt, soy based, vanilla flavoured, reduced fat (~1%)|20|321|3.8|0.8|0.1|13.1|8.7|0.2|57|0|1
-Dairy or yoghurt dessert, chocolate, regular fat|19|492|2.8|4.7|3.3|15.2|12.1|1.4|35|0|1
-Almond beverage, added sugar, unfortified|20|120|0.5|1.5|0.1|3.2|2.3|0.6|56|0|1
-Almond beverage, no added sugar, unfortified|20|68|0.5|1.5|0.1|0|0|0.5|42|0|1
-Almond beverage, added sugar & Ca|20|120|0.5|1.5|0.1|3.2|2.3|0.6|45|0|1
-Almond beverage, no added sugar, added Ca|20|68|0.5|1.5|0.1|0|0|0.5|45|0|1
-Almond beverage, added sugar & vitamins B1, B2, B12, C & Ca|20|120|0.5|1.5|0.1|3.2|2.3|0.6|35|0|1
-Coconut beverage, unfortified|20|109|0.2|1.8|1.5|2.5|1|0|49|0|1
-Coconut beverage, added Ca|20|109|0.2|1.8|1.5|2.5|1|0|18|0|1
-Oat beverage, fluid, unfortified|20|236|1.4|0.8|0.2|10.7|3.2|0.3|40|0|1
-Oat beverage, fluid, added Ca|20|236|1.4|0.8|0.2|10.7|3.2|0.3|40|0|1
-Oat beverage, fluid, added calcium & vitamins|20|181|0.5|1.7|0.3|6.2|1.7|0.5|48|0|1
-Rice beverage, unfortified|20|207|0.6|1|0.2|9.4|3.2|0|68|0|1
-Rice beverage, fluid, added calcium|20|268|0.3|1|0.2|13.4|3.9|0|65|0|1
+Custard, vanilla, prepared from dry mix|19|428|3.6|3.7|2.5|13.9|9.6|0|59|0|0
+Yoghurt, natural, regular fat (~3%)|19|306|5.1|3.2|2.2|5|4.9|0.1|58|0|0
+Yoghurt, natural, sheep's milk|19|393|5.9|6.5|4.6|2.2|2.2|0|49|0|0
+Yoghurt, flavoured, high fat (~5%)|19|483|4.4|4.9|3.3|12.9|12.5|0.6|47|0|0
+Yoghurt, apricot pieces or flavoured, regular fat (~3%)|19|386|4.2|3.2|2|11.1|11.1|0.1|65|0|0
+Yoghurt, strawberry pieces or flavoured, regular fat (~3%)|19|405|4.9|3.1|2|11.6|11.6|0.1|60|0|0
+Yoghurt, flavoured, low fat (~2%)|19|341|4.6|1.3|0.9|12.2|11.3|0.3|60|0|0
+Yoghurt, vanilla flavoured (~2%)|19|408|5|1.9|1.3|14.5|13.5|0.2|52|0|0
+Yoghurt, flavoured, low fat (0.2%), intense sweetened, increased protein|19|227|9.6|0.3|0.2|2.3|1.6|0.4|35|0|0
+Yoghurt, vanilla flavoured, low fat (<0.5%)|19|368|5.9|0.5|0.3|13.9|12.7|0.2|66|0|0
+Yoghurt, almond based, flavoured|20|384|2.6|4.5|0.4|9.2|5.5|1.8|5|0|0
+Yoghurt, coconut based, flavoured|20|519|1.1|9|8.1|9.2|4.7|1.3|18|0|0
+Yoghurt, soy based, berry flavoured, regular fat (~3%)|20|416|3.6|3.7|0.5|12.6|8.4|0.2|55|0|0
+Yoghurt, soy based, vanilla flavoured, reduced fat (~1%)|20|309|3.6|0.8|0.1|12.6|8.4|0.2|55|0|0
+Dairy or yoghurt dessert, chocolate, regular fat|19|473|2.6|4.5|3.1|14.6|11.6|1.4|34|0|0
+Almond beverage, added sugar, unfortified|20|115|0.5|1.4|0.1|3|2.2|0.6|53|0|0
+Almond beverage, no added sugar, unfortified|20|65|0.5|1.4|0.1|0|0|0.5|40|0|0
+Almond beverage, added sugar & Ca|20|115|0.5|1.4|0.1|3|2.2|0.6|43|0|0
+Almond beverage, no added sugar, added Ca|20|65|0.5|1.4|0.1|0|0|0.5|43|0|0
+Almond beverage, added sugar & vitamins B1, B2, B12, C & Ca|20|115|0.5|1.4|0.1|3|2.2|0.6|33|0|0
+Coconut beverage, unfortified|20|106|0.2|1.7|1.5|2.4|1|0|47|0|0
+Coconut beverage, added Ca|20|106|0.2|1.7|1.5|2.4|1|0|17|0|0
+Oat beverage, fluid, unfortified|20|224|1.3|0.8|0.2|10.2|3.1|0.3|38|0|0
+Oat beverage, fluid, added Ca|20|224|1.3|0.8|0.2|10.2|3.1|0.3|38|0|0
+Oat beverage, fluid, added calcium & vitamins|20|172|0.5|1.6|0.3|5.9|1.6|0.5|46|0|0
+Rice beverage, unfortified|20|197|0.6|1|0.2|9|3.1|0|65|0|0
+Rice beverage, fluid, added calcium|20|255|0.3|1|0.2|12.7|3.7|0|62|0|0
 Soy beverage, regular fat (~3%), unfortified|20|253|3.8|2.8|0.4|4.8|2.7|0.6|45|0|1
 Soy beverage, regular fat (~3%), added Ca|20|253|3.8|2.8|0.4|4.8|2.7|0.6|45|0|1
 Soy beverage, regular fat (~3%), added Ca & vitamins A, B1, B2 & B12|20|265|4.5|2.8|0.4|4.8|2.7|0.6|45|0|1
@@ -1230,7 +1233,7 @@ Soup, broth style, with meat & noodles, instant dry mix|21|1520|10.8|6.3|1.1|64.
 Soup, cream variety, instant dry mix|21|1628|5.3|13.2|5.9|59.1|8.1|6.5|4230|0|0
 Soup, vegetable, instant dry mix|21|1201|6.7|2.1|0.9|58.3|10.3|3.3|7130|0|0
 Soup, vegetable & noodle, instant dry mix|21|1514|8.7|6.3|2.6|65.5|16|3.9|2030|0|0
-Soup, chicken & noodle, cup of soup, prepared from instant dry mix with water|21|80|0.7|0.2|0.1|3.5|0.4|0.3|444|0|1
+Soup, chicken & noodle, cup of soup, prepared from instant dry mix with water|21|79|0.7|0.2|0.1|3.4|0.4|0.3|440|0|0
 Butter, plain, salted|14|3069|1.1|82.2|56.9|0.6|0.6|0|776|0|0
 Butter, plain, reduced salt|14|3085|1.1|82.6|57.2|0.6|0.6|0|350|0|0
 Butter, plain, no added salt|14|3069|1.1|82.2|56.9|0.6|0.6|0|10|0|0
@@ -1296,7 +1299,7 @@ Apricot, raw|16|166|0.2|0.4|0|7.3|7.2|1.8|1|0|0
 Apricot, dried|16|972|4.2|0.4|0|48.4|42.3|8.3|22|0|0
 Apricot, canned in pear juice|16|192|0.8|0|0|9.6|8.2|1.8|4|0|0
 Apricot, canned in pear juice, drained|16|196|1|0|0|8.9|7.8|3.1|3|0|0
-Apricot, canned in pear juice, juice only|16|196|0.5|0|0|11|9.1|0|5|0|1
+Apricot, canned in pear juice, juice only|16|187|0.5|0|0|10.5|8.7|0|5|0|0
 Banana, cavendish, peeled, raw|16|399|1.4|0.2|0|19.9|13.4|2.2|0|0|0
 Banana, lady finger or sugar, peeled, raw|16|489|1|0|0|26.9|16.9|3|0|0|0
 Banana, frozen|16|410|1.4|0.2|0|20.5|13.7|2.3|0|0|0
@@ -1309,7 +1312,7 @@ Blueberry, purchased frozen|16|208|0.5|0|0|10.7|10.3|3|2|0|0
 Cherry, raw|16|308|1.1|0|0|16.9|15.2|1.4|0|0|0
 Cherry, black, canned in syrup|16|299|0.7|0|0|17|15.8|0.9|4|0|0
 Cherry, black, canned in syrup, drained|16|310|0.9|0.1|0|17|15.7|1.7|5|0|0
-Cherry, black, canned in syrup, syrup only|16|299|0.5|0|0|17.8|16.6|0|3|0|1
+Cherry, black, canned in syrup, syrup only|16|288|0.5|0|0|17.1|16|0|3|0|0
 Cherry, pitted, frozen|16|316|1.1|0|0|17.4|15.6|1.4|0|0|0
 Cranberry, raw|16|131|0.5|0.1|0|4.3|4.3|3.6|2|0|0
 Cranberry, dried, sweetened|16|1330|0.2|1.1|0.1|77.5|72.6|5.3|5|0|0
@@ -1344,7 +1347,7 @@ Lychee, peeled, frozen|16|307|0.9|0|0|17.3|17.3|1.3|0|0|0
 Mandarin, peeled, raw|16|197|0.8|0.2|0|9.8|9.8|1.6|3|0|0
 Mandarin, canned in syrup|16|240|0.4|0.1|0|13.5|13.4|0.6|5|0|0
 Mandarin, canned in syrup, drained|16|254|0.5|0.2|0|13.8|13.6|1.1|6|0|0
-Mandarin, canned in syrup, syrup only|16|232|0.3|0|0|13.7|13.7|0|4|0|1
+Mandarin, canned in syrup, syrup only|16|223|0.2|0|0|13.2|13.2|0|4|0|0
 Mango, peeled, raw|16|224|0.4|0|0|12.6|12.1|1.3|0|0|0
 Mango, peeled, frozen|16|231|0.4|0|0|12.9|12.4|1.3|0|0|0
 Mango, pulped, canned|16|246|0.4|0|0|14|13.6|1.2|0|0|0
@@ -1369,28 +1372,28 @@ Peach, white, unpeeled, raw|16|145|0.7|0|0|7.5|7.2|1.6|0|0|0
 Peach, yellow, unpeeled, raw|16|161|0.7|0|0|8|7.4|1.6|0|0|0
 Peach, canned in pear juice|16|184|0.6|0|0|9.5|8.3|1.3|8|0|0
 Peach, canned in pear juice, drained|16|191|0.8|0.1|0|9.4|8.2|2|7|0|0
-Peach, canned in pear juice, juice only|16|186|0.4|0|0|10.3|9.1|0.3|10|0|1
+Peach, canned in pear juice, juice only|16|174|0.4|0|0|9.6|8.5|0.3|10|0|0
 Pear, Packham's triumph, unpeeled, raw|16|231|0.4|0|0|12.5|12.4|3|0|0|0
 Pear, William Bartlett, unpeeled, raw|16|228|0.3|0|0|11.8|9|3.7|1|0|0
 Pear, green skin, unpeeled, raw|16|248|0.4|0|0|13.3|10.8|3|0|0|0
 Pear, brown skin, unpeeled, raw|16|234|0.4|0|0|12.1|9.6|3.8|0|0|0
 Pear, canned in pear juice|16|194|0.5|0|0|10.6|8.7|1.7|6|0|0
 Pear, canned in pear juice, drained|16|200|0.6|0|0|10.3|8.6|2.8|6|0|0
-Pear, canned in pear juice, juice only|16|198|0.3|0|0|11.8|9.5|0.2|6|0|1
+Pear, canned in pear juice, juice only|16|185|0.2|0|0|11|8.8|0.2|6|0|0
 Pear, nashi, unpeeled, raw|16|206|0.2|0|0|11.2|9.3|2.1|3|0|0
 Persimmon, peeled, raw|16|294|0.6|0.1|0|16|16|2.7|4|0|0
 Pineapple, peeled, raw|16|165|0.5|0|0|8.6|8.6|1.3|0|0|0
 Pineapple, peeled, frozen|16|169|0.5|0|0|8.8|8.8|1.3|0|0|0
 Pineapple, canned in pineapple juice|16|236|0.5|0.6|0.2|12|12|0.8|5|0|0
 Pineapple, canned in juice, drained|16|190|0|0|0|10.9|10.9|1.1|1|0|0
-Pineapple, canned in pineapple juice, juice only|16|194|0.3|0|0|11|11|0|1|0|1
+Pineapple, canned in pineapple juice, juice only|16|187|0.3|0|0|10.6|10.6|0|1|0|0
 Pineapple, canned in syrup|16|360|0.3|0.6|0.2|19.8|19.8|0.7|6|0|0
 Pineapple, canned in syrup, drained|16|296|0|0|0|17.5|17.5|1.2|1|0|0
-Pineapple, canned in syrup, syrup only|16|399|0.3|0|0|23.8|23.8|0|1|0|1
+Pineapple, canned in syrup, syrup only|16|370|0.3|0|0|22|22|0|1|0|0
 Plum, unpeeled, raw|16|209|0.6|0|0|10.2|9|2|1|0|0
 Plum, dark, canned in syrup|16|371|0.4|0|0|21.6|21.1|1|3|0|0
 Plum, dark, canned in syrup, drained|16|386|0.5|0.1|0|21.8|21|2|4|0|0
-Plum, dark, canned in syrup, syrup only|16|493|0.4|0|0|29.6|29.5|0|3|0|1
+Plum, dark, canned in syrup, syrup only|16|354|0.3|0|0|21.3|21.2|0|2|0|0
 Plum, davidson (native), flesh|16|280|1|0.2|0|14.3|3.9|2|45|0|0
 Plum, salted|16|857|3.7|0|0|44.9|33.6|9.3|8400|0|0
 Pomegranate, peeled, raw|16|329|1.9|0.2|0|13.5|13.5|6.4|4|0|0
@@ -1404,7 +1407,7 @@ Raspberry, raw|16|201|1.1|0.3|0|7|6.7|4.8|1|0|0
 Raspberry, purchased frozen|16|201|1.1|0.3|0|7|6.7|4.8|1|0|0
 Raspberry, canned in syrup|16|315|0.6|0.1|0|17|16.8|2.5|5|0|0
 Raspberry, canned in syrup, drained|16|343|1|0.2|0|16.2|15.9|6|6|0|0
-Raspberry, canned in syrup, syrup only|16|411|0.3|0|0|24.3|24.3|0|6|0|1
+Raspberry, canned in syrup, syrup only|16|296|0.2|0|0|17.5|17.5|0|4|0|0
 Rhubarb, stalk, raw|16|94|1.5|0.2|0|1.7|1.7|2.2|12|0|0
 Rhubarb, stewed, sugar sweetened, no added fat|16|275|1.4|0.2|0|13.3|13.3|2.1|11|0|0
 Sultana|16|1308|2.6|0.3|0|75.8|74|3.3|6|0|0
@@ -1412,7 +1415,7 @@ Strawberry, raw|16|132|0.7|0.2|0|5.6|5.5|2.1|0|0|0
 Strawberry, purchased frozen|16|132|0.7|0.2|0|5.6|5.5|2.1|0|0|0
 Strawberry, canned in syrup|16|335|0.4|0.2|0|18.9|18.7|1.5|8|0|0
 Strawberry, canned in syrup, drained|16|353|0.9|0.1|0|18.7|18.5|3.5|10|0|0
-Strawberry, canned in syrup, syrup only|16|446|0.2|0.3|0|26.4|26.1|0|10|0|1
+Strawberry, canned in syrup, syrup only|16|321|0.1|0.2|0|19|18.8|0|7|0|0
 Tamarillo, peeled, raw|16|150|2|0.1|0|3.4|3.4|4.7|1|0|0
 Tamarind, paste, pure|16|1048|2.8|0.6|0.3|57.4|38.8|5.1|28|0|0
 Tangelo, peeled, raw|16|172|0.6|0.1|0|7.8|7.8|2|4|0|0
@@ -1420,7 +1423,7 @@ Tangerine or tangor, peeled, raw|16|180|1|0.2|0|8.1|8.1|1.5|2|0|0
 Wax jambu, raw|16|109|0.7|0.2|0|4.5|4.5|1.9|1|0|0
 Fruit salad, canned in fruit juice|16|200|0.7|0.1|0|10.4|9.8|1.4|4|0|0
 Fruit salad, canned in fruit juice, drained|16|207|0.8|0.2|0|10.1|9.5|2.3|4|0|0
-Fruit salad, canned in fruit juice, juice only|16|198|0.4|0|0|11.4|10.6|0.2|5|0|1
+Fruit salad, canned in fruit juice, juice only|16|191|0.4|0|0|11|10.2|0.2|4|0|0
 Mixed berry, frozen|16|200|0.6|0.1|0|9.6|9.2|3.3|2|0|0
 Mixed dried fruit|16|1273|2.2|0.7|0|73.6|71.2|3.3|12|0|0
 Baked beans, canned in tomato sauce|25|381|4.8|0.3|0|13|5|4.8|298|0|0
@@ -1445,7 +1448,7 @@ Bean, soya (soy), dried, boiled, drained|25|614|13.5|7.7|1.1|1.4|1.4|7.2|9|0|0
 Chickpea, dried|25|1373|19.7|5.5|0.6|38.5|2.2|20.8|11|0|0
 Chickpea, dried, boiled, drained|25|499|7.2|2|0.2|14|0.8|7.6|4|0|0
 Chickpea, canned, drained|25|474|6.3|2.1|0.2|13.3|0.6|5.7|250|0|0
-Dip, hummus (hommus), commercial|23|1039|6.9|19.5|1.8|9.4|0.8|3.9|410|0|1
+Dip, hummus (hommus), commercial|23|1039|6.9|19.5|1.8|9.4|0.8|3.9|410|0|0
 Lentil, French, hulled, dry|25|1353|28.3|2|0.2|38.8|1|15|2|0|0
 Lentil, green, hulled, dry|25|1330|25.3|1.7|0.2|40.9|1.5|14.6|13|0|0
 Lentil, red, hulled, dry|25|1364|23|1.9|0.2|45.7|2.7|13.7|2|0|0
@@ -1818,13 +1821,13 @@ Spam, canned|18|1238|14.2|26.1|8.6|1.9|1.2|0|920|0|0
 Steak & vegetables, canned|18|258|4.4|1.9|0.9|6.2|1.8|1.2|320|0|0
 Coconut, fresh, mature fruit, flesh|22|1396|3.8|32.8|28.9|3.3|2.9|8.1|5|0|0
 Coconut, fresh, young or immature, flesh|22|353|1.6|5.6|4.9|7|4|0.5|6|0|0
-Coconut, fresh, mature, water or juice|22|87|0.5|0.1|0.1|4.7|4.7|0|17|0|1
-Coconut, fresh, young or immature, water or juice|22|109|0.2|0|0|6.6|6.6|0|5|0|1
+Coconut, fresh, mature, water or juice|22|87|0.5|0.1|0.1|4.7|4.7|0|17|0|0
+Coconut, fresh, young or immature, water or juice|22|109|0.2|0|0|6.6|6.6|0|5|0|0
 Water, coconut, commercial|22|54|0.2|0|0|3.2|3.2|0|36|0|1
 Coconut, grated & desiccated|22|2777|6.9|65.4|57.7|7.3|6.6|15.4|15|0|0
-Coconut, cream, regular fat|22|926|1.6|23.7|19.2|1.4|1.4|0|16|0|1
-Coconut, milk, canned, regular fat|22|633|1.4|15.7|12.7|1.7|1.7|0|26|0|1
-Coconut, milk, canned, reduced fat|22|293|0.6|7.2|6.5|0.9|0.9|0|15|0|1
+Coconut, cream, regular fat|22|908|1.6|23.2|18.8|1.4|1.4|0|16|0|0
+Coconut, milk, canned, regular fat|22|620|1.4|15.4|12.5|1.7|1.7|0|26|0|0
+Coconut, milk, canned, reduced fat|22|288|0.6|7.1|6.4|0.9|0.9|0|15|0|0
 Nut, almond, with skin, raw, unsalted|22|2386|19.7|50.5|3.8|5.4|5.2|11|0|0|0
 Nut, almond, with skin, roasted, unsalted|22|2462|19.7|52.5|4|5.4|5.2|11|0|0|0
 Nut, almond meal|22|2386|19.7|50.5|3.8|5.4|5.2|11|0|0|0
@@ -1853,7 +1856,7 @@ Seed, sunflower|22|2362|24.7|48.3|4.4|3.1|2.1|13|0|0|0
 Seed, sesame, unsalted|22|2620|22.2|55.6|6.8|6.2|0.6|10.1|24|0|0
 Wattle seed (acacia), ground|22|1183|20.3|6.1|0.8|10.5|0|54.2|102|0|0
 Flour, hemp|22|1228|22.3|11.1|1.2|2.7|2.5|49.4|7|0|0
-Tahini, sesame seed pulp|22|2717|20.4|60.7|7.5|1|0.7|13.5|79|0|1
+Tahini, sesame seed pulp|22|2717|20.4|60.7|7.5|1|0.7|13.5|79|0|0
 Barramundi, aquacultured, fillet, raw|15|523|19.2|5.3|1.2|0|0|0|56|0|0
 Barramundi, aquacultured, fillet, grilled, no added fat|15|717|26.4|7.3|1.6|0|0|0|76|0|0
 Barramundi, aquacultured, fillet, steamed with no added fat|15|623|22.9|6.3|1.4|0|0|0|56|0|0
@@ -2020,13 +2023,13 @@ Sugar, raw|27|1597|0|0|0|99.8|99.8|0|1|0|0
 Sugar, white, granulated or lump|27|1600|0|0|0|100|100|0|0|0|0
 Sugar, white, icing|27|1600|0|0|0|100|100|0|0|0|0
 Sugar, white, icing mixture|27|1598|0|0|0|99.6|95.6|0|0|0|0
-Glucose, liquid or syrup|27|1762|0|0|0|121.6|45.9|0|208|0|1
-Honey|27|1662|0.4|0|0|103.4|103.4|0|11|0|1
-Syrup, golden|27|1732|0.4|0|0|107.8|107.8|0|187|0|1
-Syrup, maple, pure|27|1439|0|0.1|0|89.1|80.4|0|16|0|1
-Syrup, malt|27|1771|8.2|0|0|99.8|65.2|0|46|0|1
-Syrup, rice malt|27|1802|0.4|0|0|109.8|72.5|0|19|0|1
-Treacle or molasses|27|1594|0.8|0.1|0|98.3|98.3|0.6|94|0|1
+Glucose, liquid or syrup|27|1268|0|0|0|87.5|33|0|150|0|0
+Honey|27|1162|0.3|0|0|72.3|72.3|0|8|0|0
+Syrup, golden|27|1203|0.2|0|0|74.9|74.9|0|130|0|0
+Syrup, maple, pure|27|1082|0|0.1|0|67|60.4|0|12|0|0
+Syrup, malt|27|1331|6.2|0|0|75|49|0|35|0|0
+Syrup, rice malt|27|1355|0.3|0|0|82.6|54.5|0|14|0|0
+Treacle or molasses|27|1122|0.6|0|0|69.2|69.2|0.4|66|0|0
 Jelly crystals, sugar sweetened, all flavours|27|1582|7.1|0|0|90.7|90.7|0|520|0|0
 Jelly, sugar sweetened, all flavours, prepared|27|230|1|0|0|13.2|13.2|0|78|0|0
 Caramels, soft & hard|28|1620|2.5|11.4|8.7|74.5|54.6|1.5|250|0|0
@@ -2326,8 +2329,172 @@ var CATS = {
   '27':'Sweets', '28':'Confectionery', '29':'Alcohol', '30':'Supplements',
   '31':'Herbs & spices', '32':'Other', '33':'Game meat', '90':'Packaged'
 };
-var SOLID_PRESETS = [30, 50, 100, 150, 200, 250];
-var LIQUID_PRESETS = [100, 150, 250, 375, 425, 600];
+/* ------------------------------- portions --------------------------------
+   AFCD publishes nutrients per 100 g and no serve sizes, so this is a layer
+   on top: typical Australian household portions, matched against the AFCD
+   name. First rule to match wins, so order runs specific to general.
+   Weights are typical, not official — a real slice varies by loaf. Anything
+   unmatched falls back to the Australian Dietary Guidelines standard serve.
+   ------------------------------------------------------------------------- */
+var SERVE_RULES = [
+  // breads and cereals
+  [/^bread.*(sourdough|rye|sour dough|ciabatta|turkish)/i, [['slice', 50], ['thick slice', 65]]],
+  [/^bread.*(roll|bun)|^roll,/i,          [['roll', 70], ['small roll', 50]]],
+  [/^bread.*(flat|pita|lebanese|naan|tortilla|wrap)/i, [['wrap', 60], ['large wrap', 75]]],
+  [/^(bread|toast)/i,                     [['slice', 35], ['thick slice', 45]]],
+  [/^crumpet/i,                           [['crumpet', 55]]],
+  [/^muffin, english|^english muffin/i,   [['muffin', 65]]],
+  [/^croissant/i,                         [['croissant', 60]]],
+  [/breakfast cereal.*(wheat, biscuit|weet)/i, [['biscuit', 15], ['2 biscuits', 30]]],
+  [/^breakfast cereal.*(muesli|granola)/i,[['serve', 45], ['cup', 100]]],
+  [/^breakfast cereal/i,                  [['serve', 30], ['cup', 40]]],
+  [/^(oat|porridge|rolled oats)/i,        [['half cup dry', 45], ['cup dry', 90]]],
+  [/^rice,.*(boiled|cooked|steamed)/i,    [['cup cooked', 180], ['half cup', 90]]],
+  [/^pasta.*(boiled|cooked)|^noodle.*(boiled|cooked|hokkien)/i, [['cup cooked', 145], ['serve', 200]]],
+  [/^(quinoa|couscous|burghul|barley).*(cooked|boiled)/i, [['cup cooked', 180]]],
+  [/^(rice cake|corn cake|crispbread|cracker)/i, [['cake', 9], ['2 cakes', 18]]],
+  // protein
+  [/^egg, chicken.*(white)/i,             [['white', 33]]],
+  [/^egg, chicken/i,                      [['egg', 50], ['2 eggs', 100], ['3 eggs', 150]]],
+  [/^chicken, breast/i,                   [['breast', 170], ['half breast', 85]]],
+  [/^chicken, (thigh|drumstick)/i,        [['piece', 90]]],
+  [/^chicken,/i,                          [['serve', 120]]],
+  [/^(beef|lamb|pork|veal).*(mince)/i,    [['serve', 120], ['large serve', 180]]],
+  [/^(beef|veal).*(steak|rump|sirloin|fillet|scotch|porterhouse|t-bone)/i, [['steak', 200], ['small steak', 150]]],
+  [/^lamb.*(chop|cutlet)/i,               [['chop', 70], ['cutlet', 45]]],
+  [/^(pork|lamb|beef).*(roast|leg|shoulder)/i, [['serve', 120]]],
+  [/^bacon/i,                             [['rasher', 25], ['2 rashers', 50]]],
+  [/^ham,/i,                              [['slice', 25], ['2 slices', 50]]],
+  [/^sausage/i,                           [['sausage', 70], ['2 sausages', 140]]],
+  [/^kangaroo|^crocodile|^emu/i,          [['serve', 150]]],
+  [/^(fish|salmon|tuna|barramundi|snapper|whiting|basa|flathead).*(fillet|steak|raw|baked|grilled|fried)/i,
+                                          [['fillet', 150], ['small fillet', 100]]],
+  [/^tuna.*(canned|can)/i,                [['small tin', 95], ['large tin', 185]]],
+  [/^(sardine|salmon).*(canned|can)/i,    [['tin', 95]]],
+  [/^prawn|^shrimp/i,                     [['serve', 100], ['prawn', 12]]],
+  [/^oyster/i,                            [['oyster', 10], ['dozen', 120]]],
+  [/^tofu/i,                              [['serve', 150], ['block', 300]]],
+  [/^tempeh/i,                            [['serve', 100]]],
+  // dairy
+  [/^milk,.*(powder|dry)/i,               [['tbsp', 12]]],
+  [/^milk|^soy beverage|^beverage, (soy|oat|almond|rice)/i,
+                                          [['cup', 250], ['splash', 30], ['large glass', 350]]],
+  [/^yoghurt/i,                           [['tub', 170], ['serve', 200], ['large tub', 500]]],
+  [/^cheese.*(cottage|ricotta)/i,         [['serve', 100], ['tbsp', 30]]],
+  [/^cheese.*(parmesan|hard, grated)/i,   [['tbsp', 6], ['serve', 20]]],
+  [/^cheese/i,                            [['slice', 20], ['serve', 30], ['cube', 15]]],
+  [/^cream,/i,                            [['tbsp', 20], ['serve', 60]]],
+  [/^ice cream|^ice confection/i,         [['scoop', 60], ['2 scoops', 120]]],
+  [/^butter|^margarine|^spread, (table|fat)/i, [['tsp', 5], ['spread on bread', 10]]],
+  // fruit and veg
+  [/^banana/i,                            [['medium', 118], ['large', 150], ['small', 90]]],
+  [/^apple|^pear/i,                       [['medium', 150], ['large', 200]]],
+  [/^orange|^mandarin/i,                  [['medium', 130]]],
+  [/^(kiwifruit|kiwi)/i,                  [['fruit', 75]]],
+  [/^(peach|nectarine|plum|apricot)/i,    [['fruit', 100]]],
+  [/^mango/i,                             [['cheek', 100], ['whole', 200]]],
+  [/^(berry|berries|blueberr|strawberr|raspberr)/i, [['handful', 40], ['punnet', 125], ['serve', 150]]],
+  [/^grape/i,                             [['handful', 80], ['bunch', 200]]],
+  [/^(melon|watermelon|rockmelon)/i,      [['wedge', 200], ['serve', 150]]],
+  [/^(date|prune|fig).*(dried)/i,         [['piece', 8], ['serve', 40]]],
+  [/^(sultana|raisin|currant)/i,          [['tbsp', 15], ['small box', 30]]],
+  [/^avocado/i,                           [['half', 100], ['whole', 200], ['slice', 25]]],
+  [/^potato.*(chip|crisp|fried|french fries)/i, [['small serve', 150], ['medium serve', 250]]],
+  [/^potato|^kumara|^sweet potato/i,      [['medium', 150], ['small', 100]]],
+  [/^tomato,.*(cherry)/i,                 [['tomato', 15], ['handful', 90]]],
+  [/^tomato/i,                            [['medium', 120]]],
+  [/^carrot/i,                            [['medium', 60], ['cup sliced', 120]]],
+  [/^onion/i,                             [['medium', 110], ['half', 55]]],
+  [/^(lettuce|spinach|rocket|kale|salad)/i, [['handful', 30], ['cup', 40], ['bowl', 100]]],
+  [/^(broccoli|cauliflower|bean, green|pea,|zucchini|capsicum|pumpkin|asparagus|cabbage|mushroom)/i,
+                                          [['standard serve', 75], ['cup', 100]]],
+  [/^corn/i,                              [['cob', 90], ['cup kernels', 165]]],
+  // legumes, nuts, fats
+  [/^(bean|lentil|chickpea|legume).*(canned|can)/i, [['half tin', 200], ['tin', 400]]],
+  [/baked bean/i,                         [['half tin', 220], ['tin', 420]]],
+  [/^(bean|lentil|chickpea)/i,            [['cup cooked', 180]]],
+  [/^(nut|almond|cashew|walnut|macadamia|peanut|pistachio|hazelnut|brazil)(?!.*butter)/i,
+                                          [['handful', 30], ['10 nuts', 12]]],
+  [/butter, (peanut|nut)|^peanut butter|^tahini/i, [['tbsp', 20], ['tsp', 7]]],
+  [/^(seed|chia|linseed|sunflower|pepita|pumpkin seed)/i, [['tbsp', 12]]],
+  [/^oil,/i,                              [['tbsp', 18], ['tsp', 5], ['drizzle', 10]]],
+  [/^hummus|^dip,/i,                      [['tbsp', 25], ['serve', 50]]],
+  // snacks, sweets, condiments
+  [/^biscuit.*(chocolate|cream)/i,        [['biscuit', 18], ['2 biscuits', 36]]],
+  [/^biscuit/i,                           [['biscuit', 15]]],
+  [/^chocolate/i,                         [['row', 25], ['small block', 50], ['block', 100]]],
+  [/^(potato crisp|extruded snack|corn chip|snack)/i, [['small bag', 45], ['share bag', 175]]],
+  [/^popcorn/i,                           [['cup', 8], ['bowl', 30]]],
+  [/^(muesli bar|snack bar|snack ball|protein bar)/i, [['bar', 35]]],
+  [/^cake|^slice,|^lamington|^muffin,/i,  [['slice', 80], ['large slice', 130]]],
+  [/^(sugar|honey|jam|syrup)/i,           [['tsp', 7], ['tbsp', 21]]],
+  [/^spread, yeast/i,                     [['scrape', 5], ['tsp', 5]]],
+  [/^sauce|^dressing|^mayonnaise|^chutney|^mustard/i, [['tbsp', 20], ['tsp', 7]]],
+  [/^soup/i,                              [['cup', 250], ['bowl', 400]]],
+  // takeaway and composite dishes
+  [/^pie,|^pastie/i,                      [['pie', 175]]],
+  [/^sausage roll/i,                      [['roll', 130]]],
+  [/^pizza/i,                             [['slice', 100], ['half pizza', 200]]],
+  [/^(hamburger|burger|cheeseburger)/i,   [['burger', 220]]],
+  [/^sushi/i,                             [['roll', 100], ['piece', 30]]],
+  [/^dim sim|^dumpling|^spring roll/i,    [['piece', 45], ['3 pieces', 135]]],
+  [/^(kebab|souvlaki|burrito|taco)/i,     [['serve', 350]]],
+  [/^sandwich|^roll, filled/i,            [['sandwich', 220]]],
+  [/^(casserole|curry|stew|pasta dish|lasagne|risotto|stir.fry|fried rice|noodle dish)/i,
+                                          [['serve', 350], ['large serve', 500]]],
+  // drinks
+  [/^beer/i,                              [['can 375 mL', 375], ['stubby', 375], ['schooner', 425], ['pint', 570], ['middy', 285]]],
+  [/^wine.*(fortified|port|sherry)/i,     [['glass 60 mL', 60]]],
+  [/^wine|^cider/i,                       [['standard glass', 100], ['large glass', 150], ['bottle', 750]]],
+  [/^(spirit|liqueur|whisky|vodka|gin|rum)/i, [['nip 30 mL', 30], ['double', 60]]],
+  [/^coffee.*(dry powder|granule|bean|ground)|^coffee mix/i, [['tsp', 2], ['tbsp', 6]]],
+  [/^coffee|^cappuccino|^latte/i,         [['regular', 220], ['large', 350], ['small', 160]]],
+  [/^tea,/i,                              [['cup', 250], ['mug', 350]]],
+  [/^(juice|cordial)/i,                   [['glass', 250], ['popper', 250]]],
+  [/^(soft drink|cola|energy drink|sports drink)/i,
+                                          [['can 375 mL', 375], ['bottle 600 mL', 600], ['can 250 mL', 250]]],
+  [/^water/i,                             [['glass', 250], ['bottle', 600]]],
+  [/^protein powder/i,                    [['scoop', 30], ['2 scoops', 60]]]
+];
+
+/* Australian Dietary Guidelines standard serves, used when nothing matches. */
+var CAT_SERVES = {
+  'Vegetables':    [['standard serve', 75], ['cup', 100]],
+  'Fruit':         [['standard serve', 150], ['piece', 120]],
+  'Meat & dishes': [['standard serve', 65], ['serve', 120]],
+  'Game meat':     [['standard serve', 65], ['serve', 120]],
+  'Seafood':       [['standard serve', 100], ['fillet', 150]],
+  'Legumes':       [['standard serve', 75], ['cup cooked', 150]],
+  'Dairy':         [['serve', 200]],
+  'Grains':        [['standard serve', 40], ['cup cooked', 150]],
+  'Baked goods':   [['serve', 60]],
+  'Nuts & seeds':  [['handful', 30], ['tbsp', 15]],
+  'Fats & oils':   [['tbsp', 18], ['tsp', 5]],
+  'Sauces':        [['tbsp', 20], ['tsp', 7]],
+  'Snacks':        [['small bag', 45]],
+  'Sweets':        [['serve', 50]],
+  'Confectionery': [['serve', 40]],
+  'Soup':          [['cup', 250], ['bowl', 400]],
+  'Drinks':        [['glass', 250], ['bottle', 600]],
+  'Alcohol':       [['standard glass', 100]],
+  'Herbs & spices':[['tsp', 2], ['tbsp', 6]],
+  'Supplements':   [['scoop', 30]]
+};
+
+/* Portions offered for a food, always ending with the raw 100 g / 100 mL unit
+   and a free-entry option so nothing is ever un-loggable. */
+function serveOptions(f){
+  var list = null;
+  for (var i = 0; i < SERVE_RULES.length; i++){
+    if (SERVE_RULES[i][0].test(f.name)){ list = SERVE_RULES[i][1]; break; }
+  }
+  if (!list) list = CAT_SERVES[f.cat] || null;
+  var unit = f.liquid ? 'mL' : 'g';
+  var out = (list || []).map(function(s){ return {label:s[0] + ' (' + s[1] + ' ' + unit + ')', g:s[1]}; });
+  out.push({label:'100 ' + unit, g:100});
+  out.push({label:unit + ' — type the amount', g:1, raw:true});
+  return out;
+}
 
 function parseFoodLine(line, idPrefix, i){
   var p = line.split('|');
@@ -2657,6 +2824,16 @@ function renderMacros(e){
   }).join('');
 }
 
+/* "2 slices · 100 g" reads better than "100 g" when a portion was chosen. */
+function portionLabel(x){
+  var unit = x.liquid ? 'mL' : 'g';
+  var amt = g(x.grams, x.grams < 20 ? 1 : 0) + ' ' + unit;
+  if (!x.serve) return amt;
+  var n = x.serve.n, lbl = x.serve.label;
+  if (n !== 1 && !/^\d/.test(lbl)) lbl = lbl + (/s$/.test(lbl) ? '' : 's');
+  return (n === 1 ? '1 ' : g(n,1) + ' ') + lbl + ' · ' + amt;
+}
+
 function renderMeals(){
   var d = dayRO(DAY);
   el('meals').innerHTML = MEALS.map(function(m){
@@ -2664,7 +2841,7 @@ function renderMeals(){
     var sum = list.reduce(function(a, x){ return a + x.kj; }, 0);
     var rows = list.length ? list.map(function(x, i){
       return '<div class="row"><div class="row-main"><div class="t">' + esc(x.name) + '</div>' +
-        '<div class="s">' + g(x.grams) + (x.liquid ? ' mL' : ' g') +
+        '<div class="s">' + portionLabel(x) +
         ' · P ' + g(x.p,1) + ' · C ' + g(x.c,1) + ' · F ' + g(x.f,1) + '</div></div>' +
         '<div class="row-kj">' + fmtE(x.kj) + '</div>' +
         '<button class="row-del" data-del-food="' + key + ':' + i + '" aria-label="Remove ' + esc(x.name) + '">' +
@@ -3125,17 +3302,57 @@ function foodByName(n){
   for (var i = 0; i < all.length; i++) if (all[i].name === n) return all[i];
   return null;
 }
+/* AFCD uses formal, singular, sometimes spaced-out names — "Nut, almond",
+   "Bread, from white flour, sour dough". People type "almonds" and
+   "sourdough". Each term is tried verbatim, then singularised, then with all
+   punctuation and spacing stripped, each fallback scoring lower than the last
+   so exact matches still rank first. */
+var SYNONYMS = {
+  yogurt:'yoghurt', fries:'chips', fry:'chips', cookie:'biscuit',
+  shrimp:'prawn', cilantro:'coriander', cantaloupe:'rockmelon',
+  oatmeal:'oat', soda:'soft drink', pop:'soft drink', candy:'confectionery',
+  garbanzo:'chickpea', arugula:'rocket', scallion:'spring onion',
+  soy:'soya', mince:'mince', eggplant:'eggplant', capsicum:'capsicum',
+  coriander:'coriander', snags:'sausage', snag:'sausage', chook:'chicken',
+  roo:'kangaroo', barra:'barramundi', spuds:'potato', spud:'potato',
+  veg:'vegetable', brekkie:'breakfast', avo:'avocado', chockie:'chocolate'
+};
+function singular(t){
+  if (/ies$/.test(t) && t.length > 4) return t.slice(0, -3) + 'y';
+  if (/ses$|ches$|shes$|xes$/.test(t)) return t.slice(0, -2);
+  if (/s$/.test(t) && !/ss$/.test(t) && t.length > 3) return t.slice(0, -1);
+  return null;
+}
+function compact(s){ return s.replace(/[^a-z0-9]/g, ''); }
+
 function scoreFood(f, terms){
-  var n = f.name.toLowerCase(), score = 0;
+  if (f._n === undefined){ f._n = f.name.toLowerCase(); f._c = compact(f._n); }
+  var n = f._n, score = 0;
   for (var i = 0; i < terms.length; i++){
-    var t = terms[i], at = n.indexOf(t);
-    if (at < 0) return -1;
-    if (at === 0) score += 100;
-    else if (n.charAt(at-1) === ' ' || n.charAt(at-1) === ',' || n.charAt(at-1) === '(') score += 50;
-    else score += 10;
+    var t = terms[i];
+    var at = n.indexOf(t), penalty = 0;
+    if (at < 0){
+      var sg = singular(t);
+      if (sg){ at = n.indexOf(sg); penalty = 8; }
+    }
+    if (at < 0){
+      var ct = compact(t);
+      if (ct && f._c.indexOf(ct) >= 0){ score += 22; continue; }   // sourdough ~ sour dough
+      var sg2 = singular(t);
+      if (sg2 && f._c.indexOf(compact(sg2)) >= 0){ score += 14; continue; }
+      return -1;
+    }
+    if (at === 0) score += 100 - penalty;
+    else if (n.charAt(at-1) === ' ' || n.charAt(at-1) === ',' || n.charAt(at-1) === '(') score += 50 - penalty;
+    else score += 10 - penalty;
   }
   return score - n.length * 0.05;
 }
+function queryTerms(q){
+  return q.split(/\s+/).filter(Boolean).map(function(t){ return SYNONYMS[t] || t; })
+          .join(' ').split(/\s+/);
+}
+
 function runSearch(){
   var q = el('q').value.trim().toLowerCase();
   var box = el('results');
@@ -3163,7 +3380,7 @@ function runSearch(){
   var all = allFoods();
   if (activeCat) all = all.filter(function(f){ return f.cat === activeCat; });
   if (q){
-    var terms = q.split(/\s+/);
+    var terms = queryTerms(q);
     var scored = [];
     for (var i = 0; i < all.length; i++){
       var s = scoreFood(all[i], terms);
@@ -3213,33 +3430,66 @@ function openSearch(meal){
 }
 
 /* ----------------------------- quantity ---------------------------------- */
-var qtyFood = null;
+var qtyFood = null, qtyServes = [];
+
 function openQty(f){
   qtyFood = f;
+  qtyServes = serveOptions(f);
   el('qty-name').textContent = f.name;
-  var unit = f.liquid ? 'mL' : 'g';
-  el('qty-amt-lbl').textContent = 'Amount (' + unit + ')';
-  el('qty-per100').textContent = fmtE(f.kj);
-  el('qty-per100-lbl').textContent = unitName() + ' per 100 ' + unit;
-  el('qty-meal').value = searchTarget;
-  el('qty-amt').value = f.liquid ? 250 : 100;
-  var presets = f.liquid ? LIQUID_PRESETS : SOLID_PRESETS;
-  el('qty-presets').innerHTML = presets.map(function(v){
-    return '<button class="chip" data-preset="' + v + '">' + v + ' ' + unit + '</button>';
+  el('qty-serve').innerHTML = qtyServes.map(function(s, i){
+    return '<option value="' + i + '">' + esc(s.label) + '</option>';
   }).join('');
-  updateQty();
+  el('qty-serve').value = '0';
+  el('qty-meal').value = searchTarget;
+  syncServeInput(true);
   sheet('sh-qty');
 }
+
+/* The amount field means "how many portions" for a real serve, and "how many
+   grams" when the raw unit is selected, so its label and step must follow. */
+function syncServeInput(reset){
+  var s = qtyServes[+el('qty-serve').value] || qtyServes[0];
+  var unit = qtyFood.liquid ? 'mL' : 'g';
+  var amt = el('qty-amt');
+  if (s.raw){
+    el('qty-amt-lbl').textContent = 'Amount (' + unit + ')';
+    amt.step = '10'; amt.min = '1';
+    if (reset || +amt.value <= 5) amt.value = 100;
+  } else {
+    el('qty-amt-lbl').textContent = 'How many';
+    amt.step = '0.5'; amt.min = '0.1';
+    if (reset || +amt.value > 20) amt.value = 1;
+  }
+  /* one tap for the amounts people actually eat */
+  el('qty-quick').innerHTML = (s.raw ? [50, 100, 150, 200, 250] : [1, 2, 3])
+    .map(function(v){
+      return '<button class="chip" data-qty="' + v + '">' +
+        (s.raw ? v + ' ' + unit : '× ' + v) + '</button>';
+    }).join('');
+  updateQty();
+}
+
 function qtyEntry(){
-  var f = qtyFood, amt = +el('qty-amt').value || 0, k = amt / 100;
-  return {name:f.name, grams:amt, liquid:!!f.liquid,
+  var f = qtyFood;
+  var s = qtyServes[+el('qty-serve').value] || qtyServes[0];
+  var amt = +el('qty-amt').value || 0;
+  var grams = amt * s.g;
+  var k = grams / 100;
+  return {name:f.name, grams:grams, liquid:!!f.liquid,
+    serve: s.raw ? null : {label:s.label.replace(/\s*\(.*\)$/, ''), n:amt},
     kj:f.kj*k, p:f.p*k, f:f.f*k, sat:f.sat*k, c:f.c*k,
     sug:f.sug*k, fib:f.fib*k, na:f.na*k, alc:f.alc*k};
 }
+
 function updateQty(){
   if (!qtyFood) return;
   var e = qtyEntry();
+  var unit = qtyFood.liquid ? 'mL' : 'g';
   el('qty-kj').textContent = fmtE(e.kj, true);
+  el('qty-g').textContent = g(e.grams, e.grams < 20 ? 1 : 0) + ' ' + unit;
+  el('qty-per100-lbl').textContent = e.serve
+    ? (e.serve.n === 1 ? 'one ' + e.serve.label : g(e.serve.n,1) + ' × ' + e.serve.label)
+    : 'total';
   el('qty-macros').innerHTML =
     '<span class="chip">P <b>' + g(e.p,1) + ' g</b></span>' +
     '<span class="chip">C <b>' + g(e.c,1) + ' g</b></span>' +
@@ -3437,8 +3687,8 @@ function bind(){
       });
       runSearch(); return;
     }
-    var pre = t.closest('[data-preset]');
-    if (pre){ el('qty-amt').value = pre.dataset.preset; updateQty(); return; }
+    var quick = t.closest('[data-qty]');
+    if (quick){ el('qty-amt').value = quick.dataset.qty; updateQty(); return; }
 
     var dF = t.closest('[data-del-food]');
     if (dF){
@@ -3469,6 +3719,7 @@ function bind(){
 
   /* quantity */
   el('qty-amt').addEventListener('input', updateQty);
+  el('qty-serve').addEventListener('change', function(){ syncServeInput(true); });
   el('qty-add').addEventListener('click', function(){
     if (!qtyFood) return;
     var e = qtyEntry();
