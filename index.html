@@ -762,7 +762,11 @@ body.dragging{cursor:grabbing}
       <button class="btn sm ghost" id="bk-paste" style="flex:1">Restore from text</button>
       <button class="btn sm danger" id="bk-reset" style="flex:1">Erase everything</button>
     </div>
-    <div class="readout" style="margin-top:16px"><div class="k">Days logged</div><div class="v num" id="st-days">—</div></div>
+    <div class="readout" style="margin-top:16px"><div class="k">Build<em>Tap-refresh if this is behind</em></div>
+      <div class="v" style="font-size:13px;font-family:var(--mono)" id="st-version">—</div></div>
+    <div class="readout"><div class="k">Served from</div>
+      <div class="v" style="font-size:13px;font-family:var(--body)" id="st-host">—</div></div>
+    <div class="readout"><div class="k">Days logged</div><div class="v num" id="st-days">—</div></div>
     <div class="readout"><div class="k">Storage used</div><div class="v num" id="st-size">—</div></div>
     <p class="note" style="margin-top:14px"><strong>On your phone:</strong> open this page in Safari or
       Chrome and use Share → Add to Home Screen. It then launches full screen and works with no signal.</p>
@@ -4646,12 +4650,26 @@ function offSearch(q){
   }).catch(function(err){
     var b = el('off-slot'); if (!b) return;
     var m = String(err.message || '');
+    var host = location.hostname || 'a local file';
+    var sandboxed = /claude\.ai|anthropic/.test(host);
+    var everyOne = (m.match(/Failed to fetch/g) || []).length >= 2;
     var head = /429/.test(m) ? 'Open Food Facts is rate-limiting you. Give it a minute.'
              : /503/.test(m) ? 'Open Food Facts is refusing traffic right now. Try later.'
+             : sandboxed ? 'This copy cannot reach any other site.'
+             : everyOne ? 'Nothing could be reached.'
              : 'Open Food Facts did not answer.';
+    var why = sandboxed
+      ? 'You are on <strong>' + esc(host) + '</strong>, the claude.ai preview. It blocks every ' +
+        'external host by design, so lookups and sync can never work here. Open the GitHub Pages ' +
+        'copy instead.'
+      : everyOne
+        ? 'Every route failed at the network layer, not with an error from their server — so this ' +
+          'is your connection, not them. Page is served from <strong>' + esc(host) + '</strong>.'
+        : 'Page is served from <strong>' + esc(host) + '</strong>.';
     b.innerHTML = '<div class="empty" style="padding:16px 18px;text-align:left">' +
       '<strong>' + head + '</strong><br>' +
-      '<span style="font-size:11px">Routes tried: ' + esc(m) + '.</span></div>';
+      '<span style="font-size:11px">' + why + '<br>Routes tried: ' + esc(m) +
+      '<br>Build ' + APP_VERSION + '.</span></div>';
   });
 }
 function renderOffResults(q, via){
@@ -4682,6 +4700,10 @@ function renderOffResults(q, via){
    merge in both directions, per row, newest timestamp winning — so a day
    edited on the phone and a different day edited on the laptop both survive.
    ------------------------------------------------------------------------- */
+/* Bumped on every deploy. When something fails, knowing which build is
+   actually loaded is the difference between debugging the bug and debugging
+   a stale cache. */
+var APP_VERSION = '2026.08.18-8';
 var SB_URL = 'https://lsrxqviwgqjpuzzcqcpu.supabase.co';
 var SB_KEY = 'sb_publishable_0lk-0UAlfW-tALEgPiqFHg_8vF9Hp63';
 var AUTH_KEY = 'eatandtrain.auth';
@@ -4945,9 +4967,13 @@ function restore(json){
 /* A sync failure is usually the page not being allowed out, not a bad code. */
 function syncErr(e){
   var m = String((e && e.message) || e);
-  if (/failed to fetch|networkerror|load failed/i.test(m))
-    return 'Could not reach the server. In the claude.ai preview that is expected — it blocks ' +
-           'other hosts. Use the GitHub Pages copy or the saved file.';
+  if (/failed to fetch|networkerror|load failed/i.test(m)){
+    var host = location.hostname || 'a local file';
+    return /claude\.ai|anthropic/.test(host)
+      ? 'You are on the claude.ai preview (' + host + '), which blocks every external host. ' +
+        'Sync only works on the GitHub Pages copy or the saved file.'
+      : 'Could not reach Supabase from ' + host + '. Check your connection.';
+  }
   if (/expired|invalid/i.test(m)) return 'That code was wrong or has expired. Send another.';
   return m;
 }
@@ -4955,6 +4981,8 @@ function syncErr(e){
 function renderDataSheet(){
   renderSync();
   el('bk-text').value = backupText();
+  el('st-version').textContent = APP_VERSION;
+  el('st-host').textContent = location.hostname || 'local file';
   el('st-days').textContent = loggedDays().length;
   var bytes = backupText().length;
   el('st-size').textContent = bytes > 1024 ? (bytes/1024).toFixed(1) + ' KB' : bytes + ' B';
