@@ -78,6 +78,31 @@ from The George Institute is the better Australian packaged-food source — buil
 in-store audits at Coles, Woolworths, ALDI and IGA — but it is available by research
 request rather than open download.
 
+## Vitamins and minerals
+
+Eighteen nutrients tracked against the **Nutrient Reference Values for Australia and
+New Zealand** (NHMRC), read from your sex and age: calcium, iron, magnesium,
+phosphorus, potassium, zinc, selenium, iodine, sodium, vitamins A, C, D, E, thiamin,
+riboflavin, niacin, folate, B6 and B12. Cholesterol and caffeine are tracked without
+targets, since Australia sets none.
+
+Each nutrient is read against two numbers at once. The bar runs from zero to the
+**Upper Level**, with a tick marking the **RDI**, so short of target, in range, and
+over the limit are one glance apart. Tap through for amounts, both reference figures,
+and which foods actually delivered each nutrient that day — the useful half of a
+shortfall is knowing what to eat more of.
+
+Two honesty notes:
+
+- AFCD populates every nutrient for every food, so a low total is a real shortfall
+  rather than a gap in the data. It still only counts what you logged, and knows
+  nothing about supplements.
+- Several Upper Levels were written for a supplement form, not for food: magnesium's
+  applies to supplements, niacin's to nicotinic acid, folate's to folic acid, vitamin
+  A's to preformed retinol, B6's to supplemental pyridoxine, vitamin E's to
+  alpha-tocopherol. Those are shown for reference but never flagged as exceeded,
+  because passing them on diet alone does not mean what the number suggests.
+
 ## How the energy maths works
 
 **Resting metabolic rate.** Three models, and the app uses the best one your inputs
