@@ -10934,7 +10934,7 @@ function renderOffResults(q, via){
 /* Bumped on every deploy. When something fails, knowing which build is
    actually loaded is the difference between debugging the bug and debugging
    a stale cache. */
-var APP_VERSION = '2026.08.18-23';
+var APP_VERSION = '2026.08.18-24';
 var SB_URL = 'https://lsrxqviwgqjpuzzcqcpu.supabase.co';
 var SB_KEY = 'sb_publishable_0lk-0UAlfW-tALEgPiqFHg_8vF9Hp63';
 var AUTH_KEY = 'eatandtrain.auth';
@@ -10997,14 +10997,63 @@ function sbSendCode(email){
     body: JSON.stringify({email: email, create_user: true})
   }).then(sbJson);
 }
-function sbVerify(email, token){
+/* Supabase decides between a six-digit code and a magic link purely from the
+   project's email template: {{ .Token }} sends a code, {{ .ConfirmationURL }}
+   sends a link. This project's template is shared with another app of mine
+   that relies on the link, so rather than change what that app sends, this
+   accepts whatever arrives — a typed code, a pasted link, or the URL you were
+   redirected to after clicking one. */
+
+/* Shape 1: the URL you land on after following a link. The session is already
+   in the fragment; it just needs picking up. This is the one that rescues a
+   link whose redirect went to the wrong app — copy that address bar, paste. */
+function sessionFromUrl(s){
+  var i = s.indexOf('#'); if (i < 0) return null;
+  var q = new URLSearchParams(s.slice(i + 1));
+  var at = q.get('access_token'), rt = q.get('refresh_token');
+  if (!at || !rt) return null;
+  return {access_token:at, refresh_token:rt,
+          expires_at: Date.now() + ((+q.get('expires_in') || 3600) * 1000)};
+}
+
+/* Shape 2: the link itself, unclicked. Its query parameter is named `token`
+   but carries the token *hash*, which verifies without an email address. */
+function hashFromUrl(s){
+  var i = s.indexOf('?'); if (i < 0) return null;
+  var q = new URLSearchParams(s.slice(i + 1).split('#')[0]);
+  var hash = q.get('token_hash') || q.get('token');
+  if (!hash || /^[0-9]{4,8}$/.test(hash)) return null;   // that is a code, not a hash
+  return {token_hash: hash, type: q.get('type') || 'magiclink'};
+}
+
+/* Fill in who the session belongs to. The hash and fragment routes do not
+   carry it, and sync needs the user id to scope every row. */
+function sbWhoAmI(){
+  return fetch(SB_URL + '/auth/v1/user', {headers:sbHeaders(true)})
+    .then(sbJson).then(function(u){
+      saveAuth(Object.assign({}, auth, {email:u.email || (auth && auth.email) || '', user_id:u.id}));
+      return u;
+    });
+}
+
+function sbVerify(email, input){
+  var raw = String(input || '').trim();
+  var url = /^https?:\/\//i.test(raw);
+
+  if (url){
+    var sess = sessionFromUrl(raw);
+    if (sess){ saveAuth(sess); return sbWhoAmI(); }
+  }
+  var link = url ? hashFromUrl(raw) : null;
+  var body = link ? {token_hash: link.token_hash, type: link.type}
+                  : {email: email, token: raw.replace(/[\s-]/g, ''), type: 'email'};
   return fetch(SB_URL + '/auth/v1/verify', {
     method:'POST', headers:sbHeaders(false),
-    body: JSON.stringify({email: email, token: String(token).trim(), type: 'email'})
+    body: JSON.stringify(body)
   }).then(sbJson).then(function(j){
     saveAuth({access_token:j.access_token, refresh_token:j.refresh_token,
               expires_at: Date.now() + (j.expires_in || 3600) * 1000,
-              email: email, user_id: j.user && j.user.id});
+              email: (j.user && j.user.email) || email, user_id: j.user && j.user.id});
     return j;
   });
 }
@@ -11165,8 +11214,10 @@ function renderSync(){
         '<input type="email" id="sync-email" inputmode="email" autocomplete="email" placeholder="you@example.com"></label>' +
       '<button class="btn" id="sync-send">Email me a code</button>' +
       '<div id="sync-code" hidden style="margin-top:12px">' +
-        '<label class="f"><span>Six-digit code</span>' +
-          '<input type="text" id="sync-token" inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="123456"></label>' +
+        '<label class="f"><span>Code, or the link from the email</span>' +
+          '<input type="text" id="sync-token" autocomplete="one-time-code" placeholder="123456"></label>' +
+        '<p class="hint" style="margin-bottom:9px">If the email holds a link rather than a code, ' +
+        'paste the whole link here instead &mdash; long-press it and copy rather than tapping it.</p>' +
         '<button class="btn" id="sync-verify">Sign in</button></div>' +
       '<p class="hint" id="sync-msg" style="margin-top:8px"></p>';
   } else {
@@ -11779,9 +11830,11 @@ function renderOnboard(){
       'If you have used this before, your body, diary and weigh-ins come back with it.</p>' +
       '<label class="f"><span>Email</span><input data-ob="email" type="email" inputmode="email" ' +
         'autocomplete="email" placeholder="you@example.com" value="' + esc(d.email) + '"></label>' +
-      (d.sent ? '<label class="f"><span>Six-digit code</span><input data-ob="code" type="text" ' +
-        'inputmode="numeric" autocomplete="one-time-code" maxlength="8" placeholder="123456" value="' +
-        esc(d.code) + '"></label>' : '') +
+      (d.sent ? '<label class="f"><span>Code, or the link from the email</span>' +
+        '<input data-ob="code" type="text" autocomplete="one-time-code" ' +
+        'placeholder="123456" value="' + esc(d.code) + '"></label>' +
+        '<p class="hint">If the email holds a link rather than a code, paste the whole link here ' +
+        'instead &mdash; long-press it and copy rather than tapping it.</p>' : '') +
       (d.msg ? '<p class="hint">' + esc(d.msg) + '</p>' : '');
     foot.innerHTML =
       '<button class="btn ghost" data-ob-go="welcome">Back</button>' +
