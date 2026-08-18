@@ -630,7 +630,7 @@ select{background-image:linear-gradient(45deg,transparent 50%,var(--ink-3) 50%),
     </div>
     <label class="f" id="c-serve-wrap" hidden><span>Serve size (g)</span><input type="number" id="c-serveg" inputmode="decimal" min="1" step="1" value="100"></label>
     <div class="grid2">
-      <label class="f"><span>Energy (kJ)</span><input type="number" id="c-kj" inputmode="decimal" min="0" step="1"></label>
+      <label class="f"><span id="c-kj-lbl">Energy (kJ)</span><input type="number" id="c-kj" inputmode="decimal" min="0" step="1"></label>
       <label class="f"><span>Protein (g)</span><input type="number" id="c-p" inputmode="decimal" min="0" step="0.1"></label>
       <label class="f"><span>Fat (g)</span><input type="number" id="c-f" inputmode="decimal" min="0" step="0.1"></label>
       <label class="f"><span>Saturated (g)</span><input type="number" id="c-sat" inputmode="decimal" min="0" step="0.1"></label>
@@ -639,7 +639,7 @@ select{background-image:linear-gradient(45deg,transparent 50%,var(--ink-3) 50%),
       <label class="f"><span>Fibre (g)</span><input type="number" id="c-fib" inputmode="decimal" min="0" step="0.1"></label>
       <label class="f"><span>Sodium (mg)</span><input type="number" id="c-na" inputmode="decimal" min="0" step="1"></label>
     </div>
-    <p class="hint">Straight off the Nutrition Information Panel. If the panel only lists a serve,
+    <p class="hint" id="c-hint">Straight off the Nutrition Information Panel. If the panel only lists a serve,
       switch to <strong>Per serve</strong> and enter the serve size — the rest is worked out for you.</p>
     <button class="btn" id="c-save" style="margin-top:10px">Save food</button>
   </div>
@@ -3458,9 +3458,10 @@ function bind(){
     var sg = +el('c-serveg').value || 100;
     var k = perServe ? 100 / sg : 1;
     function v(id){ return Math.max(+el(id).value || 0, 0) * k; }
+    var kjIn = v('c-kj') * (isKcal() ? KJ_PER_KCAL : 1);
     invalidateFoods();
     S.custom.push({id:'c' + S.custom.length, name:name, cat:'Your foods', liquid:false,
-      kj:v('c-kj'), p:v('c-p'), f:v('c-f'), sat:v('c-sat'), c:v('c-c'),
+      kj:kjIn, p:v('c-p'), f:v('c-f'), sat:v('c-sat'), c:v('c-c'),
       sug:v('c-sug'), fib:v('c-fib'), na:v('c-na'), alc:0});
     save();
     ['c-name','c-kj','c-p','c-f','c-sat','c-c','c-sug','c-fib','c-na'].forEach(function(i){ el(i).value = ''; });
@@ -3573,8 +3574,17 @@ function bind(){
   });
 }
 
+function syncUnitLabels(){
+  el('c-kj-lbl').textContent = 'Energy (' + (isKcal() ? 'Cal' : 'kJ') + ')';
+  el('c-hint').innerHTML = 'Straight off the Nutrition Information Panel' +
+    (isKcal() ? ' — Australian panels lead with kilojoules, so flip the header toggle to kJ if that is ' +
+                'what you are copying.' : '.') +
+    ' If the panel only lists a serve, switch to <strong>Per serve</strong> and enter the serve size — ' +
+    'the rest is worked out for you.';
+}
 function setUnit(u){
   S.profile.unit = u; save();
+  syncUnitLabels();
   el('u-kj').setAttribute('aria-pressed', u === 'kj' ? 'true' : 'false');
   el('u-kcal').setAttribute('aria-pressed', u === 'kcal' ? 'true' : 'false');
   renderAll();
