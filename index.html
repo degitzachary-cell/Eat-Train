@@ -4523,10 +4523,14 @@ function offToFood(p, i){
   return f;
 }
 
-function offFetch(url){
+function offFetch(url, opts){
+  opts = opts || {};
   var ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
   var timer = setTimeout(function(){ if (ctl) ctl.abort(); }, 9000);
-  return fetch(url, ctl ? {signal:ctl.signal} : undefined)
+  var init = {method: opts.method || 'GET'};
+  if (ctl) init.signal = ctl.signal;
+  if (opts.body){ init.body = JSON.stringify(opts.body); init.headers = {'Content-Type':'application/json'}; }
+  return fetch(url, init)
     .then(function(r){
       if (!r.ok) throw new Error('http ' + r.status);
       return r.json();
@@ -4542,21 +4546,38 @@ var offResults = [];
    v2 kept as a fallback while it is still supported. */
 function offEndpoints(q){
   var digits = q.replace(/\s/g, '');
+  var list;
   if (/^\d{8,14}$/.test(digits)){
     var c = encodeURIComponent(digits);
-    return [
+    list = [
       {u:OFF_BASE + '/api/v3/product/' + c + '.json?fields=' + OFF_FIELDS, name:'v3 product', kind:'read'},
       {u:OFF_BASE + '/api/v2/product/' + c + '.json?fields=' + OFF_FIELDS, name:'v2 product', kind:'read'}
     ];
+  } else {
+    var e = encodeURIComponent(q), SAL = 'https://search.openfoodfacts.org';
+    /* Search-a-licious documents POST /search. GET is tried first because it
+       needs no CORS preflight, so it fails faster and cheaper when it is not
+       the right shape. */
+    list = [
+      {u:SAL + '/search?q=' + e + '&page_size=20', name:'GET /search', kind:'search'},
+      {u:SAL + '/search', name:'POST /search', kind:'search',
+       method:'POST', body:{q:q, page_size:20}},
+      {u:SAL + '/api/v1/search?q=' + e + '&page_size=20', name:'GET /api/v1/search', kind:'search'},
+      {u:OFF_BASE + '/cgi/search.pl?search_terms=' + e +
+         '&search_simple=1&action=process&json=1&page_size=20&fields=' + OFF_FIELDS,
+       name:'legacy cgi', kind:'search'}
+    ];
   }
-  var e = encodeURIComponent(q);
-  return [
-    {u:'https://search.openfoodfacts.org/api/v1/search?q=' + e + '&page_size=20', name:'search-a-licious', kind:'search'},
-    {u:'https://search.openfoodfacts.org/search?q=' + e + '&page_size=20', name:'search-a-licious alt', kind:'search'},
-    {u:OFF_BASE + '/cgi/search.pl?search_terms=' + e +
-       '&search_simple=1&action=process&json=1&page_size=20&fields=' + OFF_FIELDS, name:'legacy cgi', kind:'search'}
-  ];
+  /* Every attempt costs a request against a rate limit that bans, so once a
+     route answers, put it first from then on. Steady state is one request. */
+  var last = S.offRoute;
+  if (last){
+    var i = list.findIndex(function(x){ return x.name === last; });
+    if (i > 0) list.unshift(list.splice(i, 1)[0]);
+  }
+  return list;
 }
+
 function offRows(j){
   if (!j) return [];
   if (Array.isArray(j.hits)) return j.hits;
@@ -4591,9 +4612,10 @@ function offSearch(q){
 
   function attempt(i){
     if (i >= eps.length) return Promise.reject(new Error('all endpoints failed: ' + tried.join(', ')));
-    return offFetch(eps[i].u).then(function(j){
+    return offFetch(eps[i].u, eps[i]).then(function(j){
       var rows = offRows(j);
       if (!rows.length && i < eps.length - 1){ tried.push(eps[i].name + ' empty'); return attempt(i + 1); }
+      if (S.offRoute !== eps[i].name){ S.offRoute = eps[i].name; save(); }
       return {rows:rows, via:eps[i].name};
     }).catch(function(err){
       tried.push(eps[i].name + ' ' + (err.message || 'failed'));
