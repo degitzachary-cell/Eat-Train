@@ -3236,7 +3236,8 @@ function renderRunFields(){
     html += '<div class="grid2">' +
       fld('dur', 'Minutes', 'number', saved('run.dur', '45')) +
       fld('pace', 'Pace min/km', 'text', saved('run.pace', '5:30')) +
-      fld('gain', 'Elevation gain m', 'number', saved('run.gain', '')) + '</div>';
+      fld('gain', 'Elevation gain m', 'number', saved('run.gain', '')) +
+      fld('actual', 'Actual km from watch', 'number', saved('run.actual', '')) + '</div>';
     var onS = saved('run.strides', '0') === '1';
     html += toggle('str-tog', 'str', [['0','No strides'],['1','+ Strides']], onS ? '1' : '0') +
       '<div id="rf-str-fields"' + (onS ? '' : ' hidden') + '><div class="grid3">' +
@@ -3283,7 +3284,14 @@ function renderRunFields(){
     html += sub('Cool down') +
       '<div class="grid2">' +
         fld('cd', 'Minutes', 'number', saved('wo.cd', '15')) +
-        fld('cdp', 'Pace min/km', 'text', saved('wo.cdp', '5:30')) + '</div>';
+        fld('cdp', 'Pace min/km', 'text', saved('wo.cdp', '5:30')) + '</div>' +
+      sub('Measured') +
+      '<div class="grid2">' +
+        fld('actual', 'Actual km from watch', 'number', saved('wo.actual', '')) +
+        fld('gain', 'Elevation gain m', 'number', saved('wo.gain', '')) + '</div>' +
+      '<p class="hint">Optional. A plan only accounts for the running it describes — ' +
+      'jogging between rep starts, drills and ground covered during a carry are all real ' +
+      'distance it cannot see. Enter what your watch said and the energy follows it.</p>';
   }
 
   html += toggle('epoc', 'epoc', [['0','Session only'],['1','+ 6% afterburn']], saved('epoc','0'));
@@ -3367,11 +3375,27 @@ function buildRun(){
 
   var kj = 0, mins2 = 0, km2 = 0;
   blocks.forEach(function(b){ b.kj = blockKj(b); kj += b.kj; mins2 += b.mins || 0; km2 += b.km || 0; });
+
+  /* A watch beats a plan. Net running cost is near enough proportional to
+     distance, so scaling the moving blocks by the measured ratio prices the
+     ground the plan never described — the jog to the start line, the carry
+     that travels, a warm up quicker than the one you typed. */
+  var actual = parseFloat(runVal('actual', '')) || 0;
+  var planned = km2, scaled = false;
+  if (actual > 0 && planned > 0){
+    var ratio = actual / planned;
+    blocks.forEach(function(b){
+      if (b.kind === 'run' || b.kind === 'walk'){ b.km *= ratio; b.kj *= ratio; }
+    });
+    kj = blocks.reduce(function(a, b){ return a + b.kj; }, 0);
+    km2 = actual;
+    scaled = true;
+  }
   var epocOn = el('rf-epoc') &&
                el('rf-epoc').querySelector('[aria-pressed="true"]').dataset.epoc === '1';
   var epocKj = epocOn ? kj * 0.06 : 0;
   return {type:t, name:name, blocks:blocks, kj:kj + epocKj, epoc:epocKj,
-          mins:mins2, km:km2, summary:parts.join(' · ')};
+          mins:mins2, km:km2, planned:planned, scaled:scaled, summary:parts.join(' · ')};
 }
 
 function updateRun(){
@@ -3382,7 +3406,13 @@ function updateRun(){
   el('run-breakdown').innerHTML = r.blocks.filter(function(b){ return b.mins > 0; }).map(function(b){
     return '<span class="chip">' + esc(b.label) + ' <b>' + fmtE(b.kj) + '</b></span>';
   }).join('') + (r.epoc ? '<span class="chip">Afterburn <b>' + fmtE(r.epoc) + '</b></span>' : '');
-  el('run-note').innerHTML = 'Energy from the ACSM running equations at ' + g(S.profile.wt,1) +
+  el('run-note').innerHTML = (r.scaled
+    ? '<strong>Using your measured ' + g(r.km,2) + ' km</strong> against a plan that describes ' +
+      g(r.planned,2) + ' km — energy scaled by ' +
+      (r.km / r.planned >= 1 ? '+' : '') + Math.round((r.km / r.planned - 1) * 100) + '%. ' +
+      'The difference is ground the plan does not mention.<br>'
+    : '') +
+    'Energy from the ACSM running equations at ' + g(S.profile.wt,1) +
     ' kg, net of the resting cost your baseline already covers. Net running cost works out near ' +
     '<strong>1 kcal per kg per km</strong> whatever the pace &mdash; pace changes how long you are out ' +
     'there, not much what a kilometre costs.';

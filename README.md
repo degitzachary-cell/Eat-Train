@@ -110,6 +110,13 @@ speed-independent on the flat. Pace changes how long you are out there far more 
 it changes what a kilometre costs. Elevation is where a session really departs from
 that, which is why gain is an input.
 
+Both modes take an optional **actual distance from your watch**. A plan only accounts
+for the running it describes — jogging between rep starts, drills, and ground covered
+during a loaded carry are all real distance it cannot see. When measured distance is
+entered, the running blocks are scaled to it and the energy follows, which is sound
+because net running cost is close to proportional to distance. Non-running blocks are
+left alone.
+
 Afterburn (EPOC) is an optional flat 6%, off by default. It is real after hard
 sessions but too variable to state precisely, so it is a labelled choice rather than
 something folded silently into the number.
