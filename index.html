@@ -733,7 +733,13 @@ body.dragging{cursor:grabbing}
 <div class="sheet" id="sh-custom" role="dialog" aria-modal="true" aria-label="New food">
   <div class="sheet-head"><h2>New food</h2><button class="iconbtn sheet-close" aria-label="Close">✕</button></div>
   <div class="sheet-body">
+    <button class="btn" id="c-scan" style="margin-bottom:12px">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16">
+        <path d="M3 7V4h3M18 4h3v3M21 17v3h-3M6 20H3v-3"/><path d="M7 8v8M10 8v8M13 8v8M17 8v8"/></svg>
+      Scan a barcode</button>
     <label class="f"><span>Name</span><input type="text" id="c-name" placeholder="e.g. Mum's lasagne" autocomplete="off"></label>
+    <label class="f"><span>Barcode <em style="text-transform:none;letter-spacing:0">— optional</em></span>
+      <input type="text" id="c-code" inputmode="numeric" placeholder="—"></label>
     <div class="seg" id="c-basis" role="group" aria-label="Entry basis" style="margin-bottom:12px">
       <button data-basis="100" aria-pressed="true">Per 100 g</button>
       <button data-basis="serve" aria-pressed="false">Per serve</button>
@@ -749,8 +755,9 @@ body.dragging{cursor:grabbing}
       <label class="f"><span>Fibre (g)</span><input type="number" id="c-fib" inputmode="decimal" min="0" step="0.1"></label>
       <label class="f"><span>Sodium (mg)</span><input type="number" id="c-na" inputmode="decimal" min="0" step="1"></label>
     </div>
-    <p class="hint" id="c-hint">Straight off the Nutrition Information Panel. If the panel only lists a serve,
+    <p class="hint" id="c-hint2">Straight off the Nutrition Information Panel. If the panel only lists a serve,
       switch to <strong>Per serve</strong> and enter the serve size — the rest is worked out for you.</p>
+    <p class="hint" id="c-hint"></p>
     <button class="btn" id="c-save" style="margin-top:10px">Save food</button>
   </div>
 </div>
@@ -759,6 +766,24 @@ body.dragging{cursor:grabbing}
 <div class="sheet" id="sh-move" role="dialog" aria-modal="true" aria-label="Move to meal">
   <div class="sheet-head"><h2 id="move-title">Move</h2><button class="iconbtn sheet-close" aria-label="Close">&#10005;</button></div>
   <div class="sheet-body" id="move-body"></div>
+</div>
+
+<!-- barcode scanner -->
+<div class="sheet" id="sh-scan" role="dialog" aria-modal="true" aria-label="Scan a barcode">
+  <div class="sheet-head"><h2>Scan a barcode</h2><button class="iconbtn sheet-close" aria-label="Close">&#10005;</button></div>
+  <div class="sheet-body">
+    <div style="position:relative;border-radius:var(--r);overflow:hidden;background:#000;aspect-ratio:4/3">
+      <video id="scan-video" playsinline muted autoplay
+             style="width:100%;height:100%;object-fit:cover"></video>
+      <div style="position:absolute;left:8%;right:8%;top:38%;height:24%;
+                  border:2px solid var(--accent);border-radius:8px;
+                  box-shadow:0 0 0 100vmax rgba(0,0,0,.35)"></div>
+    </div>
+    <p class="hint" id="scan-note" style="margin-top:10px">Starting the camera…</p>
+    <label class="f" style="margin-top:10px"><span>Or type it</span>
+      <input type="text" id="scan-manual" inputmode="numeric" placeholder="9300601000012"></label>
+    <button class="btn ghost" id="scan-go">Look up this number</button>
+  </div>
 </div>
 
 <!-- save recipe -->
@@ -4474,6 +4499,7 @@ var moveCtx = null;
 /* ------------------------------- sheets ---------------------------------- */
 var openSheet = null;
 function sheet(id){
+  if (openSheet === 'sh-scan' && id !== 'sh-scan') stopScan();
   closeSheet();
   openSheet = id;
   el('sheet-bg').classList.add('on');
@@ -4481,6 +4507,7 @@ function sheet(id){
   document.body.style.overflow = 'hidden';
 }
 function closeSheet(){
+  if (openSheet === 'sh-scan') stopScan();
   if (openSheet){ el(openSheet).classList.remove('on'); openSheet = null; }
   el('sheet-bg').classList.remove('on');
   document.body.style.overflow = '';
@@ -4866,6 +4893,201 @@ function importCSV(text){
   toast(msg + '.');
 }
 
+/* ------------------------------ barcodes ----------------------------------
+   BarcodeDetector is native in Chrome and Edge but absent from every browser
+   on iOS, which are all WebKit underneath — so relying on it alone would mean
+   a scanner that silently does nothing on an iPhone. The fallback below
+   decodes EAN-13 and UPC-A from the camera frame directly, which keeps the app
+   free of a WASM dependency it could not load offline anyway.
+
+   EAN-13 is 95 modules: guard 101, six digits of seven, centre guard 01010,
+   six more, guard 101. The left six are encoded L or G, and the pattern of
+   which is which spells out the thirteenth digit.
+   ------------------------------------------------------------------------- */
+var EAN_L = ['0001101','0011001','0010011','0111101','0100011',
+             '0110001','0101111','0111011','0110111','0001011'];
+var EAN_G = ['0100111','0110011','0011011','0100001','0011101',
+             '0111001','0000101','0010001','0001001','0010111'];
+var EAN_R = ['1110010','1100110','1101100','1000010','1011100',
+             '1001110','1010000','1000100','1001000','1110100'];
+var EAN_PARITY = ['000000','001011','001101','001110','010011',
+                  '011001','011100','010101','010110','011010'];
+
+function eanChecksum(d){
+  var s = 0;
+  for (var i = 0; i < 12; i++) s += (+d[i]) * (i % 2 === 0 ? 1 : 3);
+  return (10 - (s % 10)) % 10;
+}
+/* One row of pixels -> bits, using the midpoint between the darkest and
+   lightest samples on that row rather than a fixed threshold, so it copes
+   with a phone torch on one side of the pack. */
+function rowToBits(data, w, y){
+  var lo = 255, hi = 0, g = new Array(w);
+  for (var x = 0; x < w; x++){
+    var i = (y * w + x) * 4;
+    var v = (data[i] * 299 + data[i+1] * 587 + data[i+2] * 114) / 1000;
+    g[x] = v; if (v < lo) lo = v; if (v > hi) hi = v;
+  }
+  if (hi - lo < 40) return null;                 // no contrast, not a barcode
+  var t = (lo + hi) / 2, bits = new Array(w);
+  for (var x2 = 0; x2 < w; x2++) bits[x2] = g[x2] < t ? 1 : 0;
+  return bits;
+}
+function decodeEanRow(bits){
+  var w = bits.length;
+  var first = -1, last = -1;
+  for (var i = 0; i < w; i++) if (bits[i]){ first = i; break; }
+  for (var j = w - 1; j >= 0; j--) if (bits[j]){ last = j; break; }
+  if (first < 0 || last - first < 60) return null;
+  var span = last - first + 1, mod = span / 95;
+  if (mod < 0.8) return null;
+  /* Sample the centre of each module rather than its edge. */
+  var m = new Array(95);
+  for (var k = 0; k < 95; k++){
+    var px = Math.round(first + (k + 0.5) * mod);
+    m[k] = bits[Math.max(0, Math.min(px, w - 1))];
+  }
+  var s = m.join('');
+  if (s.slice(0,3) !== '101' || s.slice(45,50) !== '01010' || s.slice(92,95) !== '101') return null;
+
+  var parity = '', digits = '';
+  for (var d = 0; d < 6; d++){
+    var chunk = s.slice(3 + d * 7, 10 + d * 7);
+    var li = EAN_L.indexOf(chunk), gi = EAN_G.indexOf(chunk);
+    if (li >= 0){ parity += '0'; digits += li; }
+    else if (gi >= 0){ parity += '1'; digits += gi; }
+    else return null;
+  }
+  for (var e = 0; e < 6; e++){
+    var ch = s.slice(50 + e * 7, 57 + e * 7);
+    var ri = EAN_R.indexOf(ch);
+    if (ri < 0) return null;
+    digits += ri;
+  }
+  var lead = EAN_PARITY.indexOf(parity);
+  if (lead < 0) return null;
+  var code = String(lead) + digits;
+  if (+code[12] !== eanChecksum(code)) return null;
+  return code;
+}
+/* Try a spread of rows: a barcode only has to cross one of them cleanly. */
+function decodeFrame(ctx, w, h){
+  var img;
+  try { img = ctx.getImageData(0, 0, w, h); } catch(e){ return null; }
+  var rows = 24;
+  for (var r = 1; r < rows; r++){
+    var y = Math.round(h * r / rows);
+    var bits = rowToBits(img.data, w, y);
+    if (!bits) continue;
+    var code = decodeEanRow(bits);
+    if (code) return code;
+    bits.reverse();                              // pack held upside down
+    code = decodeEanRow(bits);
+    if (code) return code;
+  }
+  return null;
+}
+
+var scan = null;
+function stopScan(){
+  if (!scan) return;
+  if (scan.raf) cancelAnimationFrame(scan.raf);
+  if (scan.stream) scan.stream.getTracks().forEach(function(t){ t.stop(); });
+  scan = null;
+}
+function startScan(){
+  var video = el('scan-video'), note = el('scan-note');
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    note.textContent = 'This browser will not give a page camera access. Type the barcode instead.';
+    return;
+  }
+  note.textContent = 'Point it at the barcode. Fill the width of the box.';
+  navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},
+      width:{ideal:1280}, height:{ideal:720}}, audio:false})
+    .then(function(stream){
+      scan = {stream:stream, raf:null, native:null, busy:false};
+      video.srcObject = stream;
+      video.play();
+      if (typeof BarcodeDetector !== 'undefined'){
+        try {
+          scan.native = new BarcodeDetector({formats:['ean_13','ean_8','upc_a','upc_e']});
+          note.textContent = 'Point it at the barcode.';
+        } catch(e){ scan.native = null; }
+      }
+      var cv = document.createElement('canvas'), ctx = cv.getContext('2d', {willReadFrequently:true});
+      function tick(){
+        if (!scan) return;
+        if (video.readyState >= 2 && !scan.busy){
+          var vw = video.videoWidth || 1280, vh = video.videoHeight || 720;
+          /* Analyse only the guide box, blown up. A barcode filling that box
+             then lands on plenty of pixels per module, which is what the
+             fallback decoder needs and what the frame at large did not give. */
+          var sx = vw * 0.08, sw = vw * 0.84, sy = vh * 0.34, sh = vh * 0.32;
+          var w = 900, hh = Math.max(Math.round(sh / sw * w), 60);
+          cv.width = w; cv.height = hh;
+          ctx.drawImage(video, sx, sy, sw, sh, 0, 0, w, hh);
+          if (scan.native){
+            scan.busy = true;
+            scan.native.detect(cv).then(function(res){
+              scan.busy = false;
+              if (res && res.length) onBarcode(res[0].rawValue);
+            }).catch(function(){ scan.busy = false; scan.native = null; });
+          } else {
+            var code = decodeFrame(ctx, w, hh);
+            if (code) onBarcode(code);
+          }
+        }
+        if (scan) scan.raf = requestAnimationFrame(tick);
+      }
+      tick();
+    })
+    .catch(function(err){
+      note.textContent = /denied|NotAllowed/i.test(String(err))
+        ? 'Camera access was refused. Allow it in your browser settings, or type the barcode.'
+        : 'No camera available here. Type the barcode instead.';
+    });
+}
+function onBarcode(code){
+  code = String(code).replace(/\D/g, '');
+  if (!/^\d{8,14}$/.test(code)) return;
+  stopScan();
+  el('scan-note').textContent = 'Found ' + code + ' — looking it up…';
+  offFetch(OFF_BASE + '/api/v3/product/' + encodeURIComponent(code))
+    .then(function(j){
+      var p = (j && j.product) || null;
+      var f = p ? offToFood(p, 0) : null;
+      if (!f) throw new Error('not in the database');
+      closeSheet();
+      fillNewFood(f, code);
+      toast('Found ' + f.name);
+    })
+    .catch(function(){
+      closeSheet();
+      fillNewFood(null, code);
+      toast('Barcode ' + code + ' is not in Open Food Facts — type the panel.');
+    });
+}
+/* Drop whatever was found into the New food form so it can be checked and
+   corrected against the pack before saving. */
+function fillNewFood(f, code){
+  sheet('sh-custom');
+  el('c-name').value = f ? f.name : '';
+  el('c-code').value = code || '';
+  press('c-basis', 'basis', '100');
+  el('c-serve-wrap').hidden = true;
+  var kcal = isKcal();
+  function set(id, v){ el(id).value = v ? g(v, 2) : ''; }
+  set('c-kj', f ? (kcal ? f.kj / KJ_PER_KCAL : f.kj) : 0);
+  set('c-p', f && f.p); set('c-f', f && f.f); set('c-sat', f && f.sat);
+  set('c-c', f && f.c); set('c-sug', f && f.sug); set('c-fib', f && f.fib);
+  set('c-na', f && f.na);
+  el('c-hint').innerHTML = f
+    ? 'Pulled from Open Food Facts for <strong>' + esc(code) + '</strong>. It is crowd-sourced ' +
+      'and often wrong &mdash; check it against the panel before saving.'
+    : 'Nothing in Open Food Facts for <strong>' + esc(code) + '</strong>. Type the panel and it is ' +
+      'saved here for next time.';
+}
+
 /* ------------------------ Open Food Facts lookup --------------------------
    Strictly opt-in, and only ever on an explicit tap. The request carries the
    search text and nothing else — no account, no identifier, no history. What
@@ -5088,7 +5310,7 @@ function renderOffResults(q, via){
 /* Bumped on every deploy. When something fails, knowing which build is
    actually loaded is the difference between debugging the bug and debugging
    a stale cache. */
-var APP_VERSION = '2026.08.18-13';
+var APP_VERSION = '2026.08.18-14';
 var SB_URL = 'https://lsrxqviwgqjpuzzcqcpu.supabase.co';
 var SB_KEY = 'sb_publishable_0lk-0UAlfW-tALEgPiqFHg_8vF9Hp63';
 var AUTH_KEY = 'eatandtrain.auth';
@@ -5509,6 +5731,14 @@ function bind(){
 
   /* food tab */
   bindDrag();
+  el('c-scan').addEventListener('click', function(){
+    sheet('sh-scan'); el('scan-manual').value = ''; startScan();
+  });
+  el('scan-go').addEventListener('click', function(){
+    var v = (el('scan-manual').value || '').replace(/\D/g, '');
+    if (!/^\d{8,14}$/.test(v)){ el('scan-note').textContent = 'A barcode is 8 to 14 digits.'; return; }
+    onBarcode(v);
+  });
   el('rec-save').addEventListener('click', function(){
     var nm = (el('rec-name').value || '').trim();
     if (!nm){ toast('Give the recipe a name.'); return; }
@@ -5564,10 +5794,12 @@ function bind(){
     var kjIn = v('c-kj') * (isKcal() ? KJ_PER_KCAL : 1);
     invalidateFoods();
     S.custom.push({id:'c' + S.custom.length, name:name, cat:'Your foods', liquid:false,
+      code:(el('c-code').value || '').replace(/\D/g, '') || null,
       kj:kjIn, p:v('c-p'), f:v('c-f'), sat:v('c-sat'), c:v('c-c'),
       sug:v('c-sug'), fib:v('c-fib'), na:v('c-na'), alc:0});
     save();
-    ['c-name','c-kj','c-p','c-f','c-sat','c-c','c-sug','c-fib','c-na'].forEach(function(i){ el(i).value = ''; });
+    ['c-name','c-code','c-kj','c-p','c-f','c-sat','c-c','c-sug','c-fib','c-na'].forEach(function(i){ el(i).value = ''; });
+    el('c-hint').innerHTML = '';
     renderFoodView(); renderCats(); closeSheet();
     toast('“' + name + '” saved.');
   });

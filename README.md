@@ -63,6 +63,30 @@ ways to add those:
   barcode-level product database, ODbL licensed. Filter its advanced search by brand
   or country, download the result as CSV, and load it under **Supermarket products**.
 
+### Barcode scanning
+
+**New food** takes a barcode. Scan it with the camera and the panel is pulled from Open
+Food Facts and dropped into the form to check against the pack before saving; type it
+instead if you prefer, and an unknown barcode is kept with whatever you type so the
+product is there next time.
+
+`BarcodeDetector` is native in Chrome and Edge and used where it exists. It is absent
+from every browser on iOS — they are all WebKit underneath — so relying on it would
+mean a scanner that silently does nothing on an iPhone. The fallback decodes EAN-13 and
+UPC-A from the camera frame directly: threshold each row at the midpoint of its own
+darkest and lightest pixels, find the guard patterns, sample the centre of all 95
+modules, decode the left six by L/G parity to recover the thirteenth digit, and verify
+the checksum. Only the guide box is analysed, blown up, so a barcode filling it lands on
+enough pixels per module.
+
+That keeps the app free of a WebAssembly dependency it could not load offline anyway.
+It is tested against generated codes at several scales, upside down, with noise, and
+against random bars to confirm it does not invent a result. It will not match a
+dedicated scanning library on a creased or curved pack.
+
+Scanning needs camera permission and a secure origin, so it works from GitHub Pages and
+not from a local file opened with `file://`.
+
 ### Live lookup
 
 The app can also query Open Food Facts directly, which is off by default. Switched on
