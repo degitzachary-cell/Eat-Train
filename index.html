@@ -320,7 +320,7 @@ body.dragging{cursor:grabbing}
         <button id="u-kj" aria-pressed="true">kJ</button>
         <button id="u-kcal" aria-pressed="false">Cal</button>
       </div>
-      <button class="iconbtn" id="btn-data" aria-label="Backup and data">
+      <button class="iconbtn" id="btn-data" aria-label="Account, sync and backup">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="17" height="17">
           <ellipse cx="12" cy="6" rx="7.5" ry="3"/><path d="M4.5 6v12c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3V6"/><path d="M4.5 12c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3"/>
         </svg>
@@ -514,7 +514,12 @@ body.dragging{cursor:grabbing}
 
 <!-- ============ BODY ============ -->
 <section class="view" id="v-body">
-  <div class="card" style="margin-top:12px">
+  <button class="card" id="acct-card" style="display:block;width:100%;text-align:left;margin-top:12px">
+    <div class="card-head"><h2>Account</h2><span class="right" id="acct-state">Not signed in</span></div>
+    <div id="acct-body"></div>
+  </button>
+
+  <div class="card">
     <div class="card-head"><h2>Markers</h2><span class="right">Required</span></div>
     <div class="grid2">
       <label class="f"><span>Sex</span>
@@ -660,7 +665,7 @@ body.dragging{cursor:grabbing}
     <button class="tab" data-v="train">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M6.5 6.5v11M3.5 9v6M17.5 6.5v11M20.5 9v6M6.5 12h11"/></svg>Train</button>
     <button class="tab" data-v="body">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="5" r="2.4"/><path d="M12 7.5v6m0 0l-3.5 7M12 13.5l3.5 7M6.5 10h11"/></svg>Body</button>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="8" r="3.6"/><path d="M4.8 20a7.2 7.2 0 0114.4 0"/></svg>Me</button>
     <button class="tab" data-v="trends">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 19V5M4 19h16"/><path d="M7.5 15l3.5-4.5 3 2.5 4.5-6"/></svg>Trends</button>
   </div>
@@ -743,7 +748,7 @@ body.dragging{cursor:grabbing}
 
 <!-- data sheet -->
 <div class="sheet" id="sh-data" role="dialog" aria-modal="true" aria-label="Data">
-  <div class="sheet-head"><h2>Your data</h2><button class="iconbtn sheet-close" aria-label="Close">✕</button></div>
+  <div class="sheet-head"><h2>Account &amp; data</h2><button class="iconbtn sheet-close" aria-label="Close">✕</button></div>
   <div class="sheet-body">
     <div class="card" style="background:var(--surface-2); box-shadow:none; margin:0 0 14px">
       <div class="card-head"><h2>Sync</h2><span class="right" id="sync-state">Not signed in</span></div>
@@ -3078,7 +3083,7 @@ function renderMicros(){
   if (over) bits.push(over + ' above the upper limit');
   el('micro-note').innerHTML = (bits.length ? bits.join(' · ') : 'Everything between the RDI and the upper limit') +
     '. The tick on each bar is the RDI, the bar ends at the upper limit — both read from ' +
-    'your sex and age on the Body tab (' + (S.profile.sex === 'f' ? 'woman' : 'man') + ', ' +
+    'your sex and age on the Me tab (' + (S.profile.sex === 'f' ? 'woman' : 'man') + ', ' +
     (+S.profile.age || 30) + ').' +
     (mt.noMicro ? ' <strong>' + mt.noMicro + ' item' + (mt.noMicro === 1 ? '' : 's') +
       ' logged before this existed carry no micronutrient data.</strong>' : '') +
@@ -3595,6 +3600,7 @@ function updateWorkoutPreview(){
 }
 
 function renderBodyView(){
+  renderAccountCard();
   var p = S.profile;
   el('p-sex').value = p.sex; el('p-age').value = p.age; el('p-ht').value = p.ht;
   el('p-wt').value = p.wt;
@@ -3693,6 +3699,25 @@ function renderBodyView(){
       '<button class="row-del" data-del-wt="' + esc(w.d) + '" aria-label="Remove weigh-in">' +
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M5 5l14 14M19 5L5 19"/></svg></button></div>';
   }).join('') : '<div class="empty">No weigh-ins yet</div>';
+}
+
+/* Sign-in used to live only behind an icon in the header, which nobody found.
+   It also belongs here, next to everything else personal. */
+function renderAccountCard(){
+  var st = el('acct-state'), body = el('acct-body');
+  if (!st || !body) return;
+  if (auth){
+    st.textContent = S.lastSync ? 'Synced ' + timeAgo(S.lastSync) : 'Signed in';
+    body.innerHTML = '<p class="note">Signed in as <strong>' + esc(auth.email || '') + '</strong>. ' +
+      'Your days, weigh-ins and foods are kept on the server as well as on this device. ' +
+      'Tap to manage or sign out.</p>';
+  } else {
+    st.innerHTML = '<span class="badge warn">Local only</span>';
+    body.innerHTML = '<p class="note">Everything is on this device and nowhere else — clear your ' +
+      'browser data or change phones and it is gone.</p>' +
+      '<div class="btn" style="margin-top:11px">Sign in to sync</div>' +
+      '<p class="hint" style="margin-top:7px">A six-digit code by email. No password.</p>';
+  }
 }
 
 function press(groupId, attr, val){
@@ -4703,7 +4728,7 @@ function renderOffResults(q, via){
 /* Bumped on every deploy. When something fails, knowing which build is
    actually loaded is the difference between debugging the bug and debugging
    a stale cache. */
-var APP_VERSION = '2026.08.18-8';
+var APP_VERSION = '2026.08.18-10';
 var SB_URL = 'https://lsrxqviwgqjpuzzcqcpu.supabase.co';
 var SB_KEY = 'sb_publishable_0lk-0UAlfW-tALEgPiqFHg_8vF9Hp63';
 var AUTH_KEY = 'eatandtrain.auth';
@@ -5116,6 +5141,7 @@ function bind(){
 
   /* food tab */
   bindDrag();
+  el('acct-card').addEventListener('click', function(){ renderDataSheet(); sheet('sh-data'); });
   el('micro-card').addEventListener('click', function(){ renderMicroDetail(); sheet('sh-micro'); });
   el('btn-browse').addEventListener('click', function(){ openSearch('snack'); });
   el('btn-newfood').addEventListener('click', function(){ sheet('sh-custom'); });
@@ -5305,7 +5331,7 @@ function bind(){
       if (!code){ msg.textContent = 'Enter the code from your inbox.'; return; }
       msg.textContent = 'Checking…';
       sbVerify(em2, code).then(function(){
-        renderSync();
+        renderSync(); renderAccountCard();
         return syncNow();
       }).then(function(r){
         toast('Signed in — ' + r.pulled + ' pulled, ' + r.pushed + ' pushed.');
@@ -5322,7 +5348,7 @@ function bind(){
       return;
     }
     if (t.closest('#sync-out')){
-      saveAuth(null); renderSync();
+      saveAuth(null); renderSync(); renderAccountCard();
       toast('Signed out. Your data stays on this device.');
       return;
     }

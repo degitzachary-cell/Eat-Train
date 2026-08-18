@@ -11,7 +11,7 @@ open `index.html` and it works, including with no signal.
 - **Food** — the full AFCD, 1,588 foods, searchable, with your own products alongside.
 - **Train** — MET-based session energy from the Compendium of Physical Activities,
   plus a strength log for sets, reps and volume.
-- **Body** — your markers, three resting-rate models, and your goal.
+- **Me** — your account, markers, three resting-rate models, and your goal.
 - **Trends** — 14-day energy, weight trend, body composition, and your *measured*
   expenditure worked out from your own data.
 
@@ -258,7 +258,7 @@ when online and fall back cleanly when not.
 
 ## Sync
 
-Data lives on this device first and always. Sign in under the database icon and it is
+Data lives on this device first and always. Sign in from the Me tab and it is
 also kept on Supabase, so a new phone or a laptop picks up where you left off.
 
 Sign-in is a six-digit code emailed to you — no password to invent, lose or reuse.
