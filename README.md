@@ -63,6 +63,22 @@ ways to add those:
   barcode-level product database, ODbL licensed. Filter its advanced search by brand
   or country, download the result as CSV, and load it under **Supermarket products**.
 
+### Live lookup
+
+The app can also query Open Food Facts directly, which is off by default. Switched on
+under **Supermarket products**, the search sheet offers a button to look up whatever
+you typed — one request, on your tap, carrying the search text and nothing else. No
+account, no identifier, no history. A query of 8–14 digits is treated as a barcode and
+goes straight to the product endpoint. Anything you pick is written to this device, so
+the same product never needs a second request.
+
+This is the one place the app touches the network, and it needs the page to reach
+another origin. The file on your phone can; the claude.ai artifact preview cannot,
+because artifacts run under a CSP permitting no external hosts. There the lookup fails
+with a message saying so, and everything else works unchanged.
+
+### Bulk import
+
 The importer is built for that export specifically. It sniffs tab vs comma separators,
 prefers `_100g` columns over `_serving` decoys, converts sodium from grams to
 milligrams, derives sodium from `salt_100g` when a row has no sodium of its own

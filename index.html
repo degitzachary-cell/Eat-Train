@@ -417,7 +417,15 @@ body.dragging{cursor:grabbing}
       is wrong &mdash; imports stay under their own <strong>Packaged</strong> category so you always know
       which numbers came from FSANZ and which did not. For a single item, the panel on the box beats
       any database: use <strong>New food</strong>.</p>
-    <div class="btnrow" style="margin-top:11px">
+    <div class="seg" id="online-tog" role="group" aria-label="Online lookup" style="margin-top:11px">
+      <button data-online="0" aria-pressed="true">Offline only</button>
+      <button data-online="1" aria-pressed="false">Look up online</button>
+    </div>
+    <p class="hint" id="online-note" style="margin-top:8px">Off by default. Switched on, the search
+      sheet offers a button to query Open Food Facts for whatever you typed — one request, on your tap,
+      carrying the search text and nothing else. No account, no identifier, no history. Anything you
+      pick is saved to this device so it works offline afterwards.</p>
+    <div class="btnrow" style="margin-top:12px">
       <label class="btn sm ghost" style="flex:1; cursor:pointer">
         Choose CSV<input type="file" id="csv-in" accept=".csv,.tsv,text/csv,text/tab-separated-values" hidden>
       </label>
@@ -659,7 +667,7 @@ body.dragging{cursor:grabbing}
   </div>
   <div class="searchwrap"><input type="search" id="q" placeholder="Search the database…" autocomplete="off" autocorrect="off"></div>
   <div class="catrow" id="cats"></div>
-  <div class="sheet-body tight" id="results"></div>
+  <div class="sheet-body tight"><div id="results"></div><div id="off-slot"></div></div>
 </div>
 
 <!-- quantity sheet -->
@@ -2644,7 +2652,7 @@ function blankState(){
   return {
     v:1,
     profile:{sex:'m', age:32, ht:178, wt:82, bf:null, smm:null, smmUnit:'pct',
-             bone:null, water:null, neat:1.35, goal:'maintain', formula:'auto',
+             bone:null, water:null, online:false, neat:1.35, goal:'maintain', formula:'auto',
              useMeasured:false, ppk:1.8, fpk:0.9, unit:'kj'},
     weights:[], custom:[], fav:[], recent:[], imported:[], days:{}
   };
@@ -3633,6 +3641,7 @@ function press(groupId, attr, val){
 }
 
 function renderFoodView(){
+  press('online-tog', 'online', S.profile.online ? '1' : '0');
   el('db-count').textContent = allFoods().length + ' foods';
   el('csv-status').textContent = imported.length
     ? (S.importNote || imported.length.toLocaleString('en-AU') + ' products imported.') +
@@ -4179,10 +4188,20 @@ function runSearch(){
   }
   if (!list.length){
     box.innerHTML = '<div class="empty" style="padding:28px 20px">Nothing matches &ldquo;' +
-      esc(el('q').value.trim()) + '&rdquo;.<br>Try a shorter word, or add it under New food.</div>';
+      esc(el('q').value.trim()) + '&rdquo;.<br>Try a shorter word, or add it under New food.</div>' +
+      offPrompt(el('q').value.trim());
     return;
   }
-  box.innerHTML = list.map(resultRow).join('');
+  box.innerHTML = list.map(resultRow).join('') + offPrompt(q);
+}
+function offPrompt(q){
+  if (!S.profile.online || !q || q.length < 3) return '';
+  return '<button class="fres" data-offsearch="1" style="color:var(--accent)">' +
+    '<span class="star" style="color:var(--accent)"><svg viewBox="0 0 24 24" width="15" height="15" ' +
+    'fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="11" cy="11" r="6.5"/>' +
+    '<path d="M16 16l4.5 4.5"/></svg></span>' +
+    '<span style="min-width:0"><span class="t">Search Open Food Facts for “' + esc(q) + '”</span>' +
+    '<span class="s">One request, on this tap. Packaged and branded products.</span></span></button>';
 }
 function resultRow(f){
   var isFav = (S.fav || []).indexOf(f.name) >= 0;
@@ -4401,6 +4420,103 @@ function importCSV(text){
   toast(msg + '.');
 }
 
+/* ------------------------ Open Food Facts lookup --------------------------
+   Strictly opt-in, and only ever on an explicit tap. The request carries the
+   search text and nothing else — no account, no identifier, no history. What
+   you keep is written to this device so the app stays usable offline.
+
+   This needs the page to be able to reach another host, which the file on
+   your phone can do and the claude.ai preview cannot: artifacts run under a
+   CSP that permits no external origins. There it fails cleanly and says so.
+   ------------------------------------------------------------------------- */
+var OFF_BASE = 'https://world.openfoodfacts.org';
+var OFF_FIELDS = 'code,product_name,generic_name,brands,quantity,nutriments';
+
+function offNum(v){
+  if (v == null || v === '') return 0;
+  var n = parseFloat(v);
+  return isFinite(n) && n > 0 ? n : 0;
+}
+/* Their nutriment keys mirror the CSV export, including sodium in grams. */
+function offToFood(p, i){
+  var n = p.nutriments || {};
+  var kj = offNum(n['energy-kj_100g']);
+  if (!kj) kj = offNum(n['energy-kcal_100g']) * KJ_PER_KCAL;
+  if (!kj && String(n['energy_unit'] || '').toLowerCase() === 'kcal') kj = offNum(n['energy_100g']) * KJ_PER_KCAL;
+  if (!kj) kj = offNum(n['energy_100g']);
+  var na = n['sodium_100g'] != null ? offNum(n['sodium_100g']) * 1000
+         : (n['salt_100g'] != null ? offNum(n['salt_100g']) * 1000 / 2.5 : 0);
+  var name = String(p.product_name || p.generic_name || '').trim();
+  var brand = String(p.brands || '').split(',')[0].trim();
+  if (brand && name.toLowerCase().indexOf(brand.toLowerCase()) < 0) name = brand + ' ' + name;
+  if (p.quantity) name += ' (' + String(p.quantity).trim() + ')';
+  name = name.replace(/\s+/g, ' ').trim().slice(0, 90);
+  if (!name) return null;
+  var f = {id:'off' + i, name:name, cat:'Packaged', liquid:false, src:'off', code:p.code || '',
+    kj:kj, p:offNum(n['proteins_100g']), f:offNum(n['fat_100g']),
+    sat:offNum(n['saturated-fat_100g']), c:offNum(n['carbohydrates_100g']),
+    sug:offNum(n['sugars_100g']), fib:offNum(n['fiber_100g']), na:na, alc:offNum(n['alcohol_100g']),
+    m:{}};
+  MICRO_KEYS.forEach(function(k){ f.m[k] = 0; });
+  if (!f.kj && !f.p && !f.f && !f.c) return null;
+  return f;
+}
+
+function offFetch(url){
+  var ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  var timer = setTimeout(function(){ if (ctl) ctl.abort(); }, 9000);
+  return fetch(url, ctl ? {signal:ctl.signal} : undefined)
+    .then(function(r){
+      if (!r.ok) throw new Error('http ' + r.status);
+      return r.json();
+    })
+    .then(function(j){ clearTimeout(timer); return j; })
+    .catch(function(e){ clearTimeout(timer); throw e; });
+}
+
+var offResults = [];
+function offSearch(q){
+  var box = el('off-slot');
+  if (box) box.innerHTML = '<div class="empty">Asking Open Food Facts…</div>';
+  var digits = /^\d{8,14}$/.test(q.replace(/\s/g, ''));
+  var url = digits
+    ? OFF_BASE + '/api/v2/product/' + encodeURIComponent(q.replace(/\s/g, '')) +
+      '.json?fields=' + OFF_FIELDS
+    : OFF_BASE + '/cgi/search.pl?search_terms=' + encodeURIComponent(q) +
+      '&search_simple=1&action=process&json=1&page_size=20&fields=' + OFF_FIELDS;
+
+  offFetch(url).then(function(j){
+    var list = digits ? (j.product ? [j.product] : []) : (j.products || []);
+    offResults = list.map(offToFood).filter(Boolean);
+    renderOffResults(q);
+  }).catch(function(err){
+    var b = el('off-slot'); if (!b) return;
+    var msg = /abort/i.test(String(err))
+      ? 'Open Food Facts did not answer in time.'
+      : 'Could not reach Open Food Facts.';
+    b.innerHTML = '<div class="empty" style="padding:16px 18px">' + msg +
+      '<br><span style="font-size:11px">If you are reading this in the claude.ai preview, that is ' +
+      'expected — it blocks other hosts. The saved file on your phone can reach it.</span></div>';
+  });
+}
+function renderOffResults(q){
+  var b = el('off-slot'); if (!b) return;
+  if (!offResults.length){
+    b.innerHTML = '<div class="empty">Open Food Facts has nothing for “' + esc(q) + '”.</div>';
+    return;
+  }
+  b.innerHTML = '<div class="meal-head"><h3>Open Food Facts</h3><span class="kj num">' +
+    offResults.length + '</span></div>' +
+    offResults.map(function(f, i){
+      return '<button class="fres" data-off="' + i + '">' +
+        '<span class="star" style="opacity:.5"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" ' +
+        'stroke="currentColor" stroke-width="1.7"><path d="M12 3v18M3 12h18"/></svg></span>' +
+        '<span style="min-width:0"><span class="t">' + esc(f.name) + '</span>' +
+        '<span class="s">from Open Food Facts' + (f.code ? ' · ' + esc(f.code) : '') + '</span></span>' +
+        '<span class="e">' + fmtE(f.kj) + ' ' + unitName() + '<small>per 100 g</small></span></button>';
+    }).join('');
+}
+
 /* ------------------------------ backup ----------------------------------- */
 function backupText(){ return JSON.stringify(S); }
 function restore(json){
@@ -4477,6 +4593,19 @@ function bind(){
       save(); runSearch();
       return;
     }
+    var os = t.closest('[data-offsearch]');
+    if (os){ offSearch(el('q').value.trim()); return; }
+    var op = t.closest('[data-off]');
+    if (op){
+      var f = offResults[+op.dataset.off];
+      if (!f) return;
+      /* Keep it, so the same product needs no second request. */
+      if (!S.custom.some(function(c){ return c.name === f.name; })){
+        S.custom.push(f); invalidateFoods(); save(); renderFoodView(); renderCats();
+      }
+      openQty(f);
+      return;
+    }
     var res = t.closest('[data-food]');
     if (res){ var f = foodByName(res.dataset.food); if (f) openQty(f); return; }
 
@@ -4515,6 +4644,7 @@ function bind(){
   /* search */
   el('q').addEventListener('input', function(){
     clearTimeout(searchTimer);
+    offResults = []; if (el('off-slot')) el('off-slot').innerHTML = '';
     searchTimer = setTimeout(runSearch, 110);
   });
 
@@ -4544,6 +4674,14 @@ function bind(){
     r.onerror = function(){ toast('Could not read that file.'); };
     r.readAsText(file);
     ev.target.value = '';
+  });
+  el('online-tog').addEventListener('click', function(ev){
+    var b = ev.target.closest('[data-online]'); if (!b) return;
+    S.profile.online = b.dataset.online === '1';
+    press('online-tog', 'online', b.dataset.online);
+    save();
+    toast(S.profile.online ? 'Online lookup on — searches still need your tap.'
+                           : 'Online lookup off.');
   });
   el('csv-clear').addEventListener('click', function(){
     if (!S.imported.length){ toast('Nothing imported.'); return; }
