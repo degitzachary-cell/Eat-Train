@@ -435,10 +435,27 @@ body.dragging{cursor:grabbing}
 <!-- ============ TRAIN ============ -->
 <section class="view" id="v-train">
   <div class="card" style="margin-top:12px">
-    <div class="card-head"><h2>Log a session</h2><span class="right" id="tr-date">—</span></div>
-    <label class="f"><span>Activity</span>
-      <select id="w-act"></select>
-    </label>
+    <div class="card-head"><h2>Run</h2><span class="right" id="tr-date">&mdash;</span></div>
+    <div class="seg" id="run-type" role="group" aria-label="Session type">
+      <button data-rt="run" aria-pressed="true">Run</button>
+      <button data-rt="wo" aria-pressed="false">Workout</button>
+    </div>
+    <div id="run-fields" style="margin-top:13px"></div>
+    <div class="card" style="background:var(--surface-2); box-shadow:none; margin:2px 0 12px">
+      <div class="budget-top" style="margin-bottom:9px">
+        <div><div class="budget-label">Session</div>
+          <div class="num" id="run-kj" style="font-size:26px;font-weight:600;letter-spacing:-.03em">&mdash;</div></div>
+        <div class="budget-side"><b class="num" id="run-dist">&mdash;</b><span id="run-time">&mdash;</span></div>
+      </div>
+      <div class="chips" id="run-breakdown"></div>
+    </div>
+    <button class="btn" id="run-save">Add session</button>
+    <p class="hint" id="run-note">&mdash;</p>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h2>Other activity</h2><span class="right">Anything but running</span></div>
+    <label class="f"><span>Activity</span><select id="w-act"></select></label>
     <div class="grid2">
       <label class="f"><span>Minutes</span><input type="number" id="w-min" inputmode="numeric" min="1" max="600" step="1" value="45"></label>
       <label class="f"><span>Intensity</span>
@@ -449,8 +466,8 @@ body.dragging{cursor:grabbing}
         </select>
       </label>
     </div>
-    <p class="hint" id="w-preview">—</p>
-    <button class="btn" id="w-save" style="margin-top:10px">Add session</button>
+    <p class="hint" id="w-preview">&mdash;</p>
+    <button class="btn ghost" id="w-save" style="margin-top:10px">Add activity</button>
   </div>
 
   <div class="card">
@@ -3104,7 +3121,10 @@ function renderTrainingList(listId, totalId){
   var rows = d.workouts.map(function(w, i){
     var sub = w.type === 'strength'
       ? w.sets + ' × ' + w.reps + ' @ ' + g(w.load,1) + ' kg · ' + g(w.sets * w.reps * w.load) + ' kg volume'
-      : w.mins + ' min · ' + g(w.met,1) + ' MET';
+      : w.type === 'run'
+        ? g(w.km,2) + ' km · ' + fmtDur(w.mins) + ' · ' + fmtPace(w.mins * 60 / (w.km || 1)) + '/km' +
+          (w.summary ? '<br>' + esc(w.summary) : '')
+        : w.mins + ' min · ' + g(w.met,1) + ' MET';
     return '<div class="row"><div class="row-main"><div class="t">' + esc(w.name) + '</div>' +
       '<div class="s">' + sub + '</div></div>' +
       '<div class="row-kj">' + (w.kj ? fmtE(w.kj) : '—') + '</div>' +
@@ -3119,7 +3139,274 @@ function renderTrainingList(listId, totalId){
   el(listId).innerHTML = rows.length ? rows.join('') : '<div class="empty">Rest day</div>';
 }
 
+/* ------------------------------ running -----------------------------------
+   Running energy is modelled with the ACSM metabolic equations rather than a
+   MET bin, because a MET table cannot tell a 3:30 km from a 5:30 one and
+   cannot price a hill at all.
+
+     running, net VO2 = 0.2·v + 0.9·v·grade      (mL/kg/min, v in m/min)
+     walking, net VO2 = 0.1·v + 1.8·v·grade
+     5 kcal per litre of O2
+
+   Everything here is NET — the resting cost of the hour is already in your
+   baseline, so counting it again would inflate every session.
+   ------------------------------------------------------------------------- */
+function parsePace(s){
+  if (s == null) return null;
+  var t = String(s).trim();
+  if (!t) return null;
+  var p = t.split(':');
+  if (p.length === 2){
+    var m = parseFloat(p[0]), sec = parseFloat(p[1]);
+    if (isFinite(m) && isFinite(sec)) return m * 60 + sec;
+  }
+  var n = parseFloat(t);
+  return isFinite(n) ? n * 60 : null;      // bare number read as minutes
+}
+function fmtPace(sec){
+  if (!sec || !isFinite(sec)) return '—';
+  var m = Math.floor(sec / 60), s = Math.round(sec - m * 60);
+  if (s === 60){ m++; s = 0; }
+  return m + ':' + pad(s);
+}
+function fmtDur(mins){
+  var t = Math.round(mins * 60);
+  var hh = Math.floor(t / 3600), mm = Math.floor((t % 3600) / 60), ss = t % 60;
+  return hh ? hh + ':' + pad(mm) + ':' + pad(ss) : mm + ':' + pad(ss);
+}
+function runKcalMin(secPerKm, kg, grade){
+  if (!secPerKm) return 0;
+  var v = 60000 / secPerKm;
+  return Math.max(0.2 * v + 0.9 * v * (grade || 0), 0) * kg / 1000 * 5;
+}
+function walkKcalMin(secPerKm, kg, grade){
+  if (!secPerKm) return 0;
+  var v = 60000 / secPerKm;
+  return Math.max(0.1 * v + 1.8 * v * (grade || 0), 0) * kg / 1000 * 5;
+}
+function exKcalMin(met, kg){ return Math.max(met - 1, 0) * 3.5 * kg / 200; }
+
+function blockKj(b){
+  var kg = +S.profile.wt || 0, kcal = 0;
+  if (b.kind === 'run')  kcal = runKcalMin(b.pace, kg, b.grade) * b.mins;
+  if (b.kind === 'walk') kcal = walkKcalMin(b.pace, kg, b.grade) * b.mins;
+  if (b.kind === 'ex')   kcal = exKcalMin(b.met, kg) * b.mins;
+  if (b.kind === 'rest') kcal = 0;
+  return kcal * KJ_PER_KCAL;
+}
+
+var RUN_NAMES = {run:'Run', wo:'Interval session'};
+var EX_METS = [['Bodyweight strength',5.0],['Heavy strength',6.0],['Core',3.8],
+               ['Plyometrics',8.0],['Burpees',8.0],['Kettlebell',9.8]];
+var BETWEEN = [['rest','Rest'],['jog','Jog'],['float','Float'],['comp','Compromised']];
+
+function runVal(id, dflt){
+  var e = el('rf-' + id);
+  if (!e || e.value === '') return dflt;
+  return e.value;
+}
+function runType(){
+  var b = el('run-type').querySelector('[aria-pressed="true"]');
+  return b ? b.dataset.rt : 'run';
+}
+function saved(k, dflt){
+  var s = S.runLast || {};
+  return s[k] !== undefined && s[k] !== '' ? s[k] : dflt;
+}
+function fld(id, label, type, val){
+  return '<label class="f"><span>' + label + '</span><input type="' + type + '" id="rf-' + id +
+    '" inputmode="' + (type === 'number' ? 'decimal' : 'text') + '" value="' + esc(val) + '"></label>';
+}
+function toggle(id, attr, opts, cur){
+  return '<div class="seg" id="rf-' + id + '" role="group" style="margin-bottom:12px">' +
+    opts.map(function(o){
+      return '<button data-' + attr + '="' + o[0] + '" aria-pressed="' +
+        (String(cur) === String(o[0]) ? 'true' : 'false') + '">' + o[1] + '</button>';
+    }).join('') + '</div>';
+}
+function sub(t){ return '<div class="eyebrow" style="margin:2px 0 7px">' + t + '</div>'; }
+
+/* Run is the default and stays deliberately thin: how long, how fast. The
+   Workout toggle opens the structured plan — warm up, interval, what happens
+   between them, cool down. */
+function renderRunFields(){
+  var t = runType(), html = '';
+
+  if (t === 'run'){
+    html += '<div class="grid2">' +
+      fld('dur', 'Minutes', 'number', saved('run.dur', '45')) +
+      fld('pace', 'Pace min/km', 'text', saved('run.pace', '5:30')) +
+      fld('gain', 'Elevation gain m', 'number', saved('run.gain', '')) + '</div>';
+    var onS = saved('run.strides', '0') === '1';
+    html += toggle('str-tog', 'str', [['0','No strides'],['1','+ Strides']], onS ? '1' : '0') +
+      '<div id="rf-str-fields"' + (onS ? '' : ' hidden') + '><div class="grid3">' +
+        fld('strn', 'Strides', 'number', saved('run.strn', '6')) +
+        fld('strsec', 'Seconds', 'number', saved('run.strsec', '20')) +
+        fld('strp', 'Pace', 'text', saved('run.strp', '3:10')) +
+      '</div><p class="hint">Walk-back recovery between them is counted.</p></div>';
+  }
+
+  if (t === 'wo'){
+    html += sub('Warm up') +
+      '<div class="grid2">' +
+        fld('wu', 'Minutes', 'number', saved('wo.wu', '15')) +
+        fld('wup', 'Pace min/km', 'text', saved('wo.wup', '5:30')) + '</div>';
+
+    var byTime = saved('wo.unit', 'dist') === 'time';
+    html += sub('Interval') +
+      toggle('unit', 'unit', [['dist','Distance'],['time','Time']], byTime ? 'time' : 'dist') +
+      '<div class="grid3">' +
+        fld('reps', 'Reps', 'number', saved('wo.reps', '6')) +
+        (byTime ? fld('reptm', 'Minutes each', 'number', saved('wo.reptm', '5'))
+                : fld('repd', 'Metres each', 'number', saved('wo.repd', '1000'))) +
+        fld('repp', 'Pace min/km', 'text', saved('wo.repp', byTime ? '4:05' : '3:30')) + '</div>';
+
+    var bt = saved('wo.between', 'rest');
+    html += sub('Between intervals') + toggle('between', 'btw', BETWEEN, bt);
+    if (bt === 'comp'){
+      html += fld('compname', 'Exercise', 'text', saved('wo.compname', 'Squats')) +
+        '<div class="grid2">' +
+          fld('compsec', 'Seconds per set', 'number', saved('wo.compsec', '45')) +
+          '<label class="f"><span>Effort</span><select id="rf-compmet">' +
+            EX_METS.map(function(m){
+              return '<option value="' + m[1] + '"' +
+                (saved('wo.compmet','5') == m[1] ? ' selected' : '') + '>' + m[0] + '</option>';
+            }).join('') + '</select></label></div>';
+    } else if (bt === 'rest'){
+      html += '<div class="grid2">' + fld('recd', 'Duration', 'text', saved('wo.recd', '1:00')) + '</div>';
+    } else {
+      html += '<div class="grid2">' +
+        fld('recd', 'Duration', 'text', saved('wo.recd', bt === 'float' ? '2:00' : '1:00')) +
+        fld('recp', 'Pace min/km', 'text', saved('wo.recp', bt === 'float' ? '5:30' : '6:30')) + '</div>';
+    }
+
+    html += sub('Cool down') +
+      '<div class="grid2">' +
+        fld('cd', 'Minutes', 'number', saved('wo.cd', '15')) +
+        fld('cdp', 'Pace min/km', 'text', saved('wo.cdp', '5:30')) + '</div>';
+  }
+
+  html += toggle('epoc', 'epoc', [['0','Session only'],['1','+ 6% afterburn']], saved('epoc','0'));
+  el('run-fields').innerHTML = html;
+  updateRun();
+}
+
+function buildRun(){
+  var t = runType(), blocks = [], name = RUN_NAMES[t], parts = [];
+  function grade(km){
+    var gm = parseFloat(runVal('gain', '')) || 0;
+    return km > 0 ? gm / (km * 1000) : 0;
+  }
+
+  if (t === 'run'){
+    var mins = parseFloat(runVal('dur', 0)) || 0;
+    var pace = parsePace(runVal('pace', '5:30'));
+    var km = pace ? mins * 60 / pace : 0;
+    blocks.push({kind:'run', label:'Run', mins:mins, km:km, pace:pace, grade:grade(km)});
+    parts.push(Math.round(mins) + ' min @ ' + fmtPace(pace));
+    if (el('rf-str-tog') && el('rf-str-tog').querySelector('[aria-pressed="true"]').dataset.str === '1'){
+      var n = parseFloat(runVal('strn', 6)) || 0;
+      var sec = parseFloat(runVal('strsec', 20)) || 0;
+      var sp = parsePace(runVal('strp', '3:10'));
+      var sm = n * sec / 60;
+      blocks.push({kind:'run', label:n + ' strides', mins:sm, km:sp ? sm * 60 / sp : 0, pace:sp, grade:0});
+      blocks.push({kind:'walk', label:'Stride walk-back', mins:n * 0.75, km:n * 0.75 * 0.08, pace:750, grade:0});
+      parts.push(n + ' × ' + sec + ' s strides @ ' + fmtPace(sp));
+    }
+  }
+
+  if (t === 'wo'){
+    var wu = parseFloat(runVal('wu', 0)) || 0, wup = parsePace(runVal('wup', '5:30'));
+    var cd = parseFloat(runVal('cd', 0)) || 0, cdp = parsePace(runVal('cdp', '5:30'));
+    var reps = parseFloat(runVal('reps', 0)) || 0;
+    var repp = parsePace(runVal('repp', '3:30'));
+    var byTime = el('rf-unit') &&
+                 el('rf-unit').querySelector('[aria-pressed="true"]').dataset.unit === 'time';
+    var repMin, repKm, repLabel;
+    if (byTime){
+      repMin = parseFloat(runVal('reptm', 0)) || 0;
+      repKm = repp ? repMin * 60 / repp : 0;
+      repLabel = reps + ' × ' + g(repMin,1) + ' min';
+    } else {
+      repKm = (parseFloat(runVal('repd', 0)) || 0) / 1000;
+      repMin = repKm * repp / 60;
+      repLabel = reps + ' × ' + Math.round(repKm * 1000) + ' m';
+    }
+    var bt = el('rf-between')
+      ? el('rf-between').querySelector('[aria-pressed="true"]').dataset.btw : 'rest';
+
+    if (wu) blocks.push({kind:'run', label:'Warm up', mins:wu, km:wu*60/wup, pace:wup, grade:0});
+    blocks.push({kind:'run', label:repLabel, mins:reps*repMin, km:reps*repKm, pace:repp, grade:0});
+    parts.push(repLabel + ' @ ' + fmtPace(repp));
+
+    var gaps = Math.max(reps - 1, 0);
+    if (bt === 'comp'){
+      var cs = (parseFloat(runVal('compsec', 45)) || 0) / 60;
+      var cmet = parseFloat((el('rf-compmet') || {}).value || 5);
+      var cname = runVal('compname', 'Exercise');
+      blocks.push({kind:'ex', label:reps + ' × ' + cname, mins:reps*cs, met:cmet, km:0});
+      parts.push(cname + ' between reps');
+      name = 'Compromised session';
+    } else if (gaps){
+      var rs = parsePace(runVal('recd', '1:00')) || 0;
+      var rm = gaps * rs / 60;
+      if (bt === 'rest'){
+        blocks.push({kind:'rest', label:'Rest', mins:rm, km:0});
+        parts.push(fmtDur(rs/60) + ' rest');
+      } else {
+        var rp = parsePace(runVal('recp', bt === 'float' ? '5:30' : '6:30'));
+        blocks.push({kind:'run', label:bt === 'float' ? 'Float' : 'Jog', mins:rm,
+                     km:rp ? rm*60/rp : 0, pace:rp, grade:0});
+        parts.push(fmtDur(rs/60) + ' ' + bt + ' @ ' + fmtPace(rp));
+      }
+    }
+    if (cd) blocks.push({kind:'run', label:'Cool down', mins:cd, km:cd*60/cdp, pace:cdp, grade:0});
+    if (wu) parts.unshift(Math.round(wu) + ' min w/u');
+    if (cd) parts.push(Math.round(cd) + ' min c/d');
+  }
+
+  var kj = 0, mins2 = 0, km2 = 0;
+  blocks.forEach(function(b){ b.kj = blockKj(b); kj += b.kj; mins2 += b.mins || 0; km2 += b.km || 0; });
+  var epocOn = el('rf-epoc') &&
+               el('rf-epoc').querySelector('[aria-pressed="true"]').dataset.epoc === '1';
+  var epocKj = epocOn ? kj * 0.06 : 0;
+  return {type:t, name:name, blocks:blocks, kj:kj + epocKj, epoc:epocKj,
+          mins:mins2, km:km2, summary:parts.join(' · ')};
+}
+
+function updateRun(){
+  var r = buildRun();
+  el('run-kj').textContent = fmtE(r.kj, true);
+  el('run-dist').textContent = g(r.km, 2) + ' km';
+  el('run-time').textContent = fmtDur(r.mins) + (r.km > 0 ? ' · ' + fmtPace(r.mins * 60 / r.km) + '/km avg' : '');
+  el('run-breakdown').innerHTML = r.blocks.filter(function(b){ return b.mins > 0; }).map(function(b){
+    return '<span class="chip">' + esc(b.label) + ' <b>' + fmtE(b.kj) + '</b></span>';
+  }).join('') + (r.epoc ? '<span class="chip">Afterburn <b>' + fmtE(r.epoc) + '</b></span>' : '');
+  el('run-note').innerHTML = 'Energy from the ACSM running equations at ' + g(S.profile.wt,1) +
+    ' kg, net of the resting cost your baseline already covers. Net running cost works out near ' +
+    '<strong>1 kcal per kg per km</strong> whatever the pace &mdash; pace changes how long you are out ' +
+    'there, not much what a kilometre costs.';
+  return r;
+}
+
+function saveRunLast(){
+  var t = runType(), last = S.runLast || {};
+  Array.prototype.forEach.call(el('run-fields').querySelectorAll('input,select'), function(e){
+    last[t + '.' + e.id.replace('rf-','')] = e.value;
+  });
+  Array.prototype.forEach.call(el('run-fields').querySelectorAll('.seg'), function(sg){
+    var on = sg.querySelector('[aria-pressed="true"]'); if (!on) return;
+    var k = sg.id === 'rf-epoc' ? 'epoc'
+          : sg.id === 'rf-unit' ? t + '.unit'
+          : sg.id === 'rf-between' ? t + '.between'
+          : sg.id === 'rf-str-tog' ? t + '.strides' : null;
+    if (k) last[k] = on.dataset.epoc || on.dataset.unit || on.dataset.btw || on.dataset.str;
+  });
+  S.runLast = last;
+}
+
 function renderTrainView(){
+  if (!el('run-fields').innerHTML) renderRunFields(); else updateRun();
   var sel = el('w-act');
   if (!sel.options.length){
     sel.innerHTML = ACTIVITIES.map(function(a, i){
@@ -3512,10 +3799,12 @@ function renderWeekly(){
     var burn = ds.reduce(function(s,d){ return s + dayEnergy(d).burn; }, 0) / 7;
     var pro = logged.reduce(function(s,d){ return s + dayTotals(d).p; }, 0) / logged.length;
     var tr = ds.filter(function(d){ return dayRO(d).workouts.length > 0; }).length;
+    var wkKm = ds.reduce(function(s,d){
+      return s + dayRO(d).workouts.reduce(function(a,w){ return a + (w.km || 0); }, 0); }, 0);
     rows.push('<div class="row"><div class="row-main"><div class="t">' +
       (w === 0 ? 'This week' : w + ' week' + (w > 1 ? 's' : '') + ' ago') + '</div>' +
       '<div class="s">' + logged.length + '/7 logged · ' + tr + ' session' + (tr === 1 ? '' : 's') +
-      ' · P ' + g(pro) + ' g</div></div>' +
+      (wkKm > 0 ? ' · ' + g(wkKm,1) + ' km' : '') + ' · P ' + g(pro) + ' g</div></div>' +
       '<div class="row-kj" style="text-align:right">' + fmtE(eat) + '<br>' +
       '<span style="font-size:10px;color:var(--ink-3)">vs ' + fmtE(burn) + '</span></div></div>');
   }
@@ -4191,6 +4480,35 @@ function bind(){
     ['c-name','c-kj','c-p','c-f','c-sat','c-c','c-sug','c-fib','c-na'].forEach(function(i){ el(i).value = ''; });
     renderFoodView(); renderCats(); closeSheet();
     toast('“' + name + '” saved.');
+  });
+
+  /* running */
+  el('run-type').addEventListener('click', function(ev){
+    var b = ev.target.closest('[data-rt]'); if (!b) return;
+    saveRunLast(); press('run-type', 'rt', b.dataset.rt); renderRunFields();
+  });
+  el('run-fields').addEventListener('input', updateRun);
+  el('run-fields').addEventListener('change', updateRun);
+  el('run-fields').addEventListener('click', function(ev){
+    var u = ev.target.closest('[data-unit]');
+    if (u){ press('rf-unit', 'unit', u.dataset.unit); saveRunLast(); renderRunFields(); return; }
+    var bw = ev.target.closest('[data-btw]');
+    if (bw){ press('rf-between', 'btw', bw.dataset.btw); saveRunLast(); renderRunFields(); return; }
+    var s = ev.target.closest('[data-str]');
+    if (s){ press('rf-str-tog', 'str', s.dataset.str);
+      el('rf-str-fields').hidden = s.dataset.str !== '1'; updateRun(); return; }
+    var e2 = ev.target.closest('[data-epoc]');
+    if (e2){ press('rf-epoc', 'epoc', e2.dataset.epoc); updateRun(); return; }
+  });
+  el('run-save').addEventListener('click', function(){
+    var r = buildRun();
+    if (!(r.mins > 0)){ toast('Fill in the session first.'); return; }
+    day(DAY).workouts.push({name:r.name, type:'run', mins:Math.round(r.mins*10)/10,
+      km:r.km, kj:r.kj, summary:r.summary, blocks:r.blocks.map(function(b){
+        return {label:b.label, mins:Math.round(b.mins*10)/10, km:b.km, kj:b.kj};
+      })});
+    saveRunLast(); save(); renderAll();
+    toast(r.name + ' · ' + g(r.km,1) + ' km logged');
   });
 
   /* training */

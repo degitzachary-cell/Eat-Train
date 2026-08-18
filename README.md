@@ -78,6 +78,42 @@ from The George Institute is the better Australian packaged-food source — buil
 in-store audits at Coles, Woolworths, ALDI and IGA — but it is available by research
 request rather than open download.
 
+## Running
+
+Two modes. **Run** is a duration and a pace you type, with optional elevation gain and
+strides. **Workout** opens the structured plan, laid out the way a session is written:
+
+    Warm up      minutes @ pace
+    Interval     distance or time × reps @ pace
+    Between      rest · jog · float · compromised
+    Cool down    minutes @ pace
+
+Distance-or-time is a toggle, so `6 × 1 km @ 3:30` and `6 × 5 min @ 4:05` are the same
+form. Compromised sessions put a strength or plyometric effort between reps instead of
+a recovery, priced by MET for its duration. Every field is remembered per mode.
+
+### Energy
+
+Running uses the **ACSM metabolic equations** rather than a MET value, because a MET
+bin cannot tell a 3:30 kilometre from a 5:30 one and cannot price a hill at all:
+
+    running  net VO₂ = 0.2·v + 0.9·v·grade     (mL/kg/min, v in m/min)
+    walking  net VO₂ = 0.1·v + 1.8·v·grade
+    5 kcal per litre of O₂
+
+Applied per block, so a warm up, a rep and a float are each costed at their own pace.
+Everything is net of resting metabolism, which your baseline already covers.
+
+This falls out at roughly **1 kcal per kg per km, near enough regardless of pace** —
+the long-standing finding that the energy cost of running a kilometre is close to
+speed-independent on the flat. Pace changes how long you are out there far more than
+it changes what a kilometre costs. Elevation is where a session really departs from
+that, which is why gain is an input.
+
+Afterburn (EPOC) is an optional flat 6%, off by default. It is real after hard
+sessions but too variable to state precisely, so it is a labelled choice rather than
+something folded silently into the number.
+
 ## Moving food between meals
 
 Press and hold a logged item to lift it, then drag it to another meal — the target
