@@ -72,6 +72,24 @@ account, no identifier, no history. A query of 8–14 digits is treated as a bar
 goes straight to the product endpoint. Anything you pick is written to this device, so
 the same product never needs a second request.
 
+Built to their published API rules:
+
+- **Product reads use v3**, the current version; v2 is deprecated and kept only as a
+  fallback. Barcodes go straight to the product endpoint.
+- **Full-text search does not exist in v2 or v3.** Only Search-a-licious and the legacy
+  CGI path offer it, so those are the two routes tried, in that order.
+- **Rate limits are 10 searches and 15 product reads per minute per IP**, enforced with
+  IP bans. Lookups are one deliberate tap — never as you type, which their docs single
+  out as the fastest way to get blocked — and a client-side cap of 8 searches a minute
+  sits under their limit. HTTP 429 and 503 get their own messages rather than a generic
+  failure.
+- Product data is used under the **Open Database License**, credited in the app.
+
+One rule cannot be honoured from a static page: they ask for a custom `User-Agent`
+identifying the app, and browsers forbid scripts from setting that header. Routing
+lookups through a small server-side proxy would fix it, and would centralise rate
+limiting at the same time.
+
 This is the one place the app touches the network, and it needs the page to reach
 another origin. The file on your phone can; the claude.ai artifact preview cannot,
 because artifacts run under a CSP permitting no external hosts. There the lookup fails

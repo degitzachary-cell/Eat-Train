@@ -417,6 +417,9 @@ body.dragging{cursor:grabbing}
       is wrong &mdash; imports stay under their own <strong>Packaged</strong> category so you always know
       which numbers came from FSANZ and which did not. For a single item, the panel on the box beats
       any database: use <strong>New food</strong>.</p>
+    <p class="note" style="margin-top:8px">Product data from <strong>Open Food Facts</strong>, used under the
+      <strong>Open Database License</strong>. Their API allows about ten searches a minute per person, so
+      lookups are deliberately one tap at a time rather than as you type.</p>
     <div class="seg" id="online-tog" role="group" aria-label="Online lookup" style="margin-top:11px">
       <button data-online="0" aria-pressed="true">Offline only</button>
       <button data-online="1" aria-pressed="false">Look up online</button>
@@ -4534,24 +4537,26 @@ function offFetch(url){
 
 var offResults = [];
 
-/* Open Food Facts has three search paths of different vintages, and which one
-   a browser can actually use comes down to CORS headers I cannot check from
-   here. So try them in order, newest first, and take the first that answers
-   with something usable. A barcode goes straight to the product endpoint. */
+/* Per the API docs: full-text search does not exist in v2 or v3 — only
+   Search-a-licious and the legacy CGI path. Product reads should be v3, with
+   v2 kept as a fallback while it is still supported. */
 function offEndpoints(q){
   var digits = q.replace(/\s/g, '');
-  if (/^\d{8,14}$/.test(digits))
-    return [{u:OFF_BASE + '/api/v2/product/' + encodeURIComponent(digits) + '.json?fields=' + OFF_FIELDS,
-             name:'barcode'}];
+  if (/^\d{8,14}$/.test(digits)){
+    var c = encodeURIComponent(digits);
+    return [
+      {u:OFF_BASE + '/api/v3/product/' + c + '.json?fields=' + OFF_FIELDS, name:'v3 product', kind:'read'},
+      {u:OFF_BASE + '/api/v2/product/' + c + '.json?fields=' + OFF_FIELDS, name:'v2 product', kind:'read'}
+    ];
+  }
   var e = encodeURIComponent(q);
   return [
-    {u:'https://search.openfoodfacts.org/api/v1/search?q=' + e + '&page_size=20', name:'search-a-licious'},
-    {u:OFF_BASE + '/api/v2/search?search_terms=' + e + '&page_size=20&fields=' + OFF_FIELDS, name:'api v2'},
+    {u:'https://search.openfoodfacts.org/api/v1/search?q=' + e + '&page_size=20', name:'search-a-licious', kind:'search'},
+    {u:'https://search.openfoodfacts.org/search?q=' + e + '&page_size=20', name:'search-a-licious alt', kind:'search'},
     {u:OFF_BASE + '/cgi/search.pl?search_terms=' + e +
-       '&search_simple=1&action=process&json=1&page_size=20&fields=' + OFF_FIELDS, name:'legacy cgi'}
+       '&search_simple=1&action=process&json=1&page_size=20&fields=' + OFF_FIELDS, name:'legacy cgi', kind:'search'}
   ];
 }
-/* Every shape they have ever returned: hits, products, or a single product. */
 function offRows(j){
   if (!j) return [];
   if (Array.isArray(j.hits)) return j.hits;
@@ -4560,10 +4565,29 @@ function offRows(j){
   return [];
 }
 
+/* Open Food Facts allows 10 search and 15 product requests a minute per IP,
+   and bans over it. Lookups already need a deliberate tap — never a keystroke,
+   which their docs single out as the way to get blocked — but a slow hand is
+   worth enforcing rather than trusting. */
+var offCalls = [];
+function offAllowed(kind){
+  var now = Date.now(), cap = kind === 'search' ? 8 : 12;
+  offCalls = offCalls.filter(function(t){ return now - t < 60000; });
+  if (offCalls.length >= cap) return Math.ceil((60000 - (now - offCalls[0])) / 1000);
+  return 0;
+}
+
 function offSearch(q){
   var box = el('off-slot');
-  if (box) box.innerHTML = '<div class="empty">Asking Open Food Facts…</div>';
   var eps = offEndpoints(q), tried = [];
+  var wait = offAllowed(eps[0].kind);
+  if (wait){
+    if (box) box.innerHTML = '<div class="empty" style="padding:16px 18px">Easy on — Open Food Facts ' +
+      'allows a handful of lookups a minute and bans over it. Try again in ' + wait + ' s.</div>';
+    return;
+  }
+  offCalls.push(Date.now());
+  if (box) box.innerHTML = '<div class="empty">Asking Open Food Facts…</div>';
 
   function attempt(i){
     if (i >= eps.length) return Promise.reject(new Error('all endpoints failed: ' + tried.join(', ')));
@@ -4583,12 +4607,13 @@ function offSearch(q){
     renderOffResults(q, r.via);
   }).catch(function(err){
     var b = el('off-slot'); if (!b) return;
+    var m = String(err.message || '');
+    var head = /429/.test(m) ? 'Open Food Facts is rate-limiting you. Give it a minute.'
+             : /503/.test(m) ? 'Open Food Facts is refusing traffic right now. Try later.'
+             : 'Open Food Facts did not answer.';
     b.innerHTML = '<div class="empty" style="padding:16px 18px;text-align:left">' +
-      '<strong>Open Food Facts did not answer.</strong><br>' +
-      '<span style="font-size:11px">Every route was tried: ' + esc(String(err.message)) + '.<br>' +
-      'A “Failed to fetch” usually means the browser blocked it rather than the service being down. ' +
-      'The claude.ai preview blocks all outside hosts by design — on the Pages copy it should work, ' +
-      'so if you see this there it is worth telling me which route failed.</span></div>';
+      '<strong>' + head + '</strong><br>' +
+      '<span style="font-size:11px">Routes tried: ' + esc(m) + '.</span></div>';
   });
 }
 function renderOffResults(q, via){
