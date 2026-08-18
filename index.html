@@ -602,6 +602,13 @@ body.dragging{cursor:grabbing}
       <label class="f"><span>Fat g/kg</span><input type="number" id="p-fpk" inputmode="decimal" min="0.4" max="2" step="0.1" value="0.9"></label>
     </div>
     <p class="hint" id="ppk-note">Carbohydrate fills whatever energy is left after protein and fat are set.</p>
+    <div class="eyebrow" style="margin:14px 0 7px">Fuel around training</div>
+    <div class="seg" id="p-periodise" role="group" aria-label="Carb periodisation">
+      <button data-per="off" aria-pressed="true">Even</button>
+      <button data-per="mod" aria-pressed="false">Moderate</button>
+      <button data-per="strong" aria-pressed="false">Strong</button>
+    </div>
+    <p class="hint" id="per-note">&mdash;</p>
   </div>
 
   <div class="card">
@@ -2968,13 +2975,45 @@ function dayEnergy(iso){
   /* A coached target is a measured answer and beats the formula, but it is a
      resting-day number: today's own training still gets added to it. */
   var coach = S.coach && S.coach.on && S.coach.target;
-  var target = coach
-    ? Math.max(S.coach.target + train, rmr())
-    : Math.max(burn * goal.mult, rmr());
+  var pf = periodiseFactor(iso);
+  /* The factor is applied to the rest-day base only: the training energy is
+     already the cost of the session and should not be scaled twice. */
+  var base0 = coach ? S.coach.target : base * goal.mult;
+  var target = Math.max(base0 * pf + train, rmr());
   return {base:base, train:train, burn:burn, eaten:eaten, target:target,
           remaining:target - eaten, balance:burn - eaten, goal:goal,
-          measured:mb !== null, coached:!!coach};
+          measured:mb !== null, coached:!!coach, periodise:pf};
 }
+/* --------------------------- carb periodisation ---------------------------
+   Training energy already lifts a session day's target, so carbs rise on hard
+   days by themselves — protein and fat are fixed per kilogram, so carbs absorb
+   whatever is left. What that does not do is take anything back on rest days.
+   This shifts the non-training part of the target around the week's average
+   load, so the week's total is roughly unchanged and the fuel sits where the
+   work is. Carbs move because they are the residual; protein and fat do not. */
+function periodiseFactors(iso){
+  var mode = S.profile.periodise || 'off';
+  var days = lastDays(7, iso);
+  if (mode === 'off') return {days:days, f:days.map(function(){ return 1; })};
+  var k = mode === 'strong' ? 0.45 : 0.22;
+  var loads = days.map(function(d){ return dayTraining(d); });
+  var sum = loads.reduce(function(a, b){ return a + b; }, 0);
+  if (sum <= 0) return {days:days, f:days.map(function(){ return 1; })};
+  var avg = sum / days.length;
+  var raw = loads.map(function(l){
+    return Math.max(0.8, Math.min(1 + k * ((l - avg) / avg), 1.35));
+  });
+  /* Clamping breaks the balance — a hard day can pin at the ceiling while a
+     rest day sits above the floor, so the week quietly gains. Renormalising to
+     a mean of one puts it back, which is the whole promise of the feature. */
+  var mean = raw.reduce(function(a, b){ return a + b; }, 0) / raw.length;
+  return {days:days, f:raw.map(function(x){ return x / mean; })};
+}
+function periodiseFactor(iso){
+  var p = periodiseFactors(iso);
+  return p.f[p.f.length - 1];
+}
+
 function macroTargets(targetKj){
   var kg = bodyKg();
   var pg = (+S.profile.ppk || 0) * kg;
@@ -3156,8 +3195,11 @@ function renderMacros(e){
         (r.noTarget ? ' g · ' + Math.round(r.share || 0) + '% of budget' : ' / ' + g(r.want) + ' g') + '</div>' +
     '</div>';
   }).join('');
+  var pfx = e.periodise && Math.abs(e.periodise - 1) > 0.02
+    ? (e.periodise > 1 ? 'fuelled ' : 'eased ') + Math.round(Math.abs(e.periodise - 1) * 100) + '% · '
+    : '';
   el('macro-note').textContent = Math.round(t.p * 17 + t.c * 16 + t.f * 37 + t.alc * 29) > 0
-    ? 'target from ' + fmtE(e.target, true) : 'set your markers';
+    ? pfx + 'target from ' + fmtE(e.target, true) : 'set your markers';
 
   var fibTarget = S.profile.sex === 'm' ? 30 : 25;
   var satTarget = e.target * 0.10 / 37;
@@ -3770,6 +3812,7 @@ function renderBodyView(){
   press('p-smm-unit', 'smmu', p.smmUnit || 'pct');
   press('p-goal', 'goal', p.goal);
   press('p-formula', 'f', p.formula || 'auto');
+  press('p-periodise', 'per', p.periodise || 'off');
   el('wl-smm-lbl').textContent = 'Muscle (' + (p.smmUnit === 'kg' ? 'kg' : '%') + ')';
 
   /* what the composition figures actually resolve to */
@@ -3810,8 +3853,17 @@ function renderBodyView(){
   }).join('');
   el('model-compare').innerHTML = cmp;
 
-  el('ppk-note').textContent = 'At ' + g(p.wt,1) + ' kg that is ' + g((+p.ppk) * (+p.wt)) +
-    ' g protein and ' + g((+p.fpk) * (+p.wt)) + ' g fat. Carbohydrate fills the rest.';
+  el('ppk-note').textContent = 'At ' + g(bodyKg(),1) + ' kg trend weight that is ' +
+    g((+p.ppk) * bodyKg()) + ' g protein and ' + g((+p.fpk) * bodyKg()) + ' g fat. ' +
+    'Carbohydrate fills the rest.';
+  var pf = periodiseFactor(DAY);
+  el('per-note').innerHTML = (p.periodise === 'off' || p.periodise === undefined)
+    ? 'Every day gets the same base, and hard days rise only by what the session cost. ' +
+      'Turning this on takes some of that back on rest days and puts it into session days, ' +
+      'leaving the week about where it was.'
+    : 'Today sits at <strong>' + Math.round(pf * 100) + '%</strong> of your base against this ' +
+      'week\'s average training load. Protein and fat hold at g/kg; carbohydrate does the moving. ' +
+      'Rest days give up fuel so session days get it.';
 
   /* expenditure */
   var e = dayEnergy(DAY);
@@ -4952,7 +5004,7 @@ function renderOffResults(q, via){
 /* Bumped on every deploy. When something fails, knowing which build is
    actually loaded is the difference between debugging the bug and debugging
    a stale cache. */
-var APP_VERSION = '2026.08.18-11';
+var APP_VERSION = '2026.08.18-12';
 var SB_URL = 'https://lsrxqviwgqjpuzzcqcpu.supabase.co';
 var SB_KEY = 'sb_publishable_0lk-0UAlfW-tALEgPiqFHg_8vF9Hp63';
 var AUTH_KEY = 'eatandtrain.auth';
@@ -5515,6 +5567,10 @@ function bind(){
     var b = ev.target.closest('[data-coach]'); if (!b) return;
     coachState().on = b.dataset.coach === '1';
     save(); renderAll();
+  });
+  el('p-periodise').addEventListener('click', function(ev){
+    var b = ev.target.closest('[data-per]'); if (!b) return;
+    S.profile.periodise = b.dataset.per; save(); renderAll();
   });
   el('p-goal').addEventListener('click', function(ev){
     var b = ev.target.closest('[data-goal]'); if (!b) return;
