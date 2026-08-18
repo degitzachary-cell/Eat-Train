@@ -96,7 +96,7 @@ nav.tabs{
   backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
   border-top:1px solid var(--line); padding-bottom:env(safe-area-inset-bottom);
 }
-.tabs-in{max-width:560px; margin:0 auto; display:grid; grid-template-columns:repeat(5,1fr)}
+.tabs-in{max-width:560px; margin:0 auto; display:grid; grid-template-columns:repeat(4,1fr)}
 .tab{display:flex; flex-direction:column; align-items:center; gap:3px; padding:9px 0 8px;
   color:var(--ink-3); font-size:10px; font-weight:500; letter-spacing:.04em; text-transform:uppercase}
 .tab svg{width:21px; height:21px}
@@ -320,6 +320,11 @@ body.dragging{cursor:grabbing}
         <button id="u-kj" aria-pressed="true">kJ</button>
         <button id="u-kcal" aria-pressed="false">Cal</button>
       </div>
+      <button class="iconbtn" id="btn-foods" aria-label="Foods and recipes">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="17" height="17">
+          <path d="M6 3v8a3 3 0 006 0V3M9 11v10M15 3c-1.5 1.5-2 3.5-2 5.5S14 13 15.5 13H17V3z"/><path d="M17 13v8"/>
+        </svg>
+      </button>
       <button class="iconbtn" id="btn-data" aria-label="Account, sync and backup">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="17" height="17">
           <ellipse cx="12" cy="6" rx="7.5" ry="3"/><path d="M4.5 6v12c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3V6"/><path d="M4.5 12c0 1.7 3.4 3 7.5 3s7.5-1.3 7.5-3"/>
@@ -369,6 +374,12 @@ body.dragging{cursor:grabbing}
     </div>
   </div>
 
+  <div id="today-checkin"></div>
+
+  <button class="card" id="weigh-card" style="display:block;width:100%;text-align:left;padding:12px 14px">
+    <div id="weigh-body"></div>
+  </button>
+
   <div class="card">
     <div class="card-head"><h2>Macros</h2><span class="right" id="macro-note">—</span></div>
     <div class="macros" id="macros"></div>
@@ -393,70 +404,17 @@ body.dragging{cursor:grabbing}
   </div>
 </section>
 
-<!-- ============ FOOD ============ -->
-<section class="view" id="v-food">
-  <div class="card" style="margin-top:12px">
-    <div class="card-head"><h2>Food database</h2><span class="right" id="db-count">&mdash;</span></div>
-    <p class="note">The complete <strong>Australian Food Composition Database, Release 3</strong>
-      (FSANZ) is built in &mdash; every food, straight from the official nutrient profiles, per 100 g.
-      The 213 foods FSANZ also publishes as liquids are held per 100 mL, which is the honest basis
-      for a drink. Energy is the label figure, calculated with dietary fibre.</p>
-    <div class="btnrow" style="margin-top:12px">
-      <button class="btn sm" id="btn-browse" style="flex:1">Search foods</button>
-      <button class="btn sm ghost" id="btn-newfood" style="flex:1">New food</button>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-head"><h2>Supermarket products</h2></div>
-    <p class="note">AFCD covers generic foods, not the branded lines on a Coles shelf. For those,
-      <strong>Open Food Facts</strong> is the open, barcode-level database &mdash; filter it by brand
-      or country on their advanced search, download the result as CSV, and load it here. Tab-separated
-      exports, sodium in grams and salt-only rows are all handled.</p>
-    <p class="note" style="margin-top:8px">It is crowd-sourced, so coverage is patchy and the odd entry
-      is wrong &mdash; imports stay under their own <strong>Packaged</strong> category so you always know
-      which numbers came from FSANZ and which did not. For a single item, the panel on the box beats
-      any database: use <strong>New food</strong>.</p>
-    <p class="note" style="margin-top:8px">Product data from <strong>Open Food Facts</strong>, used under the
-      <strong>Open Database License</strong>. Their API allows about ten searches a minute per person, so
-      lookups are deliberately one tap at a time rather than as you type.</p>
-    <div class="seg" id="online-tog" role="group" aria-label="Online lookup" style="margin-top:11px">
-      <button data-online="0" aria-pressed="true">Offline only</button>
-      <button data-online="1" aria-pressed="false">Look up online</button>
-    </div>
-    <p class="hint" id="online-note" style="margin-top:8px">Off by default. Switched on, the search
-      sheet offers a button to query Open Food Facts for whatever you typed — one request, on your tap,
-      carrying the search text and nothing else. No account, no identifier, no history. Anything you
-      pick is saved to this device so it works offline afterwards.</p>
-    <div class="btnrow" style="margin-top:12px">
-      <label class="btn sm ghost" style="flex:1; cursor:pointer">
-        Choose CSV<input type="file" id="csv-in" accept=".csv,.tsv,text/csv,text/tab-separated-values" hidden>
-      </label>
-      <button class="btn sm danger" id="csv-clear" style="flex:none">Clear imported</button>
-    </div>
-    <p class="hint" id="csv-status">No imported foods.</p>
-  </div>
-
-  <div class="card flush">
-    <div class="meal-head"><h3>Recipes</h3><span class="kj num" id="rec-count">0</span></div>
-    <div id="rec-list"></div>
-  </div>
-
-  <div class="card flush">
-    <div class="meal-head"><h3>Your foods</h3><span class="kj num" id="custom-count">0</span></div>
-    <div id="custom-list"></div>
-  </div>
-</section>
-
 <!-- ============ TRAIN ============ -->
 <section class="view" id="v-train">
   <div class="card" style="margin-top:12px">
-    <div class="card-head"><h2>Run</h2><span class="right" id="tr-date">&mdash;</span></div>
+    <div class="card-head"><h2>Log a session</h2><span class="right" id="tr-date">&mdash;</span></div>
     <div class="seg" id="run-type" role="group" aria-label="Session type">
       <button data-rt="run" aria-pressed="true">Run</button>
       <button data-rt="wo" aria-pressed="false">Workout</button>
+      <button data-rt="other" aria-pressed="false">Other</button>
+      <button data-rt="lift" aria-pressed="false">Lift</button>
     </div>
-    <div id="run-fields" style="margin-top:13px"></div>
+    <div id="run-pane"><div id="run-fields" style="margin-top:13px"></div>
     <div class="card" style="background:var(--surface-2); box-shadow:none; margin:2px 0 12px">
       <div class="budget-top" style="margin-bottom:9px">
         <div><div class="budget-label">Session</div>
@@ -467,10 +425,9 @@ body.dragging{cursor:grabbing}
     </div>
     <button class="btn" id="run-save">Add session</button>
     <p class="hint" id="run-note">&mdash;</p>
-  </div>
+    </div>
 
-  <div class="card">
-    <div class="card-head"><h2>Other activity</h2><span class="right">Anything but running</span></div>
+    <div id="other-pane" hidden>
     <label class="f"><span>Activity</span><select id="w-act"></select></label>
     <div class="grid2">
       <label class="f"><span>Minutes</span><input type="number" id="w-min" inputmode="numeric" min="1" max="600" step="1" value="45"></label>
@@ -486,8 +443,7 @@ body.dragging{cursor:grabbing}
     <button class="btn ghost" id="w-save" style="margin-top:10px">Add activity</button>
   </div>
 
-  <div class="card">
-    <div class="card-head"><h2>Strength set</h2><span class="right">Optional volume log</span></div>
+    <div id="lift-pane" hidden>
     <label class="f"><span>Exercise</span><input type="text" id="s-name" placeholder="Back squat" autocomplete="off"></label>
     <div class="grid3">
       <label class="f"><span>Sets</span><input type="number" id="s-sets" inputmode="numeric" min="1" value="4"></label>
@@ -497,6 +453,7 @@ body.dragging{cursor:grabbing}
     <button class="btn ghost" id="s-save">Add to session log</button>
     <p class="hint">Volume is tracked for progression only — its energy cost is already counted by the
       weights session above, so adding sets here does not change your budget.</p>
+  </div>
   </div>
 
   <div class="card">
@@ -587,11 +544,11 @@ body.dragging{cursor:grabbing}
 
   <div class="card">
     <div class="card-head"><h2>Coach</h2><span class="right" id="coach-state">Off</span></div>
-    <div class="seg" id="coach-tog" role="group" aria-label="Coach" style="margin-bottom:12px">
+    <div class="seg" id="coach-tog" role="group" aria-label="Coach">
       <button data-coach="0" aria-pressed="true">Fixed targets</button>
       <button data-coach="1" aria-pressed="false">Adjust weekly</button>
     </div>
-    <div id="coach-body"></div>
+    <p class="hint" id="coach-hint" style="margin-top:9px">&mdash;</p>
   </div>
 
   <div class="card">
@@ -626,28 +583,13 @@ body.dragging{cursor:grabbing}
     <div id="measured-toggle" style="margin-top:12px"></div>
   </div>
 
-  <div class="card">
-    <div class="card-head"><h2>Weigh-in</h2><span class="right" id="wt-count">—</span></div>
-    <div class="grid2">
-      <label class="f"><span>Weight (kg)</span><input type="number" id="wl-kg" inputmode="decimal" min="30" max="300" step="0.1"></label>
-      <label class="f"><span>Body fat %</span><input type="number" id="wl-bf" inputmode="decimal" min="3" max="60" step="0.1"></label>
-      <label class="f"><span id="wl-smm-lbl">Muscle</span><input type="number" id="wl-smm" inputmode="decimal" min="1" max="120" step="0.1"></label>
-      <label class="f"><span>Bone (kg)</span><input type="number" id="wl-bone" inputmode="decimal" min="0.5" max="8" step="0.1"></label>
-    </div>
-    <label class="f"><span>Body water %</span><input type="number" id="wl-water" inputmode="decimal" min="20" max="80" step="0.1"></label>
-    <button class="btn" id="wl-save">Record for <span id="wl-date">today</span></button>
-    <p class="hint">Leave any field blank to carry the last value forward. Saving also updates your
-      markers above, so the next day's numbers use it.</p>
-  </div>
-  <div class="card flush">
-    <div class="meal-head"><h3>History</h3></div>
-    <div id="wt-list"></div>
-  </div>
 </section>
 
 <!-- ============ TRENDS ============ -->
 <section class="view" id="v-trends">
-  <div class="card" style="margin-top:12px">
+  <div id="prog-coach" style="margin-top:12px"></div>
+
+  <div class="card">
     <div class="card-head"><h2>Measured metabolism</h2><span class="right" id="adapt-badge"></span></div>
     <div id="adapt-body"></div>
   </div>
@@ -673,6 +615,24 @@ body.dragging{cursor:grabbing}
     <div class="card-head"><h2>Weekly averages</h2></div>
     <div id="weekly"></div>
   </div>
+
+  <div class="card">
+    <div class="card-head"><h2>Weigh-in</h2><span class="right" id="wt-count">—</span></div>
+    <div class="grid2">
+      <label class="f"><span>Weight (kg)</span><input type="number" id="wl-kg" inputmode="decimal" min="30" max="300" step="0.1"></label>
+      <label class="f"><span>Body fat %</span><input type="number" id="wl-bf" inputmode="decimal" min="3" max="60" step="0.1"></label>
+      <label class="f"><span id="wl-smm-lbl">Muscle</span><input type="number" id="wl-smm" inputmode="decimal" min="1" max="120" step="0.1"></label>
+      <label class="f"><span>Bone (kg)</span><input type="number" id="wl-bone" inputmode="decimal" min="0.5" max="8" step="0.1"></label>
+    </div>
+    <label class="f"><span>Body water %</span><input type="number" id="wl-water" inputmode="decimal" min="20" max="80" step="0.1"></label>
+    <button class="btn" id="wl-save">Record for <span id="wl-date">today</span></button>
+    <p class="hint">Leave any field blank to carry the last value forward. Saving also updates your
+      markers above, so the next day's numbers use it.</p>
+  </div>
+  <div class="card flush">
+    <div class="meal-head"><h3>History</h3></div>
+    <div id="wt-list"></div>
+  </div>
 </section>
 
 </main>
@@ -681,14 +641,12 @@ body.dragging{cursor:grabbing}
   <div class="tabs-in" id="tabbar">
     <button class="tab" data-v="today" aria-current="page">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 12h4l2.5-7 4 14 2.5-7H21"/></svg>Today</button>
-    <button class="tab" data-v="food">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M6 3v8a3 3 0 006 0V3M9 11v10M15 3c-1.5 1.5-2 3.5-2 5.5S14 13 15.5 13H17V3z"/><path d="M17 13v8"/></svg>Food</button>
     <button class="tab" data-v="train">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M6.5 6.5v11M3.5 9v6M17.5 6.5v11M20.5 9v6M6.5 12h11"/></svg>Train</button>
+    <button class="tab" data-v="trends">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 19V5M4 19h16"/><path d="M7.5 15l3.5-4.5 3 2.5 4.5-6"/></svg>Progress</button>
     <button class="tab" data-v="body">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="8" r="3.6"/><path d="M4.8 20a7.2 7.2 0 0114.4 0"/></svg>Me</button>
-    <button class="tab" data-v="trends">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 19V5M4 19h16"/><path d="M7.5 15l3.5-4.5 3 2.5 4.5-6"/></svg>Trends</button>
   </div>
 </nav>
 
@@ -766,6 +724,64 @@ body.dragging{cursor:grabbing}
 <div class="sheet" id="sh-move" role="dialog" aria-modal="true" aria-label="Move to meal">
   <div class="sheet-head"><h2 id="move-title">Move</h2><button class="iconbtn sheet-close" aria-label="Close">&#10005;</button></div>
   <div class="sheet-body" id="move-body"></div>
+</div>
+
+<!-- food library -->
+<div class="sheet" id="sh-foods" role="dialog" aria-modal="true" aria-label="Foods and recipes">
+  <div class="sheet-head"><h2>Foods &amp; recipes</h2><button class="iconbtn sheet-close" aria-label="Close">&#10005;</button></div>
+  <div class="sheet-body">
+  <div class="card" style="margin-top:12px">
+    <div class="card-head"><h2>Food database</h2><span class="right" id="db-count">&mdash;</span></div>
+    <p class="note">The complete <strong>Australian Food Composition Database, Release 3</strong>
+      (FSANZ) is built in &mdash; every food, straight from the official nutrient profiles, per 100 g.
+      The 213 foods FSANZ also publishes as liquids are held per 100 mL, which is the honest basis
+      for a drink. Energy is the label figure, calculated with dietary fibre.</p>
+    <div class="btnrow" style="margin-top:12px">
+      <button class="btn sm" id="btn-browse" style="flex:1">Search foods</button>
+      <button class="btn sm ghost" id="btn-newfood" style="flex:1">New food</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head"><h2>Supermarket products</h2></div>
+    <p class="note">AFCD covers generic foods, not the branded lines on a Coles shelf. For those,
+      <strong>Open Food Facts</strong> is the open, barcode-level database &mdash; filter it by brand
+      or country on their advanced search, download the result as CSV, and load it here. Tab-separated
+      exports, sodium in grams and salt-only rows are all handled.</p>
+    <p class="note" style="margin-top:8px">It is crowd-sourced, so coverage is patchy and the odd entry
+      is wrong &mdash; imports stay under their own <strong>Packaged</strong> category so you always know
+      which numbers came from FSANZ and which did not. For a single item, the panel on the box beats
+      any database: use <strong>New food</strong>.</p>
+    <p class="note" style="margin-top:8px">Product data from <strong>Open Food Facts</strong>, used under the
+      <strong>Open Database License</strong>. Their API allows about ten searches a minute per person, so
+      lookups are deliberately one tap at a time rather than as you type.</p>
+    <div class="seg" id="online-tog" role="group" aria-label="Online lookup" style="margin-top:11px">
+      <button data-online="0" aria-pressed="true">Offline only</button>
+      <button data-online="1" aria-pressed="false">Look up online</button>
+    </div>
+    <p class="hint" id="online-note" style="margin-top:8px">Off by default. Switched on, the search
+      sheet offers a button to query Open Food Facts for whatever you typed — one request, on your tap,
+      carrying the search text and nothing else. No account, no identifier, no history. Anything you
+      pick is saved to this device so it works offline afterwards.</p>
+    <div class="btnrow" style="margin-top:12px">
+      <label class="btn sm ghost" style="flex:1; cursor:pointer">
+        Choose CSV<input type="file" id="csv-in" accept=".csv,.tsv,text/csv,text/tab-separated-values" hidden>
+      </label>
+      <button class="btn sm danger" id="csv-clear" style="flex:none">Clear imported</button>
+    </div>
+    <p class="hint" id="csv-status">No imported foods.</p>
+  </div>
+
+  <div class="card flush">
+    <div class="meal-head"><h3>Recipes</h3><span class="kj num" id="rec-count">0</span></div>
+    <div id="rec-list"></div>
+  </div>
+
+  <div class="card flush">
+    <div class="meal-head"><h3>Your foods</h3><span class="kj num" id="custom-count">0</span></div>
+    <div id="custom-list"></div>
+  </div>
+</div>
 </div>
 
 <!-- barcode scanner -->
@@ -3183,6 +3199,39 @@ function renderDateBar(){
   el('wl-date').textContent = label.toLowerCase();
 }
 
+/* A morning action does not belong eight cards deep in setup. If today has no
+   weigh-in it asks for one; if it has, it steps out of the way. */
+function renderWeighPrompt(){
+  var box = el('weigh-body'); if (!box) return;
+  var today = S.weights.filter(function(w){ return w.d === DAY; })[0];
+  var card = el('weigh-card');
+  if (today){
+    card.style.borderColor = 'var(--line)';
+    box.innerHTML = '<div style="display:flex;align-items:center;gap:10px">' +
+      '<div style="flex:1"><div class="eyebrow">Weighed in</div>' +
+      '<div class="num" style="font-size:19px;font-weight:600;margin-top:2px">' + g(today.kg,1) + ' kg</div></div>' +
+      '<div style="text-align:right"><div class="eyebrow">Trend</div>' +
+      '<div class="num" style="font-size:15px;color:var(--accent);margin-top:3px">' + g(bodyKg(),2) + ' kg</div></div></div>';
+  } else {
+    card.style.borderColor = 'color-mix(in srgb, var(--accent) 45%, var(--line))';
+    box.innerHTML = '<div style="display:flex;align-items:center;gap:10px">' +
+      '<div style="flex:1"><div class="eyebrow" style="color:var(--accent)">Weigh in</div>' +
+      '<div style="font-size:13px;color:var(--ink-2);margin-top:3px">Not yet today — the trend is ' +
+      'what every target runs on.</div></div>' +
+      '<div class="num" style="font-size:15px;color:var(--ink-3)">' + g(bodyKg(),2) + ' kg</div></div>';
+  }
+}
+function renderCheckinBanner(){
+  var box = el('today-checkin'); if (!box) return;
+  if (!coachDue()){ box.innerHTML = ''; return; }
+  var p = coachProposal();
+  box.innerHTML = '<button class="card" style="display:block;width:100%;text-align:left;' +
+    'border-color:color-mix(in srgb, var(--accent) 55%, var(--line))" id="checkin-go">' +
+    '<div class="card-head"><h2>Weekly check-in</h2><span class="right badge">Due</span></div>' +
+    '<p class="note">' + (p.ok ? esc(p.why) : esc(p.why)) + '</p></button>';
+  el('checkin-go').addEventListener('click', function(){ switchView('trends'); });
+}
+
 function renderToday(){
   var e = dayEnergy(DAY);
   var over = e.remaining < 0;
@@ -3216,6 +3265,8 @@ function renderToday(){
   net.textContent = fmtSigned(e.balance);
   net.style.color = e.balance < 0 ? 'var(--over)' : 'var(--ink)';
 
+  renderWeighPrompt();
+  renderCheckinBanner();
   renderMacros(e);
   renderMicros();
   renderMeals();
@@ -3507,6 +3558,14 @@ function blockKj(b){
 }
 
 var RUN_NAMES = {run:'Run', wo:'Interval session'};
+/* Run and Workout share the structured form; Other and Lift are their own
+   panes. One card, one choice, instead of four forms stacked up. */
+function showPane(){
+  var t = runType();
+  el('run-pane').hidden = !(t === 'run' || t === 'wo');
+  el('other-pane').hidden = t !== 'other';
+  el('lift-pane').hidden = t !== 'lift';
+}
 var EX_METS = [['Bodyweight strength',5.0],['Heavy strength',6.0],['Core',3.8],
                ['Plyometrics',8.0],['Burpees',8.0],['Kettlebell',9.8]];
 var BETWEEN = [['rest','Rest'],['jog','Jog'],['float','Float'],['comp','Compromised']];
@@ -3622,7 +3681,9 @@ function renderRunFields(){
 }
 
 function buildRun(){
-  var t = runType(), blocks = [], name = RUN_NAMES[t], parts = [];
+  var t = runType(), blocks = [], name = RUN_NAMES[t] || 'Run', parts = [];
+  if (t !== 'run' && t !== 'wo') return {type:t, name:name, blocks:[], kj:0, epoc:0,
+    mins:0, km:0, planned:0, plannedMin:0, gap:null, over:null, summary:''};
   function grade(km){
     var gm = parseFloat(runVal('gain', '')) || 0;
     return km > 0 ? gm / (km * 1000) : 0;
@@ -3812,7 +3873,11 @@ function saveRunLast(){
 }
 
 function renderTrainView(){
-  if (!el('run-fields').innerHTML) renderRunFields(); else updateRun();
+  showPane();
+  var t = runType();
+  if (t === 'run' || t === 'wo'){
+    if (!el('run-fields').innerHTML) renderRunFields(); else updateRun();
+  }
   var sel = el('w-act');
   if (!sel.options.length){
     sel.innerHTML = ACTIVITIES.map(function(a, i){
@@ -3981,24 +4046,25 @@ function renderAccountCard(){
 }
 
 function renderCoach(){
-  var c = coachState(), st = el('coach-state'), body = el('coach-body');
-  if (!st || !body) return;
-  press('coach-tog', 'coach', c.on ? '1' : '0');
-
-  if (!c.on){
-    st.textContent = 'Off';
-    body.innerHTML = '<p class="note">Targets come straight from the formula and never move. ' +
-      'Switch this on and once a week the target is compared against what your weight trend ' +
-      'actually did, and adjusted by the difference — the thing a coach does that a calculator ' +
-      'does not.</p>';
-    return;
+  var c = coachState(), st = el('coach-state'), body = el('prog-coach');
+  if (st){
+    press('coach-tog', 'coach', c.on ? '1' : '0');
+    st.textContent = c.on ? (c.target ? fmtE(c.target, true) + ' base' : 'Awaiting check-in') : 'Off';
+    el('coach-hint').innerHTML = c.on
+      ? 'Once a week your target moves to match what your weight trend actually did. The check-in ' +
+        'itself lives under <strong>Progress</strong>, where the evidence for it is.'
+      : 'Targets come straight from the formula and never move. Switched on, once a week the target ' +
+        'is compared against what your weight trend actually did, and adjusted by the difference.';
   }
+  if (!body) return;
+
+  if (!c.on){ body.innerHTML = ''; return; }
 
   var p = coachProposal();
-  st.textContent = c.target ? fmtE(c.target, true) + ' base' : 'Awaiting first check-in';
   var due = coachDue();
 
-  var rows =
+  var rows = '<div class="card"><div class="card-head"><h2>Coach</h2><span class="right">' +
+    (c.target ? fmtE(c.target, true) + ' base' : 'no target yet') + '</span></div>' +
     '<div class="readout"><div class="k">Trend weight<em>Smoothed, ' + TREND_HALFLIFE +
       '-day half-life</em></div><div class="v num">' + g(bodyKg(),2) + ' kg</div></div>' +
     '<div class="readout"><div class="k">Trend rate<em>Last three weeks</em></div>' +
@@ -4039,7 +4105,7 @@ function renderCoach(){
           (d >= 0 ? '+' : '') + fmtE(d) + '</div></div>';
       }).join('');
   }
-  body.innerHTML = rows;
+  body.innerHTML = rows + '</div>';
 
   if (el('coach-accept')) el('coach-accept').addEventListener('click', coachAccept);
   if (el('coach-skip')) el('coach-skip').addEventListener('click', coachSkip);
@@ -4126,6 +4192,7 @@ function adaptiveTDEE(windowDays){
 }
 
 function renderTrends(){
+  renderCoach();
   var a = measured();
   var badge = el('adapt-badge'), body = el('adapt-body');
   if (!a.ok){
@@ -4636,12 +4703,12 @@ function runSearch(){
     if (!picks.length){
       box.innerHTML = '<div class="empty" style="padding:28px 20px">Search ' +
         allFoods().length.toLocaleString('en-AU') + ' foods, or pick a category above.<br>' +
-        'What you use most will collect here.</div>';
+        'What you use most will collect here.</div>' + addFoodPrompt();
       return;
     }
     box.innerHTML = '<div class="meal-head"><h3>' +
       (S.fav && S.fav.length ? 'Saved &amp; recent' : 'Recent') + '</h3></div>' +
-      picks.slice(0, 40).map(function(x){ return resultRow(x.f); }).join('');
+      picks.slice(0, 40).map(function(x){ return resultRow(x.f); }).join('') + addFoodPrompt();
     return;
   }
 
@@ -4661,11 +4728,21 @@ function runSearch(){
   }
   if (!list.length){
     box.innerHTML = '<div class="empty" style="padding:28px 20px">Nothing matches &ldquo;' +
-      esc(el('q').value.trim()) + '&rdquo;.<br>Try a shorter word, or add it under New food.</div>' +
-      offPrompt(el('q').value.trim());
+      esc(el('q').value.trim()) + '&rdquo;.</div>' +
+      offPrompt(el('q').value.trim()) + addFoodPrompt();
     return;
   }
-  box.innerHTML = list.map(resultRow).join('') + offPrompt(q);
+  box.innerHTML = list.map(resultRow).join('') + offPrompt(q) + addFoodPrompt();
+}
+/* Offered at the end of every result list: the point you discover a food is
+   missing is the point to add it, not a separate screen you have to know about. */
+function addFoodPrompt(){
+  return '<button class="fres" data-newfood="1">' +
+    '<span class="star" style="color:var(--accent)"><svg viewBox="0 0 24 24" width="15" height="15" ' +
+    'fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7V4h3M18 4h3v3M21 17v3h-3M6 20H3v-3"/>' +
+    '<path d="M7 8v8M10 8v8M13 8v8M17 8v8"/></svg></span>' +
+    '<span style="min-width:0"><span class="t">Not there? Scan or add it</span>' +
+    '<span class="s">Barcode, or type the panel yourself.</span></span></button>';
 }
 function offPrompt(q){
   if (!S.profile.online || !q || q.length < 3) return '';
@@ -5310,7 +5387,7 @@ function renderOffResults(q, via){
 /* Bumped on every deploy. When something fails, knowing which build is
    actually loaded is the difference between debugging the bug and debugging
    a stale cache. */
-var APP_VERSION = '2026.08.18-14';
+var APP_VERSION = '2026.08.18-16';
 var SB_URL = 'https://lsrxqviwgqjpuzzcqcpu.supabase.co';
 var SB_KEY = 'sb_publishable_0lk-0UAlfW-tALEgPiqFHg_8vF9Hp63';
 var AUTH_KEY = 'eatandtrain.auth';
@@ -5607,7 +5684,7 @@ function pushRecent(name){
 }
 function switchView(v){
   VIEW = v;
-  ['today','food','train','body','trends'].forEach(function(k){
+  ['today','train','body','trends'].forEach(function(k){
     el('v-' + k).classList.toggle('on', k === v);
   });
   Array.prototype.forEach.call(el('tabbar').children, function(b){
@@ -5661,6 +5738,8 @@ function bind(){
       save(); runSearch();
       return;
     }
+    var nf = t.closest('[data-newfood]');
+    if (nf){ sheet('sh-custom'); return; }
     var os = t.closest('[data-offsearch]');
     if (os){ offSearch(el('q').value.trim()); return; }
     var op = t.closest('[data-off]');
@@ -5750,10 +5829,13 @@ function bind(){
     toast('“' + nm + '” saved. Search for it any time.');
   });
   el('acct-card').addEventListener('click', function(){ renderDataSheet(); sheet('sh-data'); });
+  el('weigh-card').addEventListener('click', function(){ switchView('trends');
+    setTimeout(function(){ var w = el('wl-kg'); if (w){ w.scrollIntoView({block:'center'}); w.focus(); } }, 120); });
   el('micro-card').addEventListener('click', function(){ renderMicroDetail(); sheet('sh-micro'); });
   el('btn-browse').addEventListener('click', function(){ openSearch('snack'); });
   el('btn-newfood').addEventListener('click', function(){ sheet('sh-custom'); });
   el('btn-data').addEventListener('click', function(){ renderDataSheet(); sheet('sh-data'); });
+  el('btn-foods').addEventListener('click', function(){ renderFoodView(); sheet('sh-foods'); });
   el('csv-in').addEventListener('change', function(ev){
     var file = ev.target.files[0]; if (!file) return;
     var r = new FileReader();
@@ -5807,7 +5889,9 @@ function bind(){
   /* running */
   el('run-type').addEventListener('click', function(ev){
     var b = ev.target.closest('[data-rt]'); if (!b) return;
-    saveRunLast(); press('run-type', 'rt', b.dataset.rt); renderRunFields();
+    saveRunLast(); press('run-type', 'rt', b.dataset.rt);
+    showPane();
+    if (b.dataset.rt === 'run' || b.dataset.rt === 'wo') renderRunFields();
   });
   el('run-fields').addEventListener('input', updateRun);
   el('run-fields').addEventListener('change', updateRun);

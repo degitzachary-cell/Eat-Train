@@ -6,14 +6,21 @@ open `index.html` and it works, including with no signal.
 
 ## What it does
 
-- **Today** — an energy budget you can read at a glance: what you burn, what you have
-  eaten, what is left. Meals, macros, fibre, saturated fat, sodium and alcohol.
-- **Food** — the full AFCD, 1,588 foods, searchable, with your own products alongside.
-- **Train** — MET-based session energy from the Compendium of Physical Activities,
-  plus a strength log for sets, reps and volume.
-- **Me** — your account, markers, three resting-rate models, and your goal.
-- **Trends** — 14-day energy, weight trend, body composition, and your *measured*
-  expenditure worked out from your own data.
+Four tabs, ordered by how often you actually use them.
+
+- **Today** — the log. Energy budget, the weekly check-in when one is due, a weigh-in
+  prompt until you have, macros, vitamins and minerals, meals and training.
+- **Train** — one card, one session: Run, Workout, Other or Lift. Plus steps.
+- **Progress** — where you go to review: the coach check-in and its evidence, measured
+  expenditure, 14-day energy, weight trend, composition, weekly averages, and the
+  weigh-in form with its history.
+- **Me** — who you are and how the maths is set up: account, markers, composition,
+  resting-rate model, daily activity, coach and goal, and the resulting numbers.
+
+**Foods & recipes** is not a tab. You never set out to visit a food library — you hit
+it mid-flow when something is missing, so it lives behind a glyph in the header, and
+every search result list ends with *"Not there? Scan or add it"*. That is the moment
+you find out, so that is where the offer belongs.
 
 ## The food data
 
