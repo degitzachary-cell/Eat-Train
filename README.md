@@ -214,6 +214,43 @@ Two honesty notes:
   alpha-tocopherol. Those are shown for reference but never flagged as exceeded,
   because passing them on diet alone does not mean what the number suggests.
 
+## Coach
+
+A tracker that measures your expenditure but never acts on it leaves the useful half
+undone. Switched on under **Me**, once a week the app compares your trend rate against
+the rate your goal implies and moves the target by the difference, priced at 32,200 kJ
+per kilogram of body mass. Changes are capped at 8%, floored at resting rate, and each
+one is kept with the rate and coverage that produced it.
+
+It refuses to adjust on a week you did not log. Below 70% coverage it says so and
+changes nothing — fitting a target to a half-recorded week is fitting the gaps. The
+coached number is a **rest-day base**; the day's own training is still added on top.
+
+### Trend weight
+
+A scale reading is body mass plus water, gut contents and yesterday. Every calculation
+— resting rate, macro targets, run and step energy — runs on an exponentially weighted
+average with a ten-day half-life rather than the last reading, so a dehydrated
+post-run weigh-in does not rewrite the day. The half-life is expressed in days, so a
+gap between weigh-ins is weighted correctly instead of counting as a single step.
+
+### Fuel around training
+
+Training energy already lifts a session day, and carbs absorb all of it because protein
+and fat are fixed per kilogram. **Even** leaves it there. **Moderate** and **Strong**
+add the other half: rest days give some back so session days get more, with the factors
+normalised to a mean of one so the week lands where it started. On a runner's week,
+Moderate moves a rest day from 304 to 181 g of carbs and a long-run day from 679 to
+887 g.
+
+## Recipes
+
+The easiest recipe builder is a meal you already logged — the ingredients and amounts
+are sitting there. Tap the save icon on any meal, name it, say how many servings it
+makes, and it becomes a single food whose portion is one serving. Everything downstream
+works unchanged, micronutrients included: log one serving of a two-serve batch and you
+get exactly half of what went in.
+
 ## How the energy maths works
 
 **Resting metabolic rate.** Three models, and the app uses the best one your inputs

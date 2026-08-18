@@ -438,6 +438,11 @@ body.dragging{cursor:grabbing}
   </div>
 
   <div class="card flush">
+    <div class="meal-head"><h3>Recipes</h3><span class="kj num" id="rec-count">0</span></div>
+    <div id="rec-list"></div>
+  </div>
+
+  <div class="card flush">
     <div class="meal-head"><h3>Your foods</h3><span class="kj num" id="custom-count">0</span></div>
     <div id="custom-list"></div>
   </div>
@@ -754,6 +759,20 @@ body.dragging{cursor:grabbing}
 <div class="sheet" id="sh-move" role="dialog" aria-modal="true" aria-label="Move to meal">
   <div class="sheet-head"><h2 id="move-title">Move</h2><button class="iconbtn sheet-close" aria-label="Close">&#10005;</button></div>
   <div class="sheet-body" id="move-body"></div>
+</div>
+
+<!-- save recipe -->
+<div class="sheet" id="sh-recipe" role="dialog" aria-modal="true" aria-label="Save as recipe">
+  <div class="sheet-head"><h2>Save as recipe</h2><button class="iconbtn sheet-close" aria-label="Close">&#10005;</button></div>
+  <div class="sheet-body">
+    <p class="note" id="rec-summary">&mdash;</p>
+    <label class="f" style="margin-top:12px"><span>Name</span>
+      <input type="text" id="rec-name" placeholder="Post-run oats" autocomplete="off"></label>
+    <label class="f"><span>How many servings does this make?</span>
+      <input type="number" id="rec-serves" inputmode="decimal" min="0.5" step="0.5" value="1"></label>
+    <p class="hint">Logged as one line from then on. Enter 2 if this is two portions and you ate one.</p>
+    <button class="btn" id="rec-save" style="margin-top:10px">Save recipe</button>
+  </div>
 </div>
 
 <!-- micronutrient detail -->
@@ -2608,6 +2627,7 @@ var CAT_SERVES = {
 /* Portions offered for a food, always ending with the raw 100 g / 100 mL unit
    and a free-entry option so nothing is ever un-loggable. */
 function serveOptions(f){
+  if (f.serves) return f.serves.concat([{label:'g — type the amount', g:1, raw:true}]);
   var list = null;
   for (var i = 0; i < SERVE_RULES.length; i++){
     if (SERVE_RULES[i][0].test(f.name)){ list = SERVE_RULES[i][1]; break; }
@@ -3368,6 +3388,10 @@ function renderMeals(){
     }).join('') : '<div class="empty">Nothing logged</div>';
     return '<div class="meal" data-mealsec="' + key + '"><div class="meal-head"><h3>' + m[1] + '</h3>' +
       '<span class="kj">' + (sum ? fmtE(sum, true) : '') + '</span>' +
+      (list.length ? '<button class="add" data-saverec="' + key + '" aria-label="Save ' + m[1] +
+        ' as a recipe" style="margin-right:5px">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13">' +
+        '<path d="M5 4h11l3 3v13H5z"/><path d="M8 4v5h7V4M8 20v-6h8v6"/></svg></button>' : '') +
       '<button class="add" data-addto="' + key + '" aria-label="Add to ' + m[1] + '">+</button></div>' + rows + '</div>';
   }).join('');
 }
@@ -4009,6 +4033,17 @@ function renderFoodView(){
     ? (S.importNote || imported.length.toLocaleString('en-AU') + ' products imported.') +
       ' They sit under the Packaged category, kept separate from AFCD.'
     : 'No imported foods.';
+  var recs = S.recipes || [];
+  el('rec-count').textContent = recs.length;
+  el('rec-list').innerHTML = recs.length ? recs.map(function(r, i){
+    return '<div class="row"><div class="row-main"><div class="t">' + esc(r.name) + '</div>' +
+      '<div class="s">' + g(r.servings,1) + ' serving' + (r.servings === 1 ? '' : 's') + ' · ' +
+      fmtE(r.kj * r.serveG / 100) + ' ' + unitName() + ' each · ' +
+      esc(r.items.map(function(x){ return x.name.split(',')[0]; }).slice(0,3).join(', ')) +
+      (r.items.length > 3 ? ' +' + (r.items.length - 3) : '') + '</div></div>' +
+      '<button class="row-del" data-del-rec="' + i + '" aria-label="Delete ' + esc(r.name) + '">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M5 5l14 14M19 5L5 19"/></svg></button></div>';
+  }).join('') : '<div class="empty">Log a meal, then tap the save icon on it</div>';
   el('custom-count').textContent = S.custom.length;
   el('custom-list').innerHTML = S.custom.length ? S.custom.map(function(c, i){
     return '<div class="row"><div class="row-main"><div class="t">' + esc(c.name) + '</div>' +
@@ -4451,11 +4486,60 @@ function closeSheet(){
   document.body.style.overflow = '';
 }
 
+/* ------------------------------- recipes ----------------------------------
+   A meal you have already logged is the easiest possible recipe builder: the
+   ingredients and amounts are sitting there. Saving turns them into a single
+   food whose portion is one serving, so everything downstream — the quantity
+   sheet, macros, micronutrients — works unchanged.
+   ------------------------------------------------------------------------- */
+function recipeFromEntries(name, servings, entries){
+  var tot = {kj:0, p:0, f:0, sat:0, c:0, sug:0, fib:0, na:0, alc:0, grams:0, m:{}};
+  MICRO_KEYS.forEach(function(k){ tot.m[k] = 0; });
+  entries.forEach(function(e){
+    tot.kj += e.kj || 0; tot.p += e.p || 0; tot.f += e.f || 0; tot.sat += e.sat || 0;
+    tot.c += e.c || 0; tot.sug += e.sug || 0; tot.fib += e.fib || 0;
+    tot.na += e.na || 0; tot.alc += e.alc || 0; tot.grams += e.grams || 0;
+    if (e.m) MICRO_KEYS.forEach(function(k){ tot.m[k] += e.m[k] || 0; });
+  });
+  var n = Math.max(+servings || 1, 0.1);
+  var serveG = tot.grams / n;
+  /* Stored per 100 g like every other food, with a portion of one serving. */
+  var k = tot.grams > 0 ? 100 / tot.grams : 0;
+  var r = {name:name, servings:n, totalG:tot.grams, serveG:serveG,
+           items:entries.map(function(e){ return {name:e.name, grams:e.grams}; }),
+           kj:tot.kj*k, p:tot.p*k, f:tot.f*k, sat:tot.sat*k, c:tot.c*k,
+           sug:tot.sug*k, fib:tot.fib*k, na:tot.na*k, alc:tot.alc*k, m:{}};
+  MICRO_KEYS.forEach(function(key){ r.m[key] = tot.m[key] * k; });
+  return r;
+}
+function recipeAsFood(r, i){
+  return {id:'r' + i, name:r.name, cat:'Recipes', liquid:false, recipe:true,
+    serves:[{label:'serving (' + g(r.serveG,0) + ' g)', g:r.serveG},
+            {label:'half serving', g:r.serveG / 2},
+            {label:'whole batch (' + g(r.totalG,0) + ' g)', g:r.totalG}],
+    kj:r.kj, p:r.p, f:r.f, sat:r.sat, c:r.c, sug:r.sug, fib:r.fib, na:r.na, alc:r.alc, m:r.m};
+}
+function allRecipes(){ return (S.recipes || []).map(recipeAsFood); }
+
+var recCtx = null;
+function openSaveRecipe(meal){
+  var list = dayRO(DAY).meals[meal] || [];
+  if (!list.length) return;
+  recCtx = {meal:meal, entries:list.slice()};
+  var kj = list.reduce(function(a, e){ return a + e.kj; }, 0);
+  el('rec-summary').innerHTML = list.length + ' item' + (list.length === 1 ? '' : 's') +
+    ' from ' + mealName(meal).toLowerCase() + ', <strong>' + fmtE(kj, true) + '</strong> in total — ' +
+    list.map(function(e){ return esc(e.name.split(',')[0]); }).join(', ') + '.';
+  el('rec-name').value = '';
+  el('rec-serves').value = '1';
+  sheet('sh-recipe');
+}
+
 /* ------------------------------- search ---------------------------------- */
 var searchTarget = 'snack', activeCat = '', searchTimer;
 
 function foodByName(n){
-  var all = allFoods();
+  var all = allRecipes().concat(allFoods());
   for (var i = 0; i < all.length; i++) if (all[i].name === n) return all[i];
   return null;
 }
@@ -4534,7 +4618,7 @@ function runSearch(){
     return;
   }
 
-  var all = allFoods();
+  var all = allRecipes().concat(allFoods());
   if (activeCat) all = all.filter(function(f){ return f.cat === activeCat; });
   if (q){
     var terms = queryTerms(q);
@@ -5004,7 +5088,7 @@ function renderOffResults(q, via){
 /* Bumped on every deploy. When something fails, knowing which build is
    actually loaded is the difference between debugging the bug and debugging
    a stale cache. */
-var APP_VERSION = '2026.08.18-12';
+var APP_VERSION = '2026.08.18-13';
 var SB_URL = 'https://lsrxqviwgqjpuzzcqcpu.supabase.co';
 var SB_KEY = 'sb_publishable_0lk-0UAlfW-tALEgPiqFHg_8vF9Hp63';
 var AUTH_KEY = 'eatandtrain.auth';
@@ -5108,7 +5192,8 @@ function stampChanges(){
     var b = bodyOf(f); next.foods[f.name] = b;
     if (prev.foods[f.name] !== b || !f.u) f.u = now;
   });
-  var pb = JSON.stringify({p:S.profile, fav:S.fav, recent:S.recent, runLast:S.runLast});
+  var pb = JSON.stringify({p:S.profile, fav:S.fav, recent:S.recent, runLast:S.runLast,
+                           recipes:S.recipes, coach:S.coach});
   next.profile = pb;
   if (prev.profile !== pb) S.profileU = now;
   else if (!S.profileU) S.profileU = now;
@@ -5159,6 +5244,8 @@ function syncNow(){
       if (d.fav) S.fav = d.fav;
       if (d.recent) S.recent = d.recent;
       if (d.runLast) S.runLast = d.runLast;
+      if (d.recipes) S.recipes = d.recipes;
+      if (d.coach) S.coach = d.coach;
       S.profileU = tsOf(rProf[0].updated_at);
       pulled++;
     }
@@ -5195,7 +5282,8 @@ function syncNow(){
     chunk(pushFoods, 200).forEach(function(c){ jobs.push(sbRest('et_foods', {method:UP.method, prefer:UP.prefer, body:c})); });
     if (!rProf.length || (S.profileU || 0) > tsOf(rProf[0].updated_at)){
       jobs.push(sbRest('et_profile', {method:UP.method, prefer:UP.prefer, body:[{
-        user_id:uid, data:{p:S.profile, fav:S.fav, recent:S.recent, runLast:S.runLast},
+        user_id:uid, data:{p:S.profile, fav:S.fav, recent:S.recent, runLast:S.runLast,
+                           recipes:S.recipes, coach:S.coach},
         updated_at:new Date(S.profileU || Date.now()).toISOString()}]}));
     }
     return Promise.all(jobs).then(function(){
@@ -5336,6 +5424,10 @@ function bind(){
     }
     var addTo = t.closest('[data-addto]');
     if (addTo){ openSearch(addTo.dataset.addto); return; }
+    var sr = t.closest('[data-saverec]');
+    if (sr){ openSaveRecipe(sr.dataset.saverec); return; }
+    var dr = t.closest('[data-del-rec]');
+    if (dr){ S.recipes.splice(+dr.dataset.delRec, 1); save(); renderFoodView(); renderCats(); return; }
 
     var favBtn = t.closest('[data-fav]');
     if (favBtn){
@@ -5417,6 +5509,16 @@ function bind(){
 
   /* food tab */
   bindDrag();
+  el('rec-save').addEventListener('click', function(){
+    var nm = (el('rec-name').value || '').trim();
+    if (!nm){ toast('Give the recipe a name.'); return; }
+    if (!recCtx) return;
+    S.recipes = S.recipes || [];
+    S.recipes = S.recipes.filter(function(r){ return r.name !== nm; });
+    S.recipes.push(recipeFromEntries(nm, el('rec-serves').value, recCtx.entries));
+    recCtx = null; save(); renderAll(); closeSheet();
+    toast('“' + nm + '” saved. Search for it any time.');
+  });
   el('acct-card').addEventListener('click', function(){ renderDataSheet(); sheet('sh-data'); });
   el('micro-card').addEventListener('click', function(){ renderMicroDetail(); sheet('sh-micro'); });
   el('btn-browse').addEventListener('click', function(){ openSearch('snack'); });
