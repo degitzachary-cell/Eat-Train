@@ -10934,7 +10934,7 @@ function renderOffResults(q, via){
 /* Bumped on every deploy. When something fails, knowing which build is
    actually loaded is the difference between debugging the bug and debugging
    a stale cache. */
-var APP_VERSION = '2026.08.18-24';
+var APP_VERSION = '2026.08.18-25';
 var SB_URL = 'https://lsrxqviwgqjpuzzcqcpu.supabase.co';
 var SB_KEY = 'sb_publishable_0lk-0UAlfW-tALEgPiqFHg_8vF9Hp63';
 var AUTH_KEY = 'eatandtrain.auth';
@@ -10991,18 +10991,51 @@ function sbRest(path, opts){
   });
 }
 
+/* Where a sign-in link should land. Supabase only honours this if the address
+   is on the project's Redirect URLs allow list; otherwise it falls back to the
+   project's Site URL, which is how a link for this app ended up opening a
+   different one. Sent only over http(s) — a file:// copy has no origin worth
+   redirecting to. */
+function appUrl(){
+  return (location.protocol === 'http:' || location.protocol === 'https:')
+    ? location.origin + location.pathname : null;
+}
 function sbSendCode(email){
-  return fetch(SB_URL + '/auth/v1/otp', {
+  var url = SB_URL + '/auth/v1/otp', back = appUrl();
+  if (back) url += '?redirect_to=' + encodeURIComponent(back);
+  return fetch(url, {
     method:'POST', headers:sbHeaders(false),
     body: JSON.stringify({email: email, create_user: true})
   }).then(sbJson);
 }
+
+/* If a sign-in link brought us back here, the session is sitting in the URL
+   fragment and the only correct thing to do is take it and say nothing. The
+   app used to ignore it, which is why following a link appeared to do nothing
+   and left people copying URLs into a box asking for a six-digit code. */
+function claimReturnedSession(){
+  var frag = (location.hash || '').replace(/^#/, '');
+  if (!frag || frag.indexOf('=') < 0) return null;
+  var q = new URLSearchParams(frag);
+  var at = q.get('access_token'), rt = q.get('refresh_token');
+  var err = q.get('error_description') || q.get('error');
+  if (!at && !err) return null;
+  /* Out of the address bar either way: an access token does not belong in
+     history, and a stale error should not survive a refresh. */
+  history.replaceState(null, '', location.pathname + location.search);
+  if (!at) return {error: decodeURIComponent(err).replace(/\+/g, ' ')};
+  saveAuth({access_token:at, refresh_token:rt,
+            expires_at: Date.now() + ((+q.get('expires_in') || 3600) * 1000)});
+  return {ok:true};
+}
 /* Supabase decides between a six-digit code and a magic link purely from the
    project's email template: {{ .Token }} sends a code, {{ .ConfirmationURL }}
-   sends a link. This project's template is shared with another app of mine
-   that relies on the link, so rather than change what that app sends, this
-   accepts whatever arrives — a typed code, a pasted link, or the URL you were
-   redirected to after clicking one. */
+   sends a link. A code is what this app asks for and what it should get.
+
+   These three shapes are still accepted if one turns up, because being strict
+   would only ever hurt someone, but none of them are instructions to a user:
+   following a link is handled automatically by claimReturnedSession() above,
+   and the box on screen asks for six digits and means it. */
 
 /* Shape 1: the URL you land on after following a link. The session is already
    in the fragment; it just needs picking up. This is the one that rescues a
@@ -11099,6 +11132,10 @@ function tsOf(v){ return v ? new Date(v).getTime() : 0; }
 
 function syncNow(){
   if (!auth) return Promise.reject(new Error('Not signed in'));
+  /* A session picked up from a returning link carries no identity, and if the
+     lookup that fills it in failed — offline at the time — every row here
+     would be written unscoped. Fetch it before anything else runs. */
+  if (!auth.user_id) return sbWhoAmI().then(syncNow);
   var uid = auth.user_id;
   setSyncState('Syncing…');
   return Promise.all([
@@ -11214,10 +11251,9 @@ function renderSync(){
         '<input type="email" id="sync-email" inputmode="email" autocomplete="email" placeholder="you@example.com"></label>' +
       '<button class="btn" id="sync-send">Email me a code</button>' +
       '<div id="sync-code" hidden style="margin-top:12px">' +
-        '<label class="f"><span>Code, or the link from the email</span>' +
-          '<input type="text" id="sync-token" autocomplete="one-time-code" placeholder="123456"></label>' +
-        '<p class="hint" style="margin-bottom:9px">If the email holds a link rather than a code, ' +
-        'paste the whole link here instead &mdash; long-press it and copy rather than tapping it.</p>' +
+        '<label class="f"><span>Six-digit code</span>' +
+          '<input type="text" id="sync-token" inputmode="numeric" autocomplete="one-time-code" ' +
+          'placeholder="123456"></label>' +
         '<button class="btn" id="sync-verify">Sign in</button></div>' +
       '<p class="hint" id="sync-msg" style="margin-top:8px"></p>';
   } else {
@@ -11830,11 +11866,9 @@ function renderOnboard(){
       'If you have used this before, your body, diary and weigh-ins come back with it.</p>' +
       '<label class="f"><span>Email</span><input data-ob="email" type="email" inputmode="email" ' +
         'autocomplete="email" placeholder="you@example.com" value="' + esc(d.email) + '"></label>' +
-      (d.sent ? '<label class="f"><span>Code, or the link from the email</span>' +
-        '<input data-ob="code" type="text" autocomplete="one-time-code" ' +
-        'placeholder="123456" value="' + esc(d.code) + '"></label>' +
-        '<p class="hint">If the email holds a link rather than a code, paste the whole link here ' +
-        'instead &mdash; long-press it and copy rather than tapping it.</p>' : '') +
+      (d.sent ? '<label class="f"><span>Six-digit code</span>' +
+        '<input data-ob="code" type="text" inputmode="numeric" autocomplete="one-time-code" ' +
+        'placeholder="123456" value="' + esc(d.code) + '"></label>' : '') +
       (d.msg ? '<p class="hint">' + esc(d.msg) + '</p>' : '');
     foot.innerHTML =
       '<button class="btn ghost" data-ob-go="welcome">Back</button>' +
@@ -12014,15 +12048,30 @@ function obVerify(){
 /* -------------------------------- init ----------------------------------- */
 load();
 loadAuth();
+var returned = claimReturnedSession();   // before anything decides to show the gate
 renderCats();
 bind();
 bindOnboard();
 setUnit(S.profile.unit || 'kj');
 renderAll();
-/* Staying signed in is the only thing that skips the front door. */
+if (returned && returned.error) toast(returned.error);
+/* Staying signed in is the only thing that skips the front door — and a link
+   just followed counts, since claimReturnedSession() has already signed in. */
 if (!auth) openOnboard('gate');
 else if (!S.profile.onboarded) openOnboard('setup');
-if (auth) syncNow().catch(function(){ setSyncState('Offline'); });
+if (auth){
+  (returned && returned.ok ? sbWhoAmI() : Promise.resolve())
+    .then(function(){ return syncNow(); })
+    .then(function(){
+      if (!(returned && returned.ok)) return;
+      renderCats(); renderAll(); renderSync(); renderAccountCard();
+      /* The pulled profile may be all the setup this account needs. */
+      if (+S.profile.wt > 0){ S.profile.onboarded = true; save(); closeOnboard(); }
+      else openOnboard('setup');
+      toast('Signed in.');
+    })
+    .catch(function(){ setSyncState('Offline'); });
+}
 </script>
 </body>
 </html>
