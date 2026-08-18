@@ -107,6 +107,18 @@ nav.tabs{
 @keyframes in{from{opacity:0; transform:translateY(4px)}to{opacity:1; transform:none}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important; transition:none!important}}
 
+/* ---------- sub-tabs ---------- */
+/* Only used where a tab genuinely runs long. A diary is meant to scroll; a
+   settings screen three storeys tall is not. */
+.subtabs{display:flex; gap:0; border:1px solid var(--line); border-radius:var(--r-sm);
+  overflow:hidden; margin:12px 0 12px; background:var(--surface)}
+.subtabs button{flex:1; padding:9px 4px; font-size:12.5px; font-weight:500; color:var(--ink-3);
+  border-right:1px solid var(--line)}
+.subtabs button:last-child{border-right:none}
+.subtabs button[aria-pressed="true"]{background:var(--accent-soft); color:var(--accent); font-weight:600}
+.subpane{display:none}
+.subpane.on{display:block}
+
 /* ---------- cards ---------- */
 .card{background:var(--surface); border:1px solid var(--line); border-radius:var(--r);
   padding:14px; margin-bottom:12px; box-shadow:var(--shadow)}
@@ -380,6 +392,12 @@ body.dragging{cursor:grabbing}
     <div id="weigh-body"></div>
   </button>
 
+  <div class="subtabs" id="sub-today" role="group" aria-label="Sections">
+    <button data-sub="log" aria-pressed="true">Log</button>
+    <button data-sub="nutrition" aria-pressed="false">Nutrition</button>
+  </div>
+
+  <div class="subpane" data-pane="nutrition">
   <div class="card">
     <div class="card-head"><h2>Macros</h2><span class="right" id="macro-note">—</span></div>
     <div class="macros" id="macros"></div>
@@ -392,6 +410,9 @@ body.dragging{cursor:grabbing}
     <div class="hint" id="micro-note" style="margin-top:10px">—</div>
   </button>
 
+  </div>
+
+  <div class="subpane on" data-pane="log">
   <div class="card flush" id="meals"></div>
 
   <div class="card flush">
@@ -401,6 +422,7 @@ body.dragging{cursor:grabbing}
       <button class="add" id="tr-add" aria-label="Add workout">+</button>
     </div>
     <div id="tr-list"></div>
+  </div>
   </div>
 </section>
 
@@ -476,6 +498,13 @@ body.dragging{cursor:grabbing}
 
 <!-- ============ BODY ============ -->
 <section class="view" id="v-body">
+  <div class="subtabs" id="sub-body" role="group" aria-label="Sections">
+    <button data-sub="you" aria-pressed="true">You</button>
+    <button data-sub="model" aria-pressed="false">Model</button>
+    <button data-sub="targets" aria-pressed="false">Targets</button>
+  </div>
+
+  <div class="subpane on" data-pane="you">
   <button class="card" id="acct-card" style="display:block;width:100%;text-align:left;margin-top:12px">
     <div class="card-head"><h2>Account</h2><span class="right" id="acct-state">Not signed in</span></div>
     <div id="acct-body"></div>
@@ -517,6 +546,9 @@ body.dragging{cursor:grabbing}
     <p class="hint" id="comp-derived">—</p>
   </div>
 
+  </div>
+
+  <div class="subpane" data-pane="model">
   <div class="card">
     <div class="card-head"><h2>Resting rate model</h2><span class="right" id="bmr-formula">—</span></div>
     <div class="seg" id="p-formula" role="group" aria-label="Formula">
@@ -542,6 +574,19 @@ body.dragging{cursor:grabbing}
       <strong>non-exercise</strong> day only. That is what keeps training from being counted twice.</p>
   </div>
 
+  <div class="card">
+    <div class="card-head"><h2>Metabolic demand</h2><span class="right" id="tdee-source">—</span></div>
+    <div class="readout"><div class="k">Resting metabolic rate<em id="bmr-note">—</em></div><div class="v num" id="r-bmr">—</div></div>
+    <div class="readout"><div class="k">Baseline expenditure<em>RMR × daily activity, before training</em></div><div class="v num" id="r-base">—</div></div>
+    <div class="readout"><div class="k">Training today<em id="r-train-note">—</em></div><div class="v num" id="r-train">—</div></div>
+    <div class="readout lead"><div class="k">Total daily energy expenditure<em>What today actually costs you</em></div><div class="v num" id="r-tdee">—</div></div>
+    <div class="readout"><div class="k">Intake target<em id="r-goal-note">—</em></div><div class="v num" id="r-target">—</div></div>
+    <div id="measured-toggle" style="margin-top:12px"></div>
+  </div>
+
+  </div>
+
+  <div class="subpane" data-pane="targets">
   <div class="card">
     <div class="card-head"><h2>Coach</h2><span class="right" id="coach-state">Off</span></div>
     <div class="seg" id="coach-tog" role="group" aria-label="Coach">
@@ -573,22 +618,18 @@ body.dragging{cursor:grabbing}
     <p class="hint" id="per-note">&mdash;</p>
   </div>
 
-  <div class="card">
-    <div class="card-head"><h2>Metabolic demand</h2><span class="right" id="tdee-source">—</span></div>
-    <div class="readout"><div class="k">Resting metabolic rate<em id="bmr-note">—</em></div><div class="v num" id="r-bmr">—</div></div>
-    <div class="readout"><div class="k">Baseline expenditure<em>RMR × daily activity, before training</em></div><div class="v num" id="r-base">—</div></div>
-    <div class="readout"><div class="k">Training today<em id="r-train-note">—</em></div><div class="v num" id="r-train">—</div></div>
-    <div class="readout lead"><div class="k">Total daily energy expenditure<em>What today actually costs you</em></div><div class="v num" id="r-tdee">—</div></div>
-    <div class="readout"><div class="k">Intake target<em id="r-goal-note">—</em></div><div class="v num" id="r-target">—</div></div>
-    <div id="measured-toggle" style="margin-top:12px"></div>
-  </div>
-
 </section>
 
 <!-- ============ TRENDS ============ -->
 <section class="view" id="v-trends">
   <div id="prog-coach" style="margin-top:12px"></div>
 
+  <div class="subtabs" id="sub-trends" role="group" aria-label="Sections">
+    <button data-sub="weight" aria-pressed="true">Weight</button>
+    <button data-sub="energy" aria-pressed="false">Energy</button>
+  </div>
+
+  <div class="subpane" data-pane="energy">
   <div class="card">
     <div class="card-head"><h2>Measured metabolism</h2><span class="right" id="adapt-badge"></span></div>
     <div id="adapt-body"></div>
@@ -601,6 +642,14 @@ body.dragging{cursor:grabbing}
   </div>
 
   <div class="card">
+    <div class="card-head"><h2>Weekly averages</h2></div>
+    <div id="weekly"></div>
+  </div>
+
+  </div>
+
+  <div class="subpane on" data-pane="weight">
+  <div class="card">
     <div class="card-head"><h2>Weight trend</h2><span class="right" id="wt-rate">—</span></div>
     <div class="scroll-x"><svg class="chart" id="ch-weight" viewBox="0 0 340 140" preserveAspectRatio="xMidYMid meet"></svg></div>
   </div>
@@ -609,11 +658,6 @@ body.dragging{cursor:grabbing}
     <div class="card-head"><h2>Composition</h2><span class="right"><span style="color:var(--fib)">lean</span> · <span style="color:var(--pro)">fat</span></span></div>
     <div class="scroll-x"><svg class="chart" id="ch-comp" viewBox="0 0 340 150" preserveAspectRatio="xMidYMid meet"></svg></div>
     <div id="comp-delta"></div>
-  </div>
-
-  <div class="card">
-    <div class="card-head"><h2>Weekly averages</h2></div>
-    <div id="weekly"></div>
   </div>
 
   <div class="card">
@@ -632,6 +676,7 @@ body.dragging{cursor:grabbing}
   <div class="card flush">
     <div class="meal-head"><h3>History</h3></div>
     <div id="wt-list"></div>
+  </div>
   </div>
 </section>
 
@@ -3269,6 +3314,7 @@ function renderToday(){
   renderCheckinBanner();
   renderMacros(e);
   renderMicros();
+  renderSubBadge();
   renderMeals();
   renderTrainingList('tr-list', 'tr-total');
 }
@@ -3351,6 +3397,19 @@ function fmtAmt(v, unit){
   return (v >= 100 ? g(v) : (v >= 10 ? g(v,1) : g(v,2))) + ' ' + unit;
 }
 
+function microFlagCount(){
+  var mt = microTotals();
+  return Object.keys(NRV).filter(function(k){
+    return microState(k, mt.vals[k]).cls !== 'ok'; }).length;
+}
+function renderSubBadge(){
+  var bar = el('sub-today'); if (!bar) return;
+  var b = bar.querySelector('[data-sub="nutrition"]'); if (!b) return;
+  var n = dayTotals(DAY).kj > 0 ? microFlagCount() : 0;
+  b.innerHTML = 'Nutrition' + (n ? ' <span class="badge warn" style="margin-left:5px;padding:1px 6px">' +
+    n + '</span>' : '');
+}
+
 function renderMicros(){
   var mt = microTotals(), keys = Object.keys(NRV);
   var short = 0, over = 0;
@@ -3369,20 +3428,31 @@ function renderMicros(){
       '</div>' +
       '<div class="pct">' + Math.round(have / st.rdi * 100) + '%</div></div>';
   }).join('');
-  el('micro-grid').innerHTML = '<div class="mgrid">' + cells + '</div>';
-
   var ok = keys.length - short - over;
   el('micro-score').textContent = ok + ' of ' + keys.length + ' in range';
+
+  /* Today shows only what wants attention; the full grid is a tap away. A
+     wall of nineteen bars mostly reading "fine" is a third of the screen
+     spent saying nothing. */
+  var flagged = keys.filter(function(k){ return microState(k, mt.vals[k]).cls !== 'ok'; });
+  el('micro-grid').innerHTML = flagged.length
+    ? '<div class="chips">' + flagged.slice(0, 8).map(function(k){
+        var r = NRV[k], st = microState(k, mt.vals[k]);
+        return '<span class="chip" style="border-color:' + st.col + '55">' + r.n + ' <b style="color:' +
+          st.col + '">' + Math.round(mt.vals[k] / st.rdi * 100) + '%</b></span>';
+      }).join('') + (flagged.length > 8 ? '<span class="chip">+' + (flagged.length - 8) + ' more</span>' : '') +
+      '</div>'
+    : '<div class="chips"><span class="chip" style="border-color:var(--fib)55">Everything in range <b style="color:var(--fib)">✓</b></span></div>';
+
   var bits = [];
   if (short) bits.push(short + ' below RDI');
   if (over) bits.push(over + ' above the upper limit');
-  el('micro-note').innerHTML = (bits.length ? bits.join(' · ') : 'Everything between the RDI and the upper limit') +
-    '. The tick on each bar is the RDI, the bar ends at the upper limit — both read from ' +
-    'your sex and age on the Me tab (' + (S.profile.sex === 'f' ? 'woman' : 'man') + ', ' +
+  el('micro-note').innerHTML = (bits.length ? bits.join(' · ') : 'All nineteen between RDI and upper limit') +
+    '. Targets read from your sex and age (' + (S.profile.sex === 'f' ? 'woman' : 'man') + ', ' +
     (+S.profile.age || 30) + ').' +
-    (mt.noMicro ? ' <strong>' + mt.noMicro + ' item' + (mt.noMicro === 1 ? '' : 's') +
-      ' logged before this existed carry no micronutrient data.</strong>' : '') +
-    ' Tap for detail.';
+    (mt.noMicro ? ' <strong>' + mt.noMicro + ' older item' + (mt.noMicro === 1 ? '' : 's') +
+      ' carry no micronutrient data.</strong>' : '') +
+    ' Tap for all of them.';
 }
 
 /* Which foods actually delivered a nutrient today — the useful half of a
@@ -5387,7 +5457,7 @@ function renderOffResults(q, via){
 /* Bumped on every deploy. When something fails, knowing which build is
    actually loaded is the difference between debugging the bug and debugging
    a stale cache. */
-var APP_VERSION = '2026.08.18-16';
+var APP_VERSION = '2026.08.18-18';
 var SB_URL = 'https://lsrxqviwgqjpuzzcqcpu.supabase.co';
 var SB_KEY = 'sb_publishable_0lk-0UAlfW-tALEgPiqFHg_8vF9Hp63';
 var AUTH_KEY = 'eatandtrain.auth';
@@ -5682,6 +5752,29 @@ function pushRecent(name){
   S.recent.unshift(name);
   if (S.recent.length > 40) S.recent.length = 40;
 }
+/* Sub-tab choice is remembered per tab, so coming back lands where you left. */
+function setSub(view, name){
+  var bar = el('sub-' + view); if (!bar) return;
+  press('sub-' + view, 'sub', name);
+  var sec = el('v-' + view);
+  Array.prototype.forEach.call(sec.querySelectorAll(':scope > .subpane'), function(p){
+    p.classList.toggle('on', p.dataset.pane === name);
+  });
+  S.ui = S.ui || {};
+  if (S.ui['sub-' + view] !== name){ S.ui['sub-' + view] = name; save(); }
+  window.scrollTo(0, 0);
+}
+function bindSubs(){
+  ['today','body','trends'].forEach(function(v){
+    var bar = el('sub-' + v); if (!bar) return;
+    bar.addEventListener('click', function(ev){
+      var b = ev.target.closest('[data-sub]'); if (b) setSub(v, b.dataset.sub);
+    });
+    var saved = (S.ui || {})['sub-' + v];
+    if (saved) setSub(v, saved);
+  });
+}
+
 function switchView(v){
   VIEW = v;
   ['today','train','body','trends'].forEach(function(k){
@@ -5810,6 +5903,7 @@ function bind(){
 
   /* food tab */
   bindDrag();
+  bindSubs();
   el('c-scan').addEventListener('click', function(){
     sheet('sh-scan'); el('scan-manual').value = ''; startScan();
   });

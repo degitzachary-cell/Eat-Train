@@ -6,7 +6,9 @@ open `index.html` and it works, including with no signal.
 
 ## What it does
 
-Four tabs, ordered by how often you actually use them.
+Four tabs, ordered by how often you actually use them. Where a tab runs long it splits
+into sub-sections rather than a three-storey scroll — and where it does not, it is left
+alone, because a diary is meant to scroll.
 
 - **Today** — the log. Energy budget, the weekly check-in when one is due, a weigh-in
   prompt until you have, macros, vitamins and minerals, meals and training.
