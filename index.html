@@ -111,8 +111,8 @@ nav.tabs{
 /* Only used where a tab genuinely runs long. A diary is meant to scroll; a
    settings screen three storeys tall is not. */
 .subtabs{display:flex; gap:0; border:1px solid var(--line); border-radius:var(--r-sm);
-  overflow:hidden; margin:12px 0 12px; background:var(--surface)}
-.subtabs button{flex:1; padding:9px 4px; font-size:12.5px; font-weight:500; color:var(--ink-3);
+  overflow:hidden; margin:11px 0; background:var(--surface)}
+.subtabs button{flex:1; padding:8px 4px; font-size:12.5px; font-weight:500; color:var(--ink-3);
   border-right:1px solid var(--line)}
 .subtabs button:last-child{border-right:none}
 .subtabs button[aria-pressed="true"]{background:var(--accent-soft); color:var(--accent); font-weight:600}
@@ -160,7 +160,88 @@ nav.tabs{
 .flow .cell.eat b{color:var(--carb)}
 
 /* ---------- macros ---------- */
-.macros{display:grid; gap:11px}
+/* Cards inside a main view lose their box. They keep their padding and their
+   heads, but go full-bleed with a single hairline between them, so a tab reads
+   as one sheet rather than a column of floating tiles. Only direct children —
+   a card used as a readout panel inside another card still needs its edges.
+   Sheets keep boxes throughout: there, the box is the point. */
+.view > .card, .view > .subpane > .card{
+  border-radius:0; border-left:none; border-right:none; border-bottom:none;
+  margin:0 -14px; box-shadow:none; padding:10px 15px}
+/* A block-level button still shrinks to fit, so a card that is a button has to
+   be told to span the negative margins rather than left to size itself. */
+.view > button.card, .view > .subpane > button.card{width:calc(100% + 28px)!important}
+.view > .card + .card, .view > .subpane > .card + .card{border-top:1px solid var(--line)}
+.view > .card:last-child, .view > .subpane > .card:last-child{border-bottom:1px solid var(--line)}
+.view > .subpane > .card:first-child{border-top:1px solid var(--line)}
+.view > .card .card-head h2, .view > .subpane > .card .card-head h2{
+  font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-3); font-weight:600}
+.view > .card > .card-head, .view > .subpane > .card > .card-head{margin-bottom:8px}
+
+/* The day head: date, budget, meter and balance as one block rather than a
+   strip and a card. Losing the meter's 0-to-target legend costs nothing —
+   the target is printed beside the number — and the balance reads as a line
+   of arithmetic instead of three columns of headings. */
+.daypane .datebar{padding:6px 6px 2px}
+.daypane .datebar .day{font-size:14px}
+.daypane .datebar .day small{display:inline; margin-top:0; margin-left:7px; font-size:10.5px}
+.daypane .budget{padding:2px 15px 12px}
+.daypane .budget-top{margin-bottom:9px}
+.daypane .budget-big{font-size:33px}
+.daypane .meter{height:18px; border-radius:5px}
+.daypane .flow{display:flex; align-items:baseline; justify-content:space-between; gap:6px;
+  margin-top:10px; padding-top:9px; border-top:1px solid var(--line);
+  font-size:10.5px; color:var(--ink-3); letter-spacing:.03em}
+.daypane .flow .cell{text-align:left}
+.daypane .flow .cell b{font-family:var(--mono); font-size:13px; font-weight:500; letter-spacing:-.02em}
+.daypane .flow .cell.burn b{color:var(--fib)}
+.daypane .flow .cell.eat b{color:var(--carb)}
+.daypane .flow .op{font-family:var(--mono); font-size:12px; color:var(--line-strong)}
+
+/* --------------------------- layout, second pass --------------------------
+   The app was a stack of rounded boxes — five of them above the first food
+   entry — and on a phone that reads as clutter and costs a screen and a half
+   of scrolling. Main views are now one continuous surface split by hairlines:
+   one object instead of five, and the day's overview is sized to land inside
+   a phone screen without scrolling at all. Lists still scroll, because a list
+   is a list, but they live one tap away rather than under everything else. */
+.pane{background:var(--surface); border-top:1px solid var(--line);
+  border-bottom:1px solid var(--line); margin:0 -14px; overflow:hidden}
+.sec{padding:10px 15px; border-top:1px solid var(--line); display:block; width:100%;
+  text-align:left; background:none; border-left:none; border-right:none; border-bottom:none;
+  color:inherit; font:inherit}
+.sec:first-child{border-top:none}
+button.sec{cursor:pointer}
+.sec[hidden]{display:none}   /* .sec sets display, which would otherwise win */
+button.sec:hover{background:var(--surface-2)}
+.sec-h{display:flex; align-items:baseline; gap:8px; margin-bottom:8px}
+.sec-h h3{font-size:10.5px; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--ink-3); font-weight:600}
+.sec-h .right{margin-left:auto; font-size:11.5px; color:var(--ink-3);
+  font-family:var(--mono); font-variant-numeric:tabular-nums}
+
+/* A tappable line: label, value, chevron. Replaces a card wherever a card was
+   only ever holding one row of text. */
+.line{display:flex; align-items:center; gap:10px; width:100%; padding:6px 0;
+  background:none; border:none; text-align:left; color:inherit; font:inherit; cursor:pointer}
+.line + .line{border-top:1px solid var(--line)}
+.line .lt{font-size:13.5px; color:var(--ink); min-width:0}
+.line .ls{font-size:11.5px; color:var(--ink-3); margin-top:1px}
+.line .lv{margin-left:auto; font-family:var(--mono); font-size:13px; color:var(--ink-2);
+  font-variant-numeric:tabular-nums; white-space:nowrap}
+.line .lv.dim{color:var(--ink-3)}
+.line .plus{width:25px; height:25px; flex:none; border-radius:7px; background:var(--surface);
+  border:1px solid var(--line); color:var(--ink-2); font-size:15px; line-height:1;
+  display:flex; align-items:center; justify-content:center}
+.line .plus:hover{background:var(--accent); color:var(--accent-ink); border-color:var(--accent)}
+
+/* The budget, compacted. It stays above the sub-tabs because it is the number
+   you opened the app for, but it no longer needs a third of the screen. */
+.budget.slim{padding:13px 15px}
+.budget.slim .budget-big{font-size:33px}
+.budget.slim .meter{height:20px}
+.budget.slim .flow{margin-top:11px; padding-top:11px}
+.macros{display:grid; gap:9px}
 .macro{display:grid; grid-template-columns:64px 1fr auto; align-items:center; gap:10px}
 .macro-name{font-size:12px; color:var(--ink-2); display:flex; align-items:center; gap:6px}
 .macro-name i{width:7px; height:7px; border-radius:2px; flex:none}
@@ -376,75 +457,89 @@ body.dragging{cursor:grabbing}
 
 <!-- ============ TODAY ============ -->
 <section class="view on" id="v-today">
-  <div class="datebar">
-    <button id="d-prev" aria-label="Previous day">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="17" height="17"><path d="M15 5l-7 7 7 7"/></svg>
-    </button>
-    <div class="day"><span id="d-label">Today</span><small id="d-sub">—</small></div>
-    <button id="d-next" aria-label="Next day">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="17" height="17"><path d="M9 5l7 7-7 7"/></svg>
-    </button>
-  </div>
-
-  <div class="card budget">
-    <div class="budget-top">
-      <div>
-        <div class="budget-label" id="bud-label">Left to eat</div>
-        <div class="budget-big num" id="bud-big">—</div>
-      </div>
-      <div class="budget-side">
-        <b class="num" id="bud-target">—</b>
-        <span id="bud-target-lbl">target</span>
-      </div>
+  <div class="pane daypane">
+    <div class="datebar">
+      <button id="d-prev" aria-label="Previous day">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="17" height="17"><path d="M15 5l-7 7 7 7"/></svg>
+      </button>
+      <div class="day"><span id="d-label">Today</span><small id="d-sub">&mdash;</small></div>
+      <button id="d-next" aria-label="Next day">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="17" height="17"><path d="M9 5l7 7-7 7"/></svg>
+      </button>
     </div>
-    <div class="meter" id="meter">
-      <div class="meter-fill" id="meter-fill" style="width:0%"></div>
-      <div class="meter-ticks" id="meter-ticks"></div>
-    </div>
-    <div class="meter-legend"><span>0</span><span id="meter-max">—</span></div>
-
-    <div class="flow">
-      <div class="cell burn"><b class="num" id="f-burn">—</b><span>Burn</span></div>
-      <div class="op">−</div>
-      <div class="cell eat"><b class="num" id="f-eat">—</b><span>Eaten</span></div>
-      <div class="op">=</div>
-      <div class="cell"><b class="num" id="f-net">—</b><span>Balance</span></div>
+    <div class="budget">
+      <div class="budget-top">
+        <div>
+          <div class="budget-label" id="bud-label">Left to eat</div>
+          <div class="budget-big num" id="bud-big">&mdash;</div>
+        </div>
+        <div class="budget-side">
+          <b class="num" id="bud-target">&mdash;</b>
+          <span id="bud-target-lbl">target</span>
+        </div>
+      </div>
+      <div class="meter" id="meter">
+        <div class="meter-fill" id="meter-fill" style="width:0%"></div>
+        <div class="meter-ticks" id="meter-ticks"></div>
+      </div>
+      <div class="flow">
+        <span class="cell burn"><b class="num" id="f-burn">&mdash;</b> burn</span>
+        <span class="op">&minus;</span>
+        <span class="cell eat"><b class="num" id="f-eat">&mdash;</b> eaten</span>
+        <span class="op">=</span>
+        <span class="cell"><b class="num" id="f-net">&mdash;</b> balance</span>
+      </div>
     </div>
   </div>
 
   <div id="today-checkin"></div>
 
-  <button class="card" id="weigh-card" style="display:block;width:100%;text-align:left;padding:12px 14px">
-    <div id="weigh-body"></div>
-  </button>
-
   <div class="subtabs" id="sub-today" role="group" aria-label="Sections">
-    <button data-sub="log" aria-pressed="true">Log</button>
+    <button data-sub="overview" aria-pressed="true">Overview</button>
+    <button data-sub="log" aria-pressed="false">Log</button>
     <button data-sub="nutrition" aria-pressed="false">Nutrition</button>
   </div>
 
+  <div class="subpane on" data-pane="overview">
+  <div class="pane">
+    <div class="sec">
+      <div class="sec-h"><h3>Macros</h3><span class="right" id="ov-macro-note">&mdash;</span></div>
+      <div class="macros" id="ov-macros"></div>
+    </div>
+    <div class="sec">
+      <div class="sec-h"><h3>Meals</h3><span class="right" id="ov-meal-note">&mdash;</span></div>
+      <div id="ov-meals"></div>
+    </div>
+    <div class="sec">
+      <div class="sec-h"><h3>Training</h3><span class="right" id="ov-train-note">&mdash;</span></div>
+      <div id="ov-train"></div>
+    </div>
+    <button class="sec" id="weigh-card" hidden><div id="weigh-body"></div></button>
+  </div>
+  </div>
+
   <div class="subpane" data-pane="nutrition">
-  <div class="card">
-    <div class="card-head"><h2>Macros</h2><span class="right" id="macro-note">—</span></div>
-    <div class="macros" id="macros"></div>
-    <div class="chips" id="micros" style="margin-top:13px"></div>
+  <div class="pane">
+    <div class="sec">
+      <div class="sec-h"><h3>Macros</h3><span class="right" id="macro-note">&mdash;</span></div>
+      <div class="macros" id="macros"></div>
+      <div class="chips" id="micros" style="margin-top:13px"></div>
+    </div>
+    <button class="sec" id="micro-card">
+      <div class="sec-h"><h3>Vitamins &amp; minerals</h3><span class="right" id="micro-score">&mdash;</span></div>
+      <div id="micro-grid"></div>
+      <div class="hint" id="micro-note" style="margin-top:10px">&mdash;</div>
+    </button>
+  </div>
   </div>
 
-  <button class="card" id="micro-card" style="display:block;width:100%;text-align:left">
-    <div class="card-head"><h2>Vitamins &amp; minerals</h2><span class="right" id="micro-score">—</span></div>
-    <div id="micro-grid"></div>
-    <div class="hint" id="micro-note" style="margin-top:10px">—</div>
-  </button>
+  <div class="subpane" data-pane="log">
+  <div class="pane" id="meals"></div>
 
-  </div>
-
-  <div class="subpane on" data-pane="log">
-  <div class="card flush" id="meals"></div>
-
-  <div class="card flush">
+  <div class="pane" style="margin-top:12px">
     <div class="meal-head">
       <h3>Training</h3>
-      <span class="kj num" id="tr-total">—</span>
+      <span class="kj num" id="tr-total">&mdash;</span>
       <button class="add" id="tr-add" aria-label="Add workout">+</button>
     </div>
     <div id="tr-list"></div>
@@ -454,7 +549,14 @@ body.dragging{cursor:grabbing}
 
 <!-- ============ TRAIN ============ -->
 <section class="view" id="v-train">
-  <div class="card" style="margin-top:12px">
+  <div class="subtabs" id="sub-train" role="group" aria-label="Sections">
+    <button data-sub="session" aria-pressed="true">Session</button>
+    <button data-sub="steps" aria-pressed="false">Steps</button>
+    <button data-sub="log" aria-pressed="false">Log</button>
+  </div>
+
+  <div class="subpane on" data-pane="session">
+  <div class="card">
     <div class="card-head"><h2>Log a session</h2><span class="right" id="tr-date">&mdash;</span></div>
     <div class="seg" id="run-type" role="group" aria-label="Session type">
       <button data-rt="run" aria-pressed="true">Run</button>
@@ -504,6 +606,9 @@ body.dragging{cursor:grabbing}
   </div>
   </div>
 
+  </div>
+
+  <div class="subpane" data-pane="steps">
   <div class="card">
     <div class="card-head"><h2>Steps</h2><span class="right">Outside training only</span></div>
     <div class="grid2">
@@ -516,9 +621,13 @@ body.dragging{cursor:grabbing}
     <p class="hint" id="steps-note">—</p>
   </div>
 
-  <div class="card flush">
-    <div class="meal-head"><h3>Session log</h3><span class="kj num" id="tr-total2">—</span></div>
+  </div>
+
+  <div class="subpane" data-pane="log">
+  <div class="pane">
+    <div class="meal-head"><h3>Session log</h3><span class="kj num" id="tr-total2">&mdash;</span></div>
     <div id="tr-list2"></div>
+  </div>
   </div>
 </section>
 
@@ -527,6 +636,7 @@ body.dragging{cursor:grabbing}
   <div class="subtabs" id="sub-body" role="group" aria-label="Sections">
     <button data-sub="you" aria-pressed="true">You</button>
     <button data-sub="model" aria-pressed="false">Model</button>
+    <button data-sub="energy" aria-pressed="false">Energy</button>
     <button data-sub="targets" aria-pressed="false">Targets</button>
   </div>
 
@@ -545,14 +655,14 @@ body.dragging{cursor:grabbing}
       <label class="f"><span>Height (cm)</span><input type="number" id="p-ht" inputmode="decimal" min="120" max="230" step="0.5"></label>
       <label class="f"><span>Weight (kg)</span><input type="number" id="p-wt" inputmode="decimal" min="30" max="300" step="0.1"></label>
     </div>
-    <p class="hint">Sex only feeds the calculation while body fat is unknown &mdash; once composition is
-      in, the maths runs on tissue, not averages.</p>
+    <p class="hint">Sex only matters while body fat is unknown.</p>
+    <button class="btn sm ghost" id="rerun-setup" style="margin-top:10px; width:100%">Run setup again</button>
   </div>
 
   <div class="card">
     <div class="card-head"><h2>Body composition</h2><span class="right">Optional</span></div>
-    <p class="note" style="margin-bottom:12px">Straight off your <strong>Garmin Index S2</strong> &mdash;
-      Connect shows all four. Bone and water are tracked only; neither changes your energy numbers.</p>
+    <p class="note" style="margin-bottom:11px">Straight off your <strong>Garmin Index S2</strong>.
+      Bone and water are tracked only.</p>
     <div class="grid2">
       <label class="f"><span>Body fat %</span>
         <input type="number" id="p-bf" inputmode="decimal" min="3" max="60" step="0.1" placeholder="—"></label>
@@ -563,13 +673,9 @@ body.dragging{cursor:grabbing}
       <button data-smmu="pct" aria-pressed="true">Muscle as %</button>
       <button data-smmu="kg" aria-pressed="false">Muscle in kg</button>
     </div>
-    <div class="grid2">
-      <label class="f"><span>Bone mass (kg)</span>
-        <input type="number" id="p-bone" inputmode="decimal" min="0.5" max="8" step="0.1" placeholder="—"></label>
-      <label class="f"><span>Body water %</span>
-        <input type="number" id="p-water" inputmode="decimal" min="20" max="80" step="0.1" placeholder="—"></label>
-    </div>
-    <p class="hint" id="comp-derived">—</p>
+    <label class="f"><span>Bone mass (kg)</span>
+      <input type="number" id="p-bone" inputmode="decimal" min="0.5" max="8" step="0.1" placeholder="&mdash;"></label>
+    <p class="hint" id="comp-derived">&mdash;</p>
   </div>
 
   </div>
@@ -596,10 +702,14 @@ body.dragging{cursor:grabbing}
         <option value="1.5">On your feet most of the day</option>
         <option value="1.7">Manual labour / trade</option>
       </select></label>
-    <p class="hint">Logged sessions are added on top of this, so pick the multiplier for your
-      <strong>non-exercise</strong> day only. That is what keeps training from being counted twice.</p>
+    <p class="hint">Sessions are added on top, so pick your <strong>non-exercise</strong> day only —
+      that is what stops training being counted twice.</p>
   </div>
 
+
+  </div>
+
+  <div class="subpane" data-pane="energy">
   <div class="card">
     <div class="card-head"><h2>Metabolic demand</h2><span class="right" id="tdee-source">—</span></div>
     <div class="readout"><div class="k">Resting metabolic rate<em id="bmr-note">—</em></div><div class="v num" id="r-bmr">—</div></div>
@@ -609,7 +719,6 @@ body.dragging{cursor:grabbing}
     <div class="readout"><div class="k">Intake target<em id="r-goal-note">—</em></div><div class="v num" id="r-target">—</div></div>
     <div id="measured-toggle" style="margin-top:12px"></div>
   </div>
-
   </div>
 
   <div class="subpane" data-pane="targets">
@@ -651,7 +760,8 @@ body.dragging{cursor:grabbing}
   <div id="prog-coach" style="margin-top:12px"></div>
 
   <div class="subtabs" id="sub-trends" role="group" aria-label="Sections">
-    <button data-sub="weight" aria-pressed="true">Weight</button>
+    <button data-sub="weight" aria-pressed="true">Trend</button>
+    <button data-sub="weighin" aria-pressed="false">Weigh in</button>
     <button data-sub="energy" aria-pressed="false">Energy</button>
   </div>
 
@@ -664,7 +774,7 @@ body.dragging{cursor:grabbing}
   <div class="card">
     <div class="card-head"><h2>Energy, last 14 days</h2><span class="right"><span style="color:var(--carb)">eaten</span> · <span style="color:var(--fib)">burnt</span></span></div>
     <div class="scroll-x"><svg class="chart" id="ch-energy" viewBox="0 0 340 150" preserveAspectRatio="xMidYMid meet"></svg></div>
-    <div class="readout" style="margin-top:6px"><div class="k">Average balance per day</div><div class="v num" id="avg-bal">—</div></div>
+    <div class="readout" style="margin-top:4px"><div class="k">Average balance per day</div><div class="v num" id="avg-bal">&mdash;</div></div>
   </div>
 
   <div class="card">
@@ -686,22 +796,26 @@ body.dragging{cursor:grabbing}
     <div id="comp-delta"></div>
   </div>
 
+  <div class="pane">
+    <div class="meal-head"><h3>History</h3></div>
+    <div id="wt-list"></div>
+  </div>
+  </div>
+
+  <div class="subpane" data-pane="weighin">
   <div class="card">
-    <div class="card-head"><h2>Weigh-in</h2><span class="right" id="wt-count">—</span></div>
+    <div class="card-head"><h2>Weigh-in</h2><span class="right" id="wt-count">&mdash;</span></div>
     <div class="grid2">
       <label class="f"><span>Weight (kg)</span><input type="number" id="wl-kg" inputmode="decimal" min="30" max="300" step="0.1"></label>
       <label class="f"><span>Body fat %</span><input type="number" id="wl-bf" inputmode="decimal" min="3" max="60" step="0.1"></label>
       <label class="f"><span id="wl-smm-lbl">Muscle</span><input type="number" id="wl-smm" inputmode="decimal" min="1" max="120" step="0.1"></label>
       <label class="f"><span>Bone (kg)</span><input type="number" id="wl-bone" inputmode="decimal" min="0.5" max="8" step="0.1"></label>
+      <label class="f"><span>Body water %</span><input type="number" id="wl-water" inputmode="decimal" min="20" max="80" step="0.1"></label>
+      <div></div>
     </div>
-    <label class="f"><span>Body water %</span><input type="number" id="wl-water" inputmode="decimal" min="20" max="80" step="0.1"></label>
     <button class="btn" id="wl-save">Record for <span id="wl-date">today</span></button>
-    <p class="hint">Leave any field blank to carry the last value forward. Saving also updates your
-      markers above, so the next day's numbers use it.</p>
-  </div>
-  <div class="card flush">
-    <div class="meal-head"><h3>History</h3></div>
-    <div id="wt-list"></div>
+    <p class="hint">Blank fields carry the last value forward. Saving also updates your markers,
+      so the next day's numbers use it.</p>
   </div>
   </div>
 </section>
@@ -8059,10 +8173,20 @@ function load(){
   var b = blankState();
   for (var k in b) if (!(k in S)) S[k] = b[k];
   for (var k2 in b.profile) if (S.profile[k2] === undefined) S.profile[k2] = b.profile[k2];
-  /* Anyone with a state already saved has been through setup by definition —
-     the flag arrived after they did. Only a genuinely new install onboards,
-     and the weight is the test, since that is what setup exists to collect. */
-  if (raw && S.profile.onboarded !== true && +S.profile.wt > 0) S.profile.onboarded = true;
+  /* Whether an older install has already been set up. A stored state is not
+     proof of it: until setup existed, merely opening the app saved a profile
+     carrying a default body, so a weight in there says nothing about whether
+     anyone typed it. The evidence has to be something a person actually did —
+     a weigh-in, a logged day, a food of their own. */
+  /* Today gained an Overview ahead of Log. Anyone whose last choice was Log
+     made it when Log was the only thing there, so it is not a choice to keep;
+     one migration moves them to the new default and then leaves them alone. */
+  S.ui = S.ui || {};
+  if (!S.ui.v2){ if (S.ui['sub-today'] === 'log') delete S.ui['sub-today']; S.ui.v2 = 1; }
+  if (raw && S.profile.onboarded !== true){
+    S.profile.onboarded = (S.weights || []).length > 0 ||
+      Object.keys(S.days || {}).length > 0 || (S.custom || []).length > 0;
+  }
   _foodCache = null;
   imported = (S.imported || []).map(function(l, i){ return parseFoodLine(l, 'i', i); }).filter(Boolean);
 }
@@ -8500,15 +8624,15 @@ function renderWeighPrompt(){
   var box = el('weigh-body'); if (!box) return;
   var today = S.weights.filter(function(w){ return w.d === DAY; })[0];
   var card = el('weigh-card');
+  /* Once the day's weigh-in is in, this has nothing left to say, and a line
+     reporting a number you just typed is exactly the kind of filler that
+     pushed the overview off the bottom of the screen. So it goes away. */
+  card.hidden = !!today;
   if (today){
-    card.style.borderColor = 'var(--line)';
-    box.innerHTML = '<div style="display:flex;align-items:center;gap:10px">' +
-      '<div style="flex:1"><div class="eyebrow">Weighed in</div>' +
-      '<div class="num" style="font-size:19px;font-weight:600;margin-top:2px">' + g(today.kg,1) + ' kg</div></div>' +
-      '<div style="text-align:right"><div class="eyebrow">Trend</div>' +
-      '<div class="num" style="font-size:15px;color:var(--accent);margin-top:3px">' + g(bodyKg(),2) + ' kg</div></div></div>';
+    card.style.background = '';
+    box.innerHTML = '';
   } else {
-    card.style.borderColor = 'color-mix(in srgb, var(--accent) 45%, var(--line))';
+    card.style.background = 'var(--accent-soft)';
     box.innerHTML = '<div style="display:flex;align-items:center;gap:10px">' +
       '<div style="flex:1"><div class="eyebrow" style="color:var(--accent)">Weigh in</div>' +
       '<div style="font-size:13px;color:var(--ink-2);margin-top:3px">Not yet today — the trend is ' +
@@ -8535,7 +8659,6 @@ function renderToday(){
   el('bud-big').classList.toggle('over', over);
   el('bud-target').textContent = fmtE(e.target);
   el('bud-target-lbl').textContent = unitName() + ' target';
-  el('meter-max').textContent = fmtE(e.target, true);
 
   var pct = e.target > 0 ? (e.eaten / e.target) * 100 : 0;
   var fill = el('meter-fill');
@@ -8567,6 +8690,70 @@ function renderToday(){
   renderSubBadge();
   renderMeals();
   renderTrainingList('tr-list', 'tr-total');
+  renderOverview(e);
+}
+
+/* The overview: the day at a glance, sized to land inside a phone screen. It
+   summarises rather than lists — a meal is one line with its total, and the
+   entries behind it are one tap away in Log. That is the whole reason this
+   screen fits where the old one needed a screen and a half of scrolling. */
+function renderOverview(e){
+  var d = dayRO(DAY);
+  var eaten = 0;
+  var meals = MEALS.map(function(m){
+    var key = m[0], list = d.meals[key] || [];
+    var sum = list.reduce(function(a, x){ return a + x.kj; }, 0);
+    eaten += sum;
+    var sub = list.length
+      ? list.length + (list.length === 1 ? ' item' : ' items') + ' · ' +
+        esc(list[0].name.split(',')[0]) + (list.length > 1 ? ' +' + (list.length - 1) : '')
+      : 'Nothing yet';
+    return '<button class="line" data-openmeal="' + key + '">' +
+      '<span style="min-width:0"><span class="lt" style="display:block">' + m[1] + '</span>' +
+      '<span class="ls" style="display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' +
+        sub + '</span></span>' +
+      '<span class="lv' + (sum ? '' : ' dim') + '">' + (sum ? fmtE(sum, true) : '—') + '</span>' +
+      '<span class="plus" role="button" tabindex="0" data-addto="' + key +
+        '" aria-label="Add to ' + m[1] + '">+</span></button>';
+  }).join('');
+  el('ov-meals').innerHTML = meals;
+  el('ov-meal-note').textContent = eaten ? fmtE(eaten, true) : '';
+
+  var sessions = d.workouts || [];
+  var stepKj = stepsKj(dayNetSteps(DAY));
+  var rows = sessions.map(function(w, i){
+    var sub = w.type === 'run'
+      ? g(w.km,2) + ' km · ' + fmtDur(w.mins) + ' · ' + fmtPace(w.mins * 60 / (w.km || 1)) + '/km'
+      : w.type === 'strength'
+        ? w.sets + ' × ' + w.reps + ' @ ' + g(w.load,1) + ' kg'
+        : w.mins + ' min';
+    return '<button class="line" data-gotrain="1">' +
+      '<span style="min-width:0"><span class="lt" style="display:block;overflow:hidden;' +
+        'text-overflow:ellipsis;white-space:nowrap">' + esc(w.name) + '</span>' +
+      '<span class="ls" style="display:block">' + sub + '</span></span>' +
+      '<span class="lv">' + (w.kj ? fmtE(w.kj, true) : '—') + '</span></button>';
+  });
+  /* On a rest day the walking is the training, so the two collapse into one
+     line rather than stacking "nothing logged" above the thing that was. */
+  if (d.steps > 0){
+    rows.push('<button class="line" data-gotrain="1">' +
+      '<span style="min-width:0"><span class="lt" style="display:block">' +
+        (sessions.length ? 'Steps outside training' : 'Steps') + '</span>' +
+      '<span class="ls" style="display:block">' + g(dayNetSteps(DAY)) +
+        (sessions.length ? ' of ' + g(d.steps) + ' · the rest were in sessions' : ' steps, no session logged') +
+        '</span></span>' +
+      '<span class="lv">' + fmtE(stepKj, true) + '</span>' +
+      (sessions.length ? '' : '<span class="plus" role="button" tabindex="0" data-gotrain="1" ' +
+        'aria-label="Log a session">+</span>') + '</button>');
+  } else if (!sessions.length){
+    rows.push('<button class="line" data-gotrain="1">' +
+      '<span style="min-width:0"><span class="lt" style="display:block">Rest day</span>' +
+      '<span class="ls" style="display:block">Nothing logged yet</span></span>' +
+      '<span class="plus" role="button" tabindex="0" data-gotrain="1" ' +
+        'style="margin-left:auto" aria-label="Log a session">+</span></button>');
+  }
+  el('ov-train').innerHTML = rows.join('');
+  el('ov-train-note').textContent = e.train ? fmtE(e.train, true) : '';
 }
 
 function renderMacros(e){
@@ -8578,7 +8765,7 @@ function renderMacros(e){
   ];
   if (t.alc > 0) rows.push({k:'Alcohol', cls:'dot-alc', col:'var(--alc)', have:t.alc,
     want:0, noTarget:true, share:e.target > 0 ? t.alc * 29 / e.target * 100 : 0});
-  el('macros').innerHTML = rows.map(function(r){
+  var macroHtml = rows.map(function(r){
     var pct = r.want > 0 ? Math.min(r.have / r.want * 100, 100) : Math.min(r.share || 0, 100);
     return '<div class="macro">' +
       '<div class="macro-name"><i class="' + r.cls + '"></i>' + r.k + '</div>' +
@@ -8587,11 +8774,15 @@ function renderMacros(e){
         (r.noTarget ? ' g · ' + Math.round(r.share || 0) + '% of budget' : ' / ' + g(r.want) + ' g') + '</div>' +
     '</div>';
   }).join('');
+  el('macros').innerHTML = macroHtml;
+  el('ov-macros').innerHTML = macroHtml;
   var pfx = e.periodise && Math.abs(e.periodise - 1) > 0.02
     ? (e.periodise > 1 ? 'fuelled ' : 'eased ') + Math.round(Math.abs(e.periodise - 1) * 100) + '% · '
     : '';
-  el('macro-note').textContent = Math.round(t.p * 17 + t.c * 16 + t.f * 37 + t.alc * 29) > 0
+  var mnote = Math.round(t.p * 17 + t.c * 16 + t.f * 37 + t.alc * 29) > 0
     ? pfx + 'target from ' + fmtE(e.target, true) : 'set your markers';
+  el('macro-note').textContent = mnote;
+  el('ov-macro-note').textContent = mnote;
 
   var fibTarget = S.profile.sex === 'm' ? 30 : 25;
   var satTarget = e.target * 0.10 / 37;
@@ -9172,9 +9363,8 @@ function updateRun(){
     recon += '<br>';
   }
   el('run-note').innerHTML = recon +
-    'Energy from the ACSM running equations at ' + g(bodyKg(),1) +    ' kg, net of the resting cost your baseline already covers. Net running cost works out near ' +
-    '<strong>1 kcal per kg per km</strong> whatever the pace &mdash; pace changes how long you are out ' +
-    'there, not much what a kilometre costs.';
+    'ACSM running equations at ' + g(bodyKg(),1) + ' kg, net of the resting cost your baseline ' +
+    'already covers &mdash; near <strong>1 kcal per kg per km</strong> whatever the pace.';
   return r;
 }
 
@@ -9243,7 +9433,6 @@ function renderBodyView(){
   el('p-bf').value    = has(p.bf)    ? p.bf    : '';
   el('p-smm').value   = has(p.smm)   ? p.smm   : '';
   el('p-bone').value  = has(p.bone)  ? p.bone  : '';
-  el('p-water').value = has(p.water) ? p.water : '';
   el('p-neat').value = p.neat; el('p-ppk').value = p.ppk; el('p-fpk').value = p.fpk;
   press('p-smm-unit', 'smmu', p.smmUnit || 'pct');
   press('p-goal', 'goal', p.goal);
@@ -9330,7 +9519,11 @@ function renderBodyView(){
   el('wt-count').textContent = S.weights.length
     ? 'trend ' + g(bodyKg(),2) + ' kg' : 'no entries';
   var ws = S.weights.slice().sort(function(a,b){ return b.d < a.d ? -1 : 1; });
-  el('wt-list').innerHTML = ws.length ? ws.slice(0, 30).map(function(w, i){
+  /* Only the last few are on screen. The full list is a scroll of its own and
+     was pushing the weigh-in form off the bottom, which is the one thing on
+     this tab you came here to use. */
+  var shown = wtAll ? 60 : 6;
+  el('wt-list').innerHTML = ws.length ? ws.slice(0, shown).map(function(w, i){
     var prev = ws[i+1];
     var delta = prev ? w.kg - prev.kg : null;
     var bits = [];
@@ -9345,8 +9538,15 @@ function renderBodyView(){
       (delta == null ? '—' : (delta > 0 ? '+' : '') + g(delta,1)) + '</div>' +
       '<button class="row-del" data-del-wt="' + esc(w.d) + '" aria-label="Remove weigh-in">' +
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M5 5l14 14M19 5L5 19"/></svg></button></div>';
-  }).join('') : '<div class="empty">No weigh-ins yet</div>';
+  }).join('') + (ws.length > shown
+      ? '<button class="line" id="wt-more" style="padding:11px 15px">' +
+        '<span class="lt">Show all ' + ws.length + ' weigh-ins</span></button>'
+      : (wtAll && ws.length > 6
+        ? '<button class="line" id="wt-less" style="padding:11px 15px">' +
+          '<span class="lt">Show fewer</span></button>' : ''))
+    : '<div class="empty">No weigh-ins yet</div>';
 }
+var wtAll = false;
 
 /* Sign-in used to live only behind an icon in the header, which nobody found.
    It also belongs here, next to everything else personal. */
@@ -9355,15 +9555,12 @@ function renderAccountCard(){
   if (!st || !body) return;
   if (auth){
     st.textContent = S.lastSync ? 'Synced ' + timeAgo(S.lastSync) : 'Signed in';
-    body.innerHTML = '<p class="note">Signed in as <strong>' + esc(auth.email || '') + '</strong>. ' +
-      'Your days, weigh-ins and foods are kept on the server as well as on this device. ' +
-      'Tap to manage or sign out.</p>';
+    body.innerHTML = '<p class="note">' + esc(auth.email || '') +
+      ' &middot; kept on the server as well as here. Tap to manage or sign out.</p>';
   } else {
     st.innerHTML = '<span class="badge warn">Local only</span>';
-    body.innerHTML = '<p class="note">Everything is on this device and nowhere else — clear your ' +
-      'browser data or change phones and it is gone.</p>' +
-      '<div class="btn" style="margin-top:11px">Sign in to sync</div>' +
-      '<p class="hint" style="margin-top:7px">A six-digit code by email. No password.</p>';
+    body.innerHTML = '<p class="note">On this device and nowhere else. ' +
+      '<span style="color:var(--accent)">Sign in to sync &rsaquo;</span></p>';
   }
 }
 
@@ -10737,7 +10934,7 @@ function renderOffResults(q, via){
 /* Bumped on every deploy. When something fails, knowing which build is
    actually loaded is the difference between debugging the bug and debugging
    a stale cache. */
-var APP_VERSION = '2026.08.18-20';
+var APP_VERSION = '2026.08.18-23';
 var SB_URL = 'https://lsrxqviwgqjpuzzcqcpu.supabase.co';
 var SB_KEY = 'sb_publishable_0lk-0UAlfW-tALEgPiqFHg_8vF9Hp63';
 var AUTH_KEY = 'eatandtrain.auth';
@@ -11048,7 +11245,7 @@ function setSub(view, name){
   window.scrollTo(0, 0);
 }
 function bindSubs(){
-  ['today','body','trends'].forEach(function(v){
+  ['today','train','body','trends'].forEach(function(v){
     var bar = el('sub-' + v); if (!bar) return;
     bar.addEventListener('click', function(ev){
       var b = ev.target.closest('[data-sub]'); if (b) setSub(v, b.dataset.sub);
@@ -11099,8 +11296,23 @@ function bind(){
     }
     var addTo = t.closest('[data-addto]');
     if (addTo){ openSearch(addTo.dataset.addto); return; }
+    /* Checked after data-addto so the plus inside a meal line wins over the
+       line itself, which would otherwise swallow it. */
+    var openMeal = t.closest('[data-openmeal]');
+    if (openMeal){
+      setSub('today', 'log');
+      /* Scoped to the log itself — the overview's own add buttons carry the
+         same attribute, and the first match was one of those. */
+      var head = document.querySelector('#meals [data-addto="' + openMeal.dataset.openmeal + '"]');
+      var group = head && head.closest('.meal-head');
+      if (group) group.scrollIntoView({block:'center'});
+      return;
+    }
+    if (t.closest('[data-gotrain]')){ switchView('train'); return; }
     var sr = t.closest('[data-saverec]');
     if (sr){ openSaveRecipe(sr.dataset.saverec); return; }
+    if (t.closest('#wt-more')){ wtAll = true; renderTrends(); return; }
+    if (t.closest('#wt-less')){ wtAll = false; renderTrends(); return; }
     var dr = t.closest('[data-del-rec]');
     if (dr){ S.recipes.splice(+dr.dataset.delRec, 1); save(); renderFoodView(); renderCats(); return; }
 
@@ -11331,8 +11543,8 @@ function bind(){
 
   /* body */
   var pmap = {'p-sex':'sex','p-age':'age','p-ht':'ht','p-wt':'wt','p-bf':'bf','p-smm':'smm',
-              'p-bone':'bone','p-water':'water','p-neat':'neat','p-ppk':'ppk','p-fpk':'fpk'};
-  var optional = {'p-bf':1,'p-smm':1,'p-bone':1,'p-water':1};
+              'p-bone':'bone','p-neat':'neat','p-ppk':'ppk','p-fpk':'fpk'};
+  var optional = {'p-bf':1,'p-smm':1,'p-bone':1};
   Object.keys(pmap).forEach(function(id){
     el(id).addEventListener('change', function(){
       var val = el(id).value;
@@ -11342,6 +11554,7 @@ function bind(){
       save(); renderAll();
     });
   });
+  el('rerun-setup').addEventListener('click', function(){ openOnboard('rerun'); });
   el('p-smm-unit').addEventListener('click', function(ev){
     var b = ev.target.closest('[data-smmu]'); if (!b) return;
     var was = S.profile.smmUnit || 'pct', now = b.dataset.smmu;
@@ -11430,6 +11643,7 @@ function bind(){
     if (t.closest('#sync-out')){
       saveAuth(null); renderSync(); renderAccountCard();
       toast('Signed out. Your data stays on this device.');
+      closeSheet(); openOnboard('gate');   // back to the front door
       return;
     }
   });
@@ -11474,24 +11688,35 @@ function setUnit(u){
   if (openSheet === 'sh-qty') updateQty();
 }
 
-/* ----------------------------- first run ---------------------------------
-   The app cannot say anything useful without a body, and until now its
-   defaults were mine. Setup asks instead of guessing, and will not hand over
-   a number until it has enough to compute one honestly.
+/* --------------------------- the front door ------------------------------
+   Two jobs in one flow.
 
-   An account stays optional, as it always has been: everything works from
-   this browser alone, offline, forever. Signing in is offered first only
-   because someone arriving on a second phone should not be made to re-enter
-   a body the server is already holding.
+   The gate: unless a session is being kept, every launch lands here first,
+   so signing in is always one tap away rather than buried in a settings tab.
+   It is a gate and not a wall — an account is optional and always has been,
+   and "continue without an account" is on every screen that offers sign-in.
+
+   The setup: the app cannot say anything useful without a body, and until
+   now its defaults were mine. It asks instead of guessing, and will not hand
+   over a number until it has enough to compute one honestly. A returning
+   account skips it, because the server is already holding that body.
    ------------------------------------------------------------------------- */
 var OB_FLOW = ['you','scale','day','done'];   // the steps that show progress
 var obStep = 'welcome', obDraft = null, obBusy = false;
 
-function openOnboard(){
-  obDraft = {sex:'', age:'', ht:'', wt:'', bf:'', smm:'', smmUnit:'pct', bone:'',
-             neat:'1.35', goal:'maintain', unit:S.profile.unit || 'kj',
+/* 'gate'  — not signed in: the front door, every launch.
+   'setup'  — signed in but bodyless: straight into the questions.
+   'rerun'  — asked for by hand from Me, prefilled with what is already there. */
+function openOnboard(mode){
+  var prefill = mode === 'rerun';
+  var p = S.profile;
+  function pre(v){ return prefill && v != null && v !== '' ? String(v) : ''; }
+  obDraft = {sex: prefill ? (p.sex || '') : '', age:pre(p.age), ht:pre(p.ht), wt:pre(p.wt),
+             bf:pre(p.bf), smm:pre(p.smm), smmUnit:p.smmUnit || 'pct', bone:pre(p.bone),
+             neat: prefill ? String(p.neat || 1.35) : '1.35',
+             goal: prefill ? (p.goal || 'maintain') : 'maintain', unit:p.unit || 'kj',
              email:'', code:'', sent:false, msg:''};
-  obStep = 'welcome';
+  obStep = mode === 'gate' ? 'welcome' : 'you';
   el('onboard').hidden = false;
   document.documentElement.style.overflow = 'hidden';
   renderOnboard();
@@ -11530,16 +11755,20 @@ function renderOnboard(){
   under.innerHTML = '';
 
   if (obStep === 'welcome'){
+    var back = S.profile.onboarded;   // a diary already lives in this browser
     body.innerHTML =
       '<h1>Eat &amp; Train</h1>' +
-      '<p class="lede">A food and training diary on the Australian food data — 4,127 foods from ' +
-      'FSANZ, with their own portion weights.</p>' +
-      '<p class="lede">It works out what you burn from the session you actually did: the repeats, ' +
-      'the recoveries, the pace. Not from a step count and a guess.</p>' +
-      '<p class="lede">No account needed. Everything stays in this browser, and all of it works ' +
-      'with no signal.</p>';
-    foot.innerHTML = '<button class="btn" data-ob-go="you">Set up</button>';
-    under.innerHTML = '<button class="ob-skip" data-ob-go="signin">I already have an account</button>';
+      (back
+        ? '<p class="lede">Your diary is on this device and needs no account to open. Sign in to ' +
+          'keep it on a server as well, and to pick it up on another phone.</p>'
+        : '<p class="lede">A food and training diary on the Australian food data — 4,127 foods ' +
+          'from FSANZ, with their own portion weights.</p>' +
+          '<p class="lede">It works out what you burn from the session you actually did: the ' +
+          'repeats, the recoveries, the pace. Not from a step count and a guess.</p>' +
+          '<p class="lede">Everything stays in this browser, and all of it works with no signal.</p>');
+    foot.innerHTML = '<button class="btn" data-ob-go="signin">Sign in</button>';
+    under.innerHTML = '<button class="ob-skip" id="ob-adhoc">' +
+      (back ? 'Continue without an account' : 'Set up without an account') + '</button>';
     return;
   }
 
@@ -11559,7 +11788,8 @@ function renderOnboard(){
       (d.sent
         ? '<button class="btn" id="ob-verify"' + (obBusy ? ' disabled' : '') + '>Sign in</button>'
         : '<button class="btn" id="ob-send"' + (obBusy || !d.email ? ' disabled' : '') + '>Email me a code</button>');
-    under.innerHTML = '<button class="ob-skip" data-ob-go="you">Set up without an account</button>';
+    under.innerHTML = '<button class="ob-skip" id="ob-adhoc">' +
+      (S.profile.onboarded ? 'Continue without an account' : 'Set up without an account') + '</button>';
     return;
   }
 
@@ -11574,7 +11804,11 @@ function renderOnboard(){
       obField('ht', 'Height (cm)', d.ht, 'type="number" inputmode="decimal" min="120" max="230" step="0.5" placeholder="—"') +
       obField('wt', 'Weight (kg)', d.wt, 'type="number" inputmode="decimal" min="30" max="300" step="0.1" placeholder="—"');
     foot.innerHTML =
-      '<button class="btn ghost" data-ob-go="welcome">Back</button>' +
+      /* Cancel only exists where there is something to fall back to. Signed in
+         with no body yet, there is nowhere to cancel to — the app would open
+         unable to compute anything — so the only way out is forward. */
+      (S.profile.onboarded ? '<button class="btn ghost" id="ob-cancel">Cancel</button>'
+        : (auth ? '' : '<button class="btn ghost" data-ob-go="welcome">Back</button>')) +
       '<button class="btn" data-ob-go="scale"' + (obReady() ? '' : ' disabled') + '>Continue</button>';
     return;
   }
@@ -11669,6 +11903,11 @@ function bindOnboard(){
       obDraft[seg.parentNode.dataset.obseg] = seg.dataset.v;
       renderOnboard(); return;
     }
+    if (ev.target.closest('#ob-adhoc')){
+      if (S.profile.onboarded) closeOnboard(); else obGo('you');
+      return;
+    }
+    if (ev.target.closest('#ob-cancel')){ closeOnboard(); return; }
     if (ev.target.closest('#ob-finish')){ obCommit(); obGo('done'); return; }
     if (ev.target.closest('#ob-start')){ closeOnboard(); switchView('today'); return; }
     if (ev.target.closest('#ob-send')){ obSend(); return; }
@@ -11727,7 +11966,9 @@ bind();
 bindOnboard();
 setUnit(S.profile.unit || 'kj');
 renderAll();
-if (!S.profile.onboarded) openOnboard();
+/* Staying signed in is the only thing that skips the front door. */
+if (!auth) openOnboard('gate');
+else if (!S.profile.onboarded) openOnboard('setup');
 if (auth) syncNow().catch(function(){ setSyncState('Offline'); });
 </script>
 </body>
