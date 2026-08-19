@@ -296,6 +296,8 @@ select{background-image:linear-gradient(45deg,transparent 50%,var(--ink-3) 50%),
 .btn:hover{filter:brightness(1.07)}
 .btn.ghost{background:var(--surface); color:var(--ink-2); border-color:var(--line)}
 .btn.ghost:hover{border-color:var(--line-strong); color:var(--ink); filter:none}
+.btn.google{background:#fff; color:#3c4043; border:1px solid var(--line-strong); font-weight:600}
+.btn.google:hover{background:#f6f7f8; filter:none; border-color:var(--ink-3)}
 .btn.danger{background:var(--surface); color:var(--over); border-color:color-mix(in srgb,var(--over) 40%,var(--line))}
 .btn.sm{padding:7px 11px; font-size:12.5px; width:auto}
 .btnrow{display:flex; gap:8px; margin-top:4px}
@@ -8255,7 +8257,7 @@ function toast(msg){
   if (!t){
     t = document.createElement('div'); t.id = 'toast';
     t.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom));' +
-      'z-index:80;background:var(--ink);color:var(--bg);padding:9px 15px;border-radius:99px;font-size:13px;' +
+      'z-index:90;background:var(--ink);color:var(--bg);padding:9px 15px;border-radius:99px;font-size:13px;' +
       'max-width:88vw;text-align:center;box-shadow:0 8px 24px -8px rgba(0,0,0,.5);transition:opacity .2s;' +
       'pointer-events:none';
     document.body.appendChild(t);
@@ -10934,7 +10936,7 @@ function renderOffResults(q, via){
 /* Bumped on every deploy. When something fails, knowing which build is
    actually loaded is the difference between debugging the bug and debugging
    a stale cache. */
-var APP_VERSION = '2026.08.18-25';
+var APP_VERSION = '2026.08.18-26';
 var SB_URL = 'https://lsrxqviwgqjpuzzcqcpu.supabase.co';
 var SB_KEY = 'sb_publishable_0lk-0UAlfW-tALEgPiqFHg_8vF9Hp63';
 var AUTH_KEY = 'eatandtrain.auth';
@@ -11009,11 +11011,43 @@ function sbSendCode(email){
   }).then(sbJson);
 }
 
+/* Google, and anything else the project has a provider configured for. This is
+   a plain browser redirect to Supabase, which bounces to Google and back here
+   with the session in the fragment — the same landing claimReturnedSession()
+   already handles. No email is sent, so none of the mail-server limits apply,
+   and on a phone it is one tap rather than switching to an inbox and back.
+
+   Nothing here goes near an edge function: those are Strava, push and the
+   Claude proxy. Supabase does OAuth itself. */
+function sbOAuth(provider){
+  var back = appUrl();
+  if (!back){
+    toast('Google sign-in needs the app on the web, not a saved copy of the file.');
+    return;
+  }
+  location.href = SB_URL + '/auth/v1/authorize?provider=' + encodeURIComponent(provider) +
+    '&redirect_to=' + encodeURIComponent(back);
+}
+
+var GOOGLE_MARK =
+  '<svg viewBox="0 0 48 48" width="17" height="17" aria-hidden="true">' +
+  '<path fill="#4285F4" d="M45.1 24.5c0-1.6-.1-2.7-.4-3.9H24v7.1h12.1c-.2 1.8-1.6 4.6-4.5 6.5l-.1.3 6.5 5 .5.1c4.1-3.8 6.6-9.5 6.6-15.1z"/>' +
+  '<path fill="#34A853" d="M24 46c5.9 0 10.9-2 14.5-5.3l-6.9-5.4c-1.8 1.3-4.3 2.2-7.6 2.2-5.8 0-10.7-3.8-12.5-9.1l-7 5.4C7.9 41 15.4 46 24 46z"/>' +
+  '<path fill="#FBBC05" d="M11.5 28.4c-.5-1.4-.7-2.9-.7-4.4s.3-3 .7-4.4v-.3l-6.8-5.3-.2.1A22 22 0 002 24c0 3.5.9 6.9 2.5 9.9l7-5.5z"/>' +
+  '<path fill="#EB4335" d="M24 10.5c4.1 0 6.9 1.8 8.5 3.3l6.2-6C34.9 4.3 29.9 2 24 2 15.4 2 7.9 7 4.5 14.1l7 5.5c1.8-5.3 6.7-9.1 12.5-9.1z"/>' +
+  '</svg>';
+
 /* If a sign-in link brought us back here, the session is sitting in the URL
    fragment and the only correct thing to do is take it and say nothing. The
    app used to ignore it, which is why following a link appeared to do nothing
    and left people copying URLs into a box asking for a six-digit code. */
 function claimReturnedSession(){
+  var qs = new URLSearchParams(location.search || '');
+  if (qs.get('error') || qs.get('error_description')){
+    var qe = qs.get('error_description') || qs.get('error');
+    history.replaceState(null, '', location.pathname);
+    return {error: decodeURIComponent(qe).replace(/\+/g, ' ')};
+  }
   var frag = (location.hash || '').replace(/^#/, '');
   if (!frag || frag.indexOf('=') < 0) return null;
   var q = new URLSearchParams(frag);
@@ -11246,8 +11280,11 @@ function renderSync(){
     setSyncState('Not signed in');
     body.innerHTML =
       '<p class="note">Sign in to keep this on a server instead of only in this browser, and to pick ' +
-      'it up on another device. A six-digit code is emailed to you — no password to invent or forget.</p>' +
-      '<label class="f" style="margin-top:11px"><span>Email</span>' +
+      'it up on another device.</p>' +
+      '<button class="btn google" id="sync-google" style="margin-top:11px">' + GOOGLE_MARK +
+      '<span style="margin-left:8px">Continue with Google</span></button>' +
+      '<p class="hint" style="margin:12px 0 4px">Or have a six-digit code emailed to you.</p>' +
+      '<label class="f"><span>Email</span>' +
         '<input type="email" id="sync-email" inputmode="email" autocomplete="email" placeholder="you@example.com"></label>' +
       '<button class="btn" id="sync-send">Email me a code</button>' +
       '<div id="sync-code" hidden style="margin-top:12px">' +
@@ -11694,6 +11731,7 @@ function bind(){
   el('sync-body').addEventListener('click', function(ev){
     var t = ev.target;
     var msg = el('sync-msg');
+    if (t.closest('#sync-google')){ sbOAuth('google'); return; }
     if (t.closest('#sync-send')){
       var em = (el('sync-email').value || '').trim();
       if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)){ msg.textContent = 'That does not look like an email address.'; return; }
@@ -11853,8 +11891,11 @@ function renderOnboard(){
           '<p class="lede">It works out what you burn from the session you actually did: the ' +
           'repeats, the recoveries, the pace. Not from a step count and a guess.</p>' +
           '<p class="lede">Everything stays in this browser, and all of it works with no signal.</p>');
-    foot.innerHTML = '<button class="btn" data-ob-go="signin">Sign in</button>';
-    under.innerHTML = '<button class="ob-skip" id="ob-adhoc">' +
+    foot.innerHTML = '<button class="btn google" id="ob-google">' + GOOGLE_MARK +
+      '<span style="margin-left:8px">Continue with Google</span></button>';
+    under.innerHTML =
+      '<button class="ob-skip" data-ob-go="signin">Use an email code instead</button>' +
+      '<button class="ob-skip" id="ob-adhoc" style="margin-top:2px">' +
       (back ? 'Continue without an account' : 'Set up without an account') + '</button>';
     return;
   }
@@ -11864,6 +11905,8 @@ function renderOnboard(){
       '<h2>Sign in</h2>' +
       '<p class="lede">A six-digit code is emailed to you — there is no password to invent. ' +
       'If you have used this before, your body, diary and weigh-ins come back with it.</p>' +
+      '<button class="btn google" id="ob-google" style="margin-bottom:15px">' + GOOGLE_MARK +
+      '<span style="margin-left:8px">Continue with Google</span></button>' +
       '<label class="f"><span>Email</span><input data-ob="email" type="email" inputmode="email" ' +
         'autocomplete="email" placeholder="you@example.com" value="' + esc(d.email) + '"></label>' +
       (d.sent ? '<label class="f"><span>Six-digit code</span>' +
@@ -11990,6 +12033,7 @@ function bindOnboard(){
       obDraft[seg.parentNode.dataset.obseg] = seg.dataset.v;
       renderOnboard(); return;
     }
+    if (ev.target.closest('#ob-google')){ sbOAuth('google'); return; }
     if (ev.target.closest('#ob-adhoc')){
       if (S.profile.onboarded) closeOnboard(); else obGo('you');
       return;
