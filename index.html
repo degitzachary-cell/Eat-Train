@@ -5,49 +5,46 @@
 <title>Eat &amp; Train</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=5">
 <meta name="description" content="Offline calorie and workout tracker using Australian Food Composition Database values.">
-<meta name="theme-color" content="#0D1117" media="(prefers-color-scheme: dark)">
-<meta name="theme-color" content="#F5F6F8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0F1D16">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Eat &amp; Train">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@100..125,500..700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&family=Newsreader:ital,opsz,wght@0,6..72,400..700;1,6..72,400..600&display=swap">
 <style>
 /* ---------- tokens: light is the base, both dark states override ---------- */
+/* --------------------------- "Members' club" ------------------------------
+   Forest green and champagne, from the redesign handoff. One palette, not two:
+   the scheme is built dark, and a light translation of it would be a different
+   design rather than the same one inverted — so the light and prefers-dark
+   blocks that used to live here are gone rather than left to rot.
+
+   Names are kept as they were. Every rule and every var() call in the script
+   already points at them, so the restyle happens here rather than in four
+   hundred places, and nothing downstream had to be touched to know about it.
+   ------------------------------------------------------------------------- */
 :root{
-  --bg:#F4F6F8;      --surface:#FFFFFF;  --surface-2:#EAEEF3; --sunken:#E1E6EC;
-  --line:#DCE2EA;    --line-strong:#C3CCD8;
-  --ink:#121821;     --ink-2:#4B5563;    --ink-3:#78838F;
-  --accent:#0E8079;  --accent-ink:#FFFFFF; --accent-soft:#D8EEEB;
-  --pro:#CF5138;     --carb:#C4901A;     --fat:#7357BE;  --fib:#3B8A60; --alc:#587A91;
-  --ok:#37855180;    --ok-solid:#358150; --warn:#B87409; --over:#C43A2A;
-  --shadow:0 1px 2px rgba(16,24,32,.05), 0 6px 18px -10px rgba(16,24,32,.18);
-  --r:14px; --r-sm:9px;
-  --disp:'Archivo','Helvetica Neue',Arial,sans-serif;
-  --body:'IBM Plex Sans','Helvetica Neue',Arial,sans-serif;
-  --mono:'IBM Plex Mono','SFMono-Regular',Menlo,monospace;
-}
-@media (prefers-color-scheme: dark){
-  :root:not([data-theme="light"]){
-    --bg:#0D1117;    --surface:#161C24;  --surface-2:#1E252F; --sunken:#0A0E13;
-    --line:#252D38;  --line-strong:#39434F;
-    --ink:#E8EDF3;   --ink-2:#A5B0BD;    --ink-3:#78848F;
-    --accent:#2CB9AE; --accent-ink:#06201E; --accent-soft:#10322F;
-    --pro:#EE7358;   --carb:#E0A93C;     --fat:#9C82E4;  --fib:#57B07F; --alc:#7C9BB2;
-    --ok:#54AE7180;  --ok-solid:#54AE71; --warn:#DB9C34; --over:#E45C48;
-    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 22px -12px rgba(0,0,0,.7);
-  }
-}
-:root[data-theme="dark"]{
-  --bg:#0D1117;    --surface:#161C24;  --surface-2:#1E252F; --sunken:#0A0E13;
-  --line:#252D38;  --line-strong:#39434F;
-  --ink:#E8EDF3;   --ink-2:#A5B0BD;    --ink-3:#78848F;
-  --accent:#2CB9AE; --accent-ink:#06201E; --accent-soft:#10322F;
-  --pro:#EE7358;   --carb:#E0A93C;     --fat:#9C82E4;  --fib:#57B07F; --alc:#7C9BB2;
-  --ok:#54AE7180;  --ok-solid:#54AE71; --warn:#DB9C34; --over:#E45C48;
+  --bg:#0F1D16;      --surface:#13251C;  --surface-2:#1A2B21; --sunken:#0B1611;
+  --input:#14261D;
+  --line:#24382C;    --line-soft:#1A2B21; --line-strong:#2C4234;
+  --ink:#EDE8DC;     --ink-2:#A8B5A5;    --ink-3:#7E9080;     --ink-4:#5F7265;
+  --accent:#C8A96A;  --accent-ink:#0F1D16; --accent-soft:#1A2B21; --accent-deep:#8A6F3C;
+  /* Macros read as one material — the bar is --ink and the number carries the
+     meaning. Fibre is the one that earns the gold. */
+  --pro:#EDE8DC;     --carb:#EDE8DC;     --fat:#EDE8DC;  --fib:#C8A96A; --alc:#8A6F3C;
+  --ok:#7FA98B;      --warn:#D9B24A;     --over:#D4826A;
+  --over-line:#6B4038;
   --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 22px -12px rgba(0,0,0,.7);
+  --r:14px; --r-sm:9px;
+  --disp:'Newsreader',Georgia,'Times New Roman',serif;
+  --body:'Hanken Grotesk',system-ui,'Helvetica Neue',Arial,sans-serif;
+  /* Numbers are Newsreader too — the design sets them in the serif with
+     tabular figures, so the old monospace token becomes that instead of being
+     hunted down at every .num in the file. */
+  --mono:'Newsreader',Georgia,'Times New Roman',serif;
 }
+.num, [class*="num"]{font-variant-numeric:tabular-nums}
 
 *{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%}
@@ -57,7 +54,7 @@ body{
   -webkit-font-smoothing:antialiased;
   padding-bottom:calc(72px + env(safe-area-inset-bottom));
 }
-h1,h2,h3{font-family:var(--disp); font-variation-settings:'wdth' 112; margin:0; text-wrap:balance; letter-spacing:-.01em}
+h1,h2,h3{font-family:var(--disp); font-weight:400; margin:0; text-wrap:balance; letter-spacing:-.01em}
 button,input,select,textarea{font:inherit; color:inherit}
 button{cursor:pointer; background:none; border:none; padding:0}
 :focus-visible{outline:2px solid var(--accent); outline-offset:2px; border-radius:4px}
@@ -76,10 +73,10 @@ header.top{
 .iconbtn{width:34px; height:34px; border-radius:9px; display:grid; place-items:center;
   color:var(--ink-2); border:1px solid var(--line); background:var(--surface)}
 .iconbtn:hover{color:var(--ink); border-color:var(--line-strong)}
-.unit-toggle{display:flex; border:1px solid var(--line); border-radius:9px; overflow:hidden; background:var(--surface)}
+.unit-toggle{display:flex; border:1px solid var(--line-strong); border-radius:99px; overflow:hidden; background:none}
 .unit-toggle button{padding:6px 9px; font-size:11px; font-weight:600; letter-spacing:.06em;
   text-transform:uppercase; color:var(--ink-3)}
-.unit-toggle button[aria-pressed="true"]{background:var(--accent); color:var(--accent-ink)}
+.unit-toggle button[aria-pressed="true"]{background:var(--accent); color:var(--accent-ink); font-weight:700}
 
 .datebar{display:flex; align-items:center; gap:8px; padding:9px 0 11px}
 .datebar .day{flex:1; text-align:center; font-family:var(--disp); font-weight:600; font-size:15px;
@@ -92,15 +89,14 @@ header.top{
 
 nav.tabs{
   position:fixed; left:0; right:0; bottom:0; z-index:40;
-  background:color-mix(in srgb, var(--surface) 92%, transparent);
-  backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
-  border-top:1px solid var(--line); padding-bottom:env(safe-area-inset-bottom);
+  background:var(--sunken);
+  border-top:1px solid var(--accent); padding-bottom:env(safe-area-inset-bottom);
 }
 .tabs-in{max-width:560px; margin:0 auto; display:grid; grid-template-columns:repeat(4,1fr)}
-.tab{display:flex; flex-direction:column; align-items:center; gap:3px; padding:9px 0 8px;
-  color:var(--ink-3); font-size:10px; font-weight:500; letter-spacing:.04em; text-transform:uppercase}
-.tab svg{width:21px; height:21px}
-.tab[aria-current="page"]{color:var(--accent)}
+.tab{display:flex; flex-direction:column; align-items:center; gap:4px; padding:10px 0 9px;
+  color:var(--ink-3); font-size:8.5px; font-weight:700; letter-spacing:.16em; text-transform:uppercase}
+.tab svg{width:19px; height:19px}
+.tab[aria-current="page"]{color:var(--accent); box-shadow:inset 0 2px 0 var(--accent)}
 
 .view{display:none; animation:in .18s ease}
 .view.on{display:block}
@@ -110,12 +106,12 @@ nav.tabs{
 /* ---------- sub-tabs ---------- */
 /* Only used where a tab genuinely runs long. A diary is meant to scroll; a
    settings screen three storeys tall is not. */
-.subtabs{display:flex; gap:0; border:1px solid var(--line); border-radius:var(--r-sm);
-  overflow:hidden; margin:11px 0; background:var(--surface)}
+.subtabs{display:flex; gap:0; border:1px solid var(--line-strong); border-radius:9px;
+  overflow:hidden; margin:11px 0; background:none}
 .subtabs button{flex:1; padding:8px 4px; font-size:12.5px; font-weight:500; color:var(--ink-3);
   border-right:1px solid var(--line)}
 .subtabs button:last-child{border-right:none}
-.subtabs button[aria-pressed="true"]{background:var(--accent-soft); color:var(--accent); font-weight:600}
+.subtabs button[aria-pressed="true"]{background:var(--surface-2); color:var(--accent); font-weight:700}
 .subpane{display:none}
 .subpane.on{display:block}
 
@@ -123,7 +119,7 @@ nav.tabs{
 .card{background:var(--surface); border:1px solid var(--line); border-radius:var(--r);
   padding:14px; margin-bottom:12px; box-shadow:var(--shadow)}
 .card.flush{padding:0; overflow:hidden}
-.eyebrow{font-size:10.5px; font-weight:600; letter-spacing:.11em; text-transform:uppercase; color:var(--ink-3)}
+.eyebrow{font-size:10px; font-weight:700; letter-spacing:.18em; text-transform:uppercase; color:var(--ink-3)}
 .card-head{display:flex; align-items:baseline; gap:8px; margin-bottom:10px}
 .card-head h2{font-size:14px; font-weight:600; font-variation-settings:'wdth' 105}
 .card-head .right{margin-left:auto; font-size:12px; color:var(--ink-3)}
@@ -160,6 +156,35 @@ nav.tabs{
 .flow .cell.eat b{color:var(--carb)}
 
 /* ---------- macros ---------- */
+/* The day head, per the redesign. One kicker line for the date, an italic
+   serif lede, the number at 76px in champagne, and a dim caption carrying the
+   target and the two figures that used to be a row of arithmetic.
+
+   The meter that used to sit here is hidden rather than removed: renderToday()
+   still writes to it every render, and deleting it would mean editing a
+   function this restyle is not allowed to touch. The bar that replaced it
+   shows the same fraction of the target, segmented by meal. */
+.daypane .datebar{padding:18px 20px 0; justify-content:center; gap:14px}
+.daypane .datebar .day{flex:none; display:flex; align-items:baseline; gap:5px;
+  font-family:var(--body); font-size:10px; font-weight:700;
+  letter-spacing:.22em; text-transform:uppercase; color:var(--ink-3)}
+.daypane .datebar .day small{order:-1; display:inline; font:inherit; letter-spacing:inherit;
+  text-transform:inherit; color:inherit; margin:0}
+.daypane .datebar button{width:auto; height:auto; padding:4px; color:var(--ink-2)}
+.daypane .datebar button:disabled{color:#3E5A48; opacity:1}
+.daypane .budget{padding:12px 20px 16px; text-align:center}
+.bud-lede{font-family:var(--disp); font-style:italic; font-size:14px; color:var(--ink-2);
+  text-transform:lowercase; margin-bottom:6px}   /* 6px — it collides with the descender at less */
+.daypane .budget-big{font-family:var(--disp); font-size:76px; line-height:1; font-weight:400;
+  letter-spacing:-.025em; color:var(--accent); font-variant-numeric:tabular-nums}
+.daypane .budget-big.over{color:var(--over)}
+.bud-caption{font-size:11.5px; color:var(--ink-3); margin-top:4px}
+.bud-caption b{color:var(--ink); font-weight:400}
+.mealbar{display:flex; height:4px; background:var(--line); margin:15px 6px 0}
+.mealbar i{display:block; height:100%}
+.mealbar-key{display:flex; justify-content:center; flex-wrap:wrap; gap:14px; margin-top:8px;
+  font-size:9px; font-weight:600; letter-spacing:.12em; text-transform:uppercase; color:var(--ink-3)}
+
 /* Cards inside a main view lose their box. They keep their padding and their
    heads, but go full-bleed with a single hairline between them, so a tab reads
    as one sheet rather than a column of floating tiles. Only direct children —
@@ -175,28 +200,10 @@ nav.tabs{
 .view > .card:last-child, .view > .subpane > .card:last-child{border-bottom:1px solid var(--line)}
 .view > .subpane > .card:first-child{border-top:1px solid var(--line)}
 .view > .card .card-head h2, .view > .subpane > .card .card-head h2{
-  font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-3); font-weight:600}
+  font-family:var(--body); font-size:10px; letter-spacing:.18em; text-transform:uppercase;
+  color:var(--ink-3); font-weight:700}
 .view > .card > .card-head, .view > .subpane > .card > .card-head{margin-bottom:8px}
 
-/* The day head: date, budget, meter and balance as one block rather than a
-   strip and a card. Losing the meter's 0-to-target legend costs nothing —
-   the target is printed beside the number — and the balance reads as a line
-   of arithmetic instead of three columns of headings. */
-.daypane .datebar{padding:6px 6px 2px}
-.daypane .datebar .day{font-size:14px}
-.daypane .datebar .day small{display:inline; margin-top:0; margin-left:7px; font-size:10.5px}
-.daypane .budget{padding:2px 15px 12px}
-.daypane .budget-top{margin-bottom:9px}
-.daypane .budget-big{font-size:33px}
-.daypane .meter{height:18px; border-radius:5px}
-.daypane .flow{display:flex; align-items:baseline; justify-content:space-between; gap:6px;
-  margin-top:10px; padding-top:9px; border-top:1px solid var(--line);
-  font-size:10.5px; color:var(--ink-3); letter-spacing:.03em}
-.daypane .flow .cell{text-align:left}
-.daypane .flow .cell b{font-family:var(--mono); font-size:13px; font-weight:500; letter-spacing:-.02em}
-.daypane .flow .cell.burn b{color:var(--fib)}
-.daypane .flow .cell.eat b{color:var(--carb)}
-.daypane .flow .op{font-family:var(--mono); font-size:12px; color:var(--line-strong)}
 
 /* --------------------------- layout, second pass --------------------------
    The app was a stack of rounded boxes — five of them above the first food
@@ -215,75 +222,74 @@ button.sec{cursor:pointer}
 .sec[hidden]{display:none}   /* .sec sets display, which would otherwise win */
 button.sec:hover{background:var(--surface-2)}
 .sec-h{display:flex; align-items:baseline; gap:8px; margin-bottom:8px}
-.sec-h h3{font-size:10.5px; letter-spacing:.1em; text-transform:uppercase;
-  color:var(--ink-3); font-weight:600}
-.sec-h .right{margin-left:auto; font-size:11.5px; color:var(--ink-3);
-  font-family:var(--mono); font-variant-numeric:tabular-nums}
+.sec-h h3{font-size:10px; letter-spacing:.18em; text-transform:uppercase;
+  color:var(--ink-3); font-weight:700}
+.sec-h .right{margin-left:auto; font-size:11px; color:var(--ink-3);
+  font-variant-numeric:tabular-nums}
 
 /* A tappable line: label, value, chevron. Replaces a card wherever a card was
    only ever holding one row of text. */
 .line{display:flex; align-items:center; gap:10px; width:100%; padding:6px 0;
   background:none; border:none; text-align:left; color:inherit; font:inherit; cursor:pointer}
-.line + .line{border-top:1px solid var(--line)}
-.line .lt{font-size:13.5px; color:var(--ink); min-width:0}
+.line + .line{border-top:1px solid var(--line-soft)}
+.line .lt{font-size:13px; color:var(--ink); min-width:0}
 .line .ls{font-size:11.5px; color:var(--ink-3); margin-top:1px}
-.line .lv{margin-left:auto; font-family:var(--mono); font-size:13px; color:var(--ink-2);
+.line .lv{margin-left:auto; font-family:var(--disp); font-size:14px; color:var(--ink);
   font-variant-numeric:tabular-nums; white-space:nowrap}
 .line .lv.dim{color:var(--ink-3)}
-.line .plus{width:25px; height:25px; flex:none; border-radius:7px; background:var(--surface);
-  border:1px solid var(--line); color:var(--ink-2); font-size:15px; line-height:1;
+.line .plus{width:24px; height:24px; flex:none; border-radius:99px; background:none;
+  border:1px solid var(--accent); color:var(--accent); font-size:14px; line-height:1;
   display:flex; align-items:center; justify-content:center}
 .line .plus:hover{background:var(--accent); color:var(--accent-ink); border-color:var(--accent)}
 
 /* The budget, compacted. It stays above the sub-tabs because it is the number
    you opened the app for, but it no longer needs a third of the screen. */
-.budget.slim{padding:13px 15px}
-.budget.slim .budget-big{font-size:33px}
-.budget.slim .meter{height:20px}
-.budget.slim .flow{margin-top:11px; padding-top:11px}
 .macros{display:grid; gap:9px}
-.macro{display:grid; grid-template-columns:64px 1fr auto; align-items:center; gap:10px}
-.macro-name{font-size:12px; color:var(--ink-2); display:flex; align-items:center; gap:6px}
-.macro-name i{width:7px; height:7px; border-radius:2px; flex:none}
-.macro-track{height:7px; border-radius:4px; background:var(--sunken); overflow:hidden; position:relative}
-.macro-bar{height:100%; border-radius:4px; transition:width .4s ease}
-.macro-val{font-family:var(--mono); font-size:11.5px; color:var(--ink-3); white-space:nowrap; font-variant-numeric:tabular-nums}
-.macro-val b{color:var(--ink); font-weight:500}
+.macro{display:grid; grid-template-columns:56px 1fr auto; align-items:center; gap:9px 14px}
+.macro-name{font-size:11px; color:var(--ink-2); display:flex; align-items:center; gap:6px}
+/* The coloured dot goes: the bars are one material now and the number carries
+   the meaning, so a swatch per macro is decoration standing in for nothing. */
+.macro-name i{display:none}
+.macro-track{height:3px; border-radius:0; background:var(--line); overflow:hidden; position:relative}
+.macro-bar{height:100%; border-radius:0; transition:width .4s ease}
+.macro-val{font-family:var(--disp); font-size:13.5px; color:var(--ink-3); white-space:nowrap; font-variant-numeric:tabular-nums}
+.macro-val b{color:var(--ink); font-weight:400}
 .dot-pro{background:var(--pro)} .dot-carb{background:var(--carb)}
 .dot-fat{background:var(--fat)} .dot-fib{background:var(--fib)} .dot-alc{background:var(--alc)}
 
 .chips{display:flex; flex-wrap:wrap; gap:6px}
-.chip{font-size:11px; padding:4px 9px; border-radius:99px; border:1px solid var(--line);
+.chip{font-size:11px; padding:5px 11px; border-radius:99px; border:1px solid var(--line-strong);
   background:var(--surface-2); color:var(--ink-2); font-family:var(--mono); font-variant-numeric:tabular-nums}
 .chip b{color:var(--ink); font-weight:500}
-.chip.hi{border-color:color-mix(in srgb, var(--over) 45%, var(--line)); color:var(--over)}
+.chip.hi{border-color:var(--over-line); color:var(--over)}
 
 /* ---------- lists ---------- */
 .meal{border-bottom:1px solid var(--line)}
 .meal:last-child{border-bottom:none}
-.meal-head{display:flex; align-items:center; gap:8px; padding:10px 14px; background:var(--surface-2)}
-.meal-head h3{font-size:11px; font-weight:600; letter-spacing:.11em; text-transform:uppercase; color:var(--ink-2)}
-.meal-head .kj{margin-left:auto; font-family:var(--mono); font-size:12px; color:var(--ink-3)}
-.meal-head .add{width:26px; height:26px; border-radius:7px; background:var(--surface); border:1px solid var(--line);
+.meal-head{display:flex; align-items:center; gap:9px; padding:11px 15px 8px; background:none;
+  border-top:1px solid var(--line)}
+.meal-head h3{font-size:10px; font-weight:700; letter-spacing:.18em; text-transform:uppercase; color:var(--accent)}
+.meal-head .kj{margin-left:auto; font-size:11px; color:var(--ink-3); font-variant-numeric:tabular-nums}
+.meal-head .add{width:24px; height:24px; border-radius:99px; background:none; border:1px solid var(--accent); color:var(--accent);
   display:grid; place-items:center; color:var(--accent); font-size:17px; line-height:1; padding-bottom:2px}
 .meal-head .add:hover{background:var(--accent); color:var(--accent-ink); border-color:var(--accent)}
-.row{display:flex; align-items:center; gap:10px; padding:9px 14px; border-top:1px solid var(--line)}
+.row{display:flex; align-items:baseline; gap:10px; padding:7px 15px; border-top:1px solid var(--line-soft)}
 .row:first-of-type{border-top:none}
 .row-main{min-width:0; flex:1}
-.row-main .t{font-size:13.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-.row-main .s{font-size:11px; color:var(--ink-3); font-family:var(--mono); margin-top:1px}
-.row-kj{font-family:var(--mono); font-size:13px; font-variant-numeric:tabular-nums; white-space:nowrap}
+.row-main .t{font-size:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.row-main .s{font-size:11px; color:var(--ink-3); margin-top:1px}
+.row-kj{font-family:var(--disp); font-size:14px; font-variant-numeric:tabular-nums; white-space:nowrap}
 .row-del{color:var(--ink-3); width:26px; height:26px; border-radius:6px; display:grid; place-items:center; flex:none}
 .row-del:hover{color:var(--over); background:var(--surface-2)}
-.empty{padding:14px; text-align:center; color:var(--ink-3); font-size:12.5px}
+.empty{padding:2px 15px 12px; color:var(--ink-4); font-size:12px; font-style:italic; font-family:var(--disp)}
 
 /* ---------- forms ---------- */
 label.f{display:block; margin-bottom:11px}
-label.f > span{display:block; font-size:11px; letter-spacing:.07em; text-transform:uppercase;
-  color:var(--ink-3); margin-bottom:5px; font-weight:500}
+label.f > span{display:block; font-size:10px; letter-spacing:.18em; text-transform:uppercase;
+  color:var(--ink-3); margin-bottom:5px; font-weight:700}
 input[type=text],input[type=number],input[type=search],input[type=date],select,textarea{
-  width:100%; padding:9px 11px; border:1px solid var(--line); border-radius:var(--r-sm);
-  background:var(--surface); color:var(--ink); font-size:16px; -webkit-appearance:none; appearance:none}
+  width:100%; padding:9px 10px; border:1px solid var(--line-strong); border-radius:8px;
+  background:var(--input); color:var(--ink); font-size:16px; -webkit-appearance:none; appearance:none}
 input:focus,select:focus,textarea:focus{border-color:var(--accent); outline:none;
   box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent)}
 select{background-image:linear-gradient(45deg,transparent 50%,var(--ink-3) 50%),linear-gradient(135deg,var(--ink-3) 50%,transparent 50%);
@@ -291,21 +297,21 @@ select{background-image:linear-gradient(45deg,transparent 50%,var(--ink-3) 50%),
 .grid2{display:grid; grid-template-columns:1fr 1fr; gap:0 10px}
 .grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:0 8px}
 .btn{display:inline-flex; align-items:center; justify-content:center; gap:6px; width:100%;
-  padding:11px 14px; border-radius:var(--r-sm); background:var(--accent); color:var(--accent-ink);
-  font-weight:600; font-size:14px; border:1px solid transparent}
+  padding:11px 14px; border-radius:8px; background:var(--accent); color:var(--accent-ink);
+  border:1px solid var(--accent); font-size:14px; font-weight:800; letter-spacing:.01em}
 .btn:hover{filter:brightness(1.07)}
-.btn.ghost{background:var(--surface); color:var(--ink-2); border-color:var(--line)}
+.btn.ghost{background:none; color:var(--ink-2); border-color:var(--line-strong)}
 .btn.ghost:hover{border-color:var(--line-strong); color:var(--ink); filter:none}
 .btn.google{background:#fff; color:#3c4043; border:1px solid var(--line-strong); font-weight:600}
 .btn.google:hover{background:#f6f7f8; filter:none; border-color:var(--ink-3)}
-.btn.danger{background:var(--surface); color:var(--over); border-color:color-mix(in srgb,var(--over) 40%,var(--line))}
+.btn.danger{background:none; color:var(--over); border-color:var(--over-line)}
 .btn.sm{padding:7px 11px; font-size:12.5px; width:auto}
 .btnrow{display:flex; gap:8px; margin-top:4px}
-.seg{display:flex; gap:0; border:1px solid var(--line); border-radius:var(--r-sm); overflow:hidden}
+.seg{display:flex; gap:0; border:1px solid var(--line-strong); border-radius:9px; overflow:hidden}
 .seg button{flex:1; padding:8px 4px; font-size:12px; font-weight:500; color:var(--ink-3);
   border-right:1px solid var(--line)}
 .seg button:last-child{border-right:none}
-.seg button[aria-pressed="true"]{background:var(--accent-soft); color:var(--accent); font-weight:600}
+.seg button[aria-pressed="true"]{background:var(--surface-2); color:var(--accent); font-weight:700}
 .hint{font-size:11.5px; color:var(--ink-3); line-height:1.5; margin-top:6px}
 .hint code{font-family:var(--mono); font-size:11px; background:var(--surface-2); padding:1px 4px; border-radius:3px}
 
@@ -345,36 +351,38 @@ select{background-image:linear-gradient(45deg,transparent 50%,var(--ink-3) 50%),
   text-decoration:underline; text-underline-offset:3px; cursor:pointer; padding:10px;
   display:block; margin:12px auto 0}
 .ob-num{font-family:var(--mono); font-size:26px; font-weight:500; color:var(--accent)}
-.sheet-bg{position:fixed; inset:0; z-index:60; background:rgba(8,12,17,.5);
+.sheet-bg{position:fixed; inset:0; z-index:60; background:rgba(4,10,7,.62);
   backdrop-filter:blur(2px); display:none}
 .sheet-bg.on{display:block}
 .sheet{position:fixed; left:0; right:0; bottom:0; z-index:61; max-height:92vh;
-  background:var(--surface); border-radius:18px 18px 0 0; border-top:1px solid var(--line);
+  background:var(--surface); border-radius:20px 20px 0 0; border-top:1px solid var(--accent);
   display:none; flex-direction:column; box-shadow:0 -10px 40px -14px rgba(0,0,0,.45)}
 .sheet.on{display:flex; animation:up .24s cubic-bezier(.2,.8,.3,1)}
 @keyframes up{from{transform:translateY(26px); opacity:.6}to{transform:none; opacity:1}}
-@media(min-width:600px){.sheet{left:50%; transform:translateX(-50%); width:560px; border-radius:18px;
+@media(min-width:600px){.sheet{left:50%; transform:translateX(-50%); width:560px; border-radius:20px;
   bottom:24px; max-height:82vh}
   .sheet.on{animation:none}}
-.sheet-head{display:flex; align-items:center; gap:10px; padding:13px 14px; border-bottom:1px solid var(--line)}
-.sheet-head h2{font-size:15px; font-weight:600; margin-right:auto; font-variation-settings:'wdth' 108}
+.sheet-head{display:flex; align-items:center; gap:10px; padding:13px 14px;
+  border-bottom:1px solid var(--line); flex:none}
+.sheet-head h2{font-family:var(--disp); font-size:17px; font-weight:400; margin-right:auto}
 .sheet-body{overflow-y:auto; -webkit-overflow-scrolling:touch; padding:14px;
   padding-bottom:calc(14px + env(safe-area-inset-bottom))}
 .sheet-body.tight{padding:0}
 
 .searchwrap{padding:11px 14px; border-bottom:1px solid var(--line); position:sticky; top:0;
-  background:var(--surface); z-index:2}
-.catrow{display:flex; gap:5px; overflow-x:auto; padding:9px 14px 10px; border-bottom:1px solid var(--line);
-  scrollbar-width:none}
+  background:var(--surface); z-index:2; flex:none}
+.catrow{display:flex; gap:6px; overflow-x:auto; padding:10px 14px; border-bottom:1px solid var(--line);
+  scrollbar-width:none; flex:none}
 .catrow::-webkit-scrollbar{display:none}
-.catrow button{flex:none; font-size:11.5px; padding:5px 10px; border-radius:99px;
-  border:1px solid var(--line); color:var(--ink-3); white-space:nowrap}
-.catrow button[aria-pressed="true"]{background:var(--ink); color:var(--bg); border-color:var(--ink)}
-.fres{width:100%; text-align:left; padding:10px 14px; border-bottom:1px solid var(--line); display:flex; gap:10px; align-items:center}
+.catrow button{flex:none; font-size:11px; padding:5px 11px; border-radius:99px;
+  border:1px solid var(--line-strong); color:var(--ink-2); white-space:nowrap}
+.catrow button[aria-pressed="true"]{background:var(--accent); color:var(--accent-ink);
+  border-color:var(--accent); font-weight:700}
+.fres{width:100%; text-align:left; padding:11px 15px; border-bottom:1px solid var(--line-soft); display:flex; gap:10px; align-items:center}
 .fres:hover{background:var(--surface-2)}
 .fres .t{font-size:13.5px; display:block}
 .fres .s{font-size:11px; color:var(--ink-3); margin-top:1px; display:block}
-.fres .e{margin-left:auto; text-align:right; font-family:var(--mono); font-size:12px; color:var(--ink-2); white-space:nowrap}
+.fres .e{margin-left:auto; text-align:right; font-family:var(--disp); font-size:14px; color:var(--ink); white-space:nowrap; font-variant-numeric:tabular-nums}
 .fres .e small{display:block; color:var(--ink-3); font-size:10px}
 .star{color:var(--ink-3); flex:none; width:24px; height:24px; display:grid; place-items:center}
 .star.on{color:var(--carb)}
@@ -413,9 +421,9 @@ body.dragging{cursor:grabbing}
   border-bottom:1px dashed var(--line)}
 .mrow:last-child{border-bottom:none}
 .mrow .nm{font-size:13px}
-.mrow .amt{font-family:var(--mono); font-size:13px; font-variant-numeric:tabular-nums; text-align:right}
-.mrow .bar{grid-column:1/-1; height:5px; border-radius:3px; background:var(--sunken); overflow:hidden; margin-top:2px}
-.mrow .bar i{display:block; height:100%; border-radius:3px}
+.mrow .amt{font-family:var(--disp); font-size:14px; font-variant-numeric:tabular-nums; text-align:right}
+.mrow .bar{grid-column:1/-1; height:3px; border-radius:0; background:var(--line); overflow:hidden; margin-top:3px}
+.mrow .bar i{display:block; height:100%; border-radius:0}
 .mrow .src{grid-column:1/-1; font-size:10.5px; color:var(--ink-3); margin-top:4px}
 
 /* ---------- charts ---------- */
@@ -462,35 +470,28 @@ body.dragging{cursor:grabbing}
   <div class="pane daypane">
     <div class="datebar">
       <button id="d-prev" aria-label="Previous day">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="17" height="17"><path d="M15 5l-7 7 7 7"/></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="16" height="16"><path d="M15 5l-7 7 7 7"/></svg>
       </button>
       <div class="day"><span id="d-label">Today</span><small id="d-sub">&mdash;</small></div>
       <button id="d-next" aria-label="Next day">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="17" height="17"><path d="M9 5l7 7-7 7"/></svg>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="16" height="16"><path d="M9 5l7 7-7 7"/></svg>
       </button>
     </div>
     <div class="budget">
-      <div class="budget-top">
-        <div>
-          <div class="budget-label" id="bud-label">Left to eat</div>
-          <div class="budget-big num" id="bud-big">&mdash;</div>
-        </div>
-        <div class="budget-side">
-          <b class="num" id="bud-target">&mdash;</b>
-          <span id="bud-target-lbl">target</span>
-        </div>
-      </div>
-      <div class="meter" id="meter">
+      <div class="bud-lede" id="bud-label">left to eat</div>
+      <div class="budget-big num" id="bud-big">&mdash;</div>
+      <div class="bud-caption">of <span id="bud-target">&mdash;</span>
+        <span id="bud-target-lbl" hidden></span>
+        &middot; burned <b id="f-burn">&mdash;</b> &middot; eaten <b id="f-eat">&mdash;</b>
+        <b id="f-net" hidden></b></div>
+      <!-- The old progress meter still takes renderToday()'s writes; the bar
+           below shows the same fraction of the target, split by meal. -->
+      <div class="meter" id="meter" hidden>
         <div class="meter-fill" id="meter-fill" style="width:0%"></div>
         <div class="meter-ticks" id="meter-ticks"></div>
       </div>
-      <div class="flow">
-        <span class="cell burn"><b class="num" id="f-burn">&mdash;</b> burn</span>
-        <span class="op">&minus;</span>
-        <span class="cell eat"><b class="num" id="f-eat">&mdash;</b> eaten</span>
-        <span class="op">=</span>
-        <span class="cell"><b class="num" id="f-net">&mdash;</b> balance</span>
-      </div>
+      <div class="mealbar" id="mealbar"></div>
+      <div class="mealbar-key" id="mealbar-key"></div>
     </div>
   </div>
 
@@ -8613,8 +8614,14 @@ function renderDateBar(){
   var d = isoToDate(DAY);
   var names = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
   var label = DAY === t ? 'Today' : (DAY === shiftISO(t,-1) ? 'Yesterday' : names[d.getDay()]);
-  el('d-label').textContent = label;
-  el('d-sub').textContent = d.toLocaleDateString('en-AU', {day:'numeric', month:'short', year:'numeric'});
+  /* One kicker line — TUESDAY 18 AUGUST · TODAY — rather than a heading with a
+     date under it. Both elements stay; the weekday and date live in the small
+     one and the relative word follows it, and it is dropped on days where it
+     would only repeat the weekday already printed. */
+  var rel = DAY === t ? 'Today' : (DAY === shiftISO(t,-1) ? 'Yesterday' : '');
+  el('d-label').textContent = rel ? '· ' + rel : '';
+  el('d-sub').textContent = names[d.getDay()] + ' ' +
+    d.toLocaleDateString('en-AU', {day:'numeric', month:'long'});
   el('d-next').disabled = DAY >= t;
   el('tr-date').textContent = label;
   el('wl-date').textContent = label.toLowerCase();
@@ -8693,12 +8700,37 @@ function renderToday(){
   renderMeals();
   renderTrainingList('tr-list', 'tr-total');
   renderOverview(e);
+  renderMealBar(e);
 }
 
 /* The overview: the day at a glance, sized to land inside a phone screen. It
    summarises rather than lists — a meal is one line with its total, and the
    entries behind it are one tap away in Log. That is the whole reason this
    screen fits where the old one needed a screen and a half of scrolling. */
+/* The hero bar: how much of today's target each meal accounted for, in the
+   order they were eaten. Additive — it reads dayRO() and dayEnergy() and
+   writes to its own two elements, so nothing that existed had to change. */
+var MEALBAR_INK = ['var(--ink)', 'var(--accent)', 'var(--accent-deep)', 'var(--ink-2)'];
+function renderMealBar(e){
+  var d = dayRO(DAY), bar = el('mealbar'), key = el('mealbar-key');
+  if (!bar || !key) return;
+  var segs = [], i = 0;
+  MEALS.forEach(function(m, n){
+    var sum = (d.meals[m[0]] || []).reduce(function(a, x){ return a + x.kj; }, 0);
+    if (sum <= 0) return;
+    var pct = e.target > 0 ? Math.min(sum / e.target * 100, 100) : 0;
+    segs.push({label:m[1], pct:pct, col:MEALBAR_INK[n % MEALBAR_INK.length]});
+  });
+  /* Past the target the segments are scaled to fill the track rather than
+     spilling, and the number above has already turned red to say so. */
+  var total = segs.reduce(function(a, s){ return a + s.pct; }, 0);
+  if (total > 100) segs.forEach(function(s){ s.pct = s.pct / total * 100; });
+  bar.innerHTML = segs.map(function(s){
+    return '<i style="width:' + s.pct.toFixed(1) + '%;background:' + s.col + '"></i>';
+  }).join('');
+  key.innerHTML = segs.map(function(s){ return '<span>' + esc(s.label) + '</span>'; }).join('');
+}
+
 function renderOverview(e){
   var d = dayRO(DAY);
   var eaten = 0;
@@ -8828,9 +8860,9 @@ function microState(key, have){
   var short = have < rdi * 0.999;
   /* Sodium is the one where the RDI is a ceiling, not a goal. */
   if (r.sdt) return {rdi:rdi, ul:ul, form:r.ulOf, cls: have > ul ? 'over' : (have > rdi ? 'warn' : 'ok'),
-                     col: have > ul ? 'var(--over)' : (have > rdi ? 'var(--warn)' : 'var(--fib)')};
+                     col: have > ul ? 'var(--over)' : (have > rdi ? 'var(--warn)' : 'var(--ok)')};
   return {rdi:rdi, ul:ul, form:r.ulOf, cls: over ? 'over' : (short ? 'warn' : 'ok'),
-          col: over ? 'var(--over)' : (short ? 'var(--carb)' : 'var(--fib)')};
+          col: over ? 'var(--over)' : (short ? 'var(--warn)' : 'var(--ok)')};
 }
 function microScale(key){
   var r = NRV[key], rdi = nrvTarget(key);
@@ -9789,7 +9821,7 @@ function drawEnergyChart(){
     if (x.burn > 0){
       var bh = (x.burn / max) * plot;
       out += '<rect x="' + (cx + 2).toFixed(1) + '" y="' + (baseY - bh).toFixed(1) + '" width="' + (bw - 4).toFixed(1) +
-             '" height="' + bh.toFixed(1) + '" rx="2" fill="var(--fib)" opacity=".22"/>';
+             '" height="' + bh.toFixed(1) + '" rx="0" fill="var(--fib)" opacity=".16"/>';
       out += '<line x1="' + (cx + 2).toFixed(1) + '" y1="' + (baseY - bh).toFixed(1) + '" x2="' + (cx + bw - 2).toFixed(1) +
              '" y2="' + (baseY - bh).toFixed(1) + '" stroke="var(--fib)" stroke-width="1.6" stroke-linecap="round"/>';
     }
@@ -9879,9 +9911,9 @@ function drawCompChart(){
     var leanH = lean / max * plotH, fatH = fat / max * plotH;
     var baseY = padT + plotH;
     out += '<rect x="' + x.toFixed(1) + '" y="' + (baseY - leanH).toFixed(1) + '" width="' + wd.toFixed(1) +
-           '" height="' + leanH.toFixed(1) + '" fill="var(--fib)" rx="1.5"/>';
+           '" height="' + leanH.toFixed(1) + '" fill="var(--fib)" rx="0"/>';
     out += '<rect x="' + x.toFixed(1) + '" y="' + (baseY - leanH - fatH).toFixed(1) + '" width="' + wd.toFixed(1) +
-           '" height="' + Math.max(fatH,1).toFixed(1) + '" fill="var(--pro)" rx="1.5"/>';
+           '" height="' + Math.max(fatH,1).toFixed(1) + '" fill="var(--pro)" rx="0"/>';
     if (i === 0 || i === ws.length - 1){
       out += '<text class="axis-txt" x="' + (x + wd/2).toFixed(1) + '" y="' + (H-6) + '" text-anchor="middle">' +
              isoToDate(w.d).getDate() + '/' + (isoToDate(w.d).getMonth()+1) + '</text>';
@@ -10936,7 +10968,7 @@ function renderOffResults(q, via){
 /* Bumped on every deploy. When something fails, knowing which build is
    actually loaded is the difference between debugging the bug and debugging
    a stale cache. */
-var APP_VERSION = '2026.08.18-26';
+var APP_VERSION = '2026.08.20-27';
 var SB_URL = 'https://lsrxqviwgqjpuzzcqcpu.supabase.co';
 var SB_KEY = 'sb_publishable_0lk-0UAlfW-tALEgPiqFHg_8vF9Hp63';
 var AUTH_KEY = 'eatandtrain.auth';

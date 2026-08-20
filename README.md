@@ -4,6 +4,20 @@ A calorie and training tracker in a single HTML file, built on **AUSNUT 2023** a
 **Australian Food Composition Database, Release 3** (FSANZ). No build step, no server,
 no account — open `index.html` and it works, including with no signal.
 
+## Look
+
+Forest green and champagne, set in Hanken Grotesk with Newsreader for numbers and
+headings. One palette, not two: the scheme is built dark, and a light translation of it
+would be a different design rather than the same one inverted, so there is no light mode
+and no `prefers-color-scheme` block.
+
+Everything visual resolves through the twenty-odd custom properties in `:root` — every
+rule and every `var()` in the script points at them, so a restyle happens there rather
+than in four hundred places. Bars are 3px and square, filled `--ink` for macros and gold
+for fibre; micronutrients use their own status scale instead, since gold and off-white
+say nothing about whether you are short of iron. Sections are hairlines rather than
+cards, and the only elevated surfaces left are the sheets.
+
 ## What it does
 
 Four tabs, ordered by how often you actually use them. Where a tab runs long it splits
