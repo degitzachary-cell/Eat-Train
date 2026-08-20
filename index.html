@@ -2,13 +2,15 @@
 <html lang="en-AU">
 <head>
 <meta charset="utf-8">
-<title>Eat &amp; Train</title>
+<title>TrueCount</title>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=5">
-<meta name="description" content="Offline calorie and workout tracker using Australian Food Composition Database values.">
+<meta name="description" content="TrueCount — offline calorie and training tracker on the Australian food composition data.">
 <meta name="theme-color" content="#0F1D16">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="Eat &amp; Train">
+<meta name="apple-mobile-web-app-title" content="TrueCount">
 <meta name="mobile-web-app-capable" content="yes">
+<link rel="icon" href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96"><rect width="96" height="96" rx="20" fill="%230F1D16"/><circle cx="48" cy="48" r="40" fill="none" stroke="%232C4234" stroke-width="1.5"/><circle cx="48" cy="48" r="40" fill="none" stroke="%23C8A96A" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="188.5 251.3" transform="rotate(-90 48 48)"/><g stroke="%23EDE8DC" stroke-width="4" stroke-linecap="round"><line x1="34" y1="34" x2="34" y2="62"/><line x1="43" y1="34" x2="43" y2="62"/><line x1="52" y1="34" x2="52" y2="62"/><line x1="61" y1="34" x2="61" y2="62"/></g><line x1="28" y1="57" x2="67" y2="39" stroke="%23C8A96A" stroke-width="4.5" stroke-linecap="round"/></svg>'>
+<link rel="apple-touch-icon" href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96"><rect width="96" height="96" rx="20" fill="%230F1D16"/><circle cx="48" cy="48" r="40" fill="none" stroke="%232C4234" stroke-width="1.5"/><circle cx="48" cy="48" r="40" fill="none" stroke="%23C8A96A" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="188.5 251.3" transform="rotate(-90 48 48)"/><g stroke="%23EDE8DC" stroke-width="4" stroke-linecap="round"><line x1="34" y1="34" x2="34" y2="62"/><line x1="43" y1="34" x2="43" y2="62"/><line x1="52" y1="34" x2="52" y2="62"/><line x1="61" y1="34" x2="61" y2="62"/></g><line x1="28" y1="57" x2="67" y2="39" stroke="%23C8A96A" stroke-width="4.5" stroke-linecap="round"/></svg>'>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&family=Newsreader:ital,opsz,wght@0,6..72,400..700;1,6..72,400..600&display=swap">
@@ -67,9 +69,9 @@ header.top{
   border-bottom:1px solid var(--line); padding-top:env(safe-area-inset-top);
 }
 .top-in{display:flex; align-items:center; gap:10px; height:52px}
-.brand{font-family:var(--disp); font-variation-settings:'wdth' 122; font-weight:700;
-  font-size:17px; letter-spacing:.01em; margin-right:auto; display:flex; align-items:center; gap:7px}
-.brand .amp{color:var(--accent)}
+.brand{font-family:var(--disp); font-weight:400; font-size:20px; letter-spacing:.01em;
+  margin-right:auto; display:flex; align-items:baseline}
+.brand .mark{font-style:italic; color:var(--accent)}
 .iconbtn{width:34px; height:34px; border-radius:9px; display:grid; place-items:center;
   color:var(--ink-2); border:1px solid var(--line); background:var(--surface)}
 .iconbtn:hover{color:var(--ink); border-color:var(--line-strong)}
@@ -302,8 +304,12 @@ select{background-image:linear-gradient(45deg,transparent 50%,var(--ink-3) 50%),
 .btn:hover{filter:brightness(1.07)}
 .btn.ghost{background:none; color:var(--ink-2); border-color:var(--line-strong)}
 .btn.ghost:hover{border-color:var(--line-strong); color:var(--ink); filter:none}
-.btn.google{background:#fff; color:#3c4043; border:1px solid var(--line-strong); font-weight:600}
-.btn.google:hover{background:#f6f7f8; filter:none; border-color:var(--ink-3)}
+.btn.google{background:var(--ink); color:#1C1B18; border:none; border-radius:12px;
+  font-weight:700; font-size:15px; padding:14px; gap:11px}
+.btn.google:hover{filter:brightness(.96)}
+.btn.outline{background:none; border:1px solid var(--line-strong); color:var(--accent);
+  border-radius:12px; font-weight:700; font-size:13.5px; padding:13px}
+.btn.outline:hover{border-color:var(--accent); filter:none}
 .btn.danger{background:none; color:var(--over); border-color:var(--over-line)}
 .btn.sm{padding:7px 11px; font-size:12.5px; width:auto}
 .btnrow{display:flex; gap:8px; margin-top:4px}
@@ -329,6 +335,37 @@ select{background-image:linear-gradient(45deg,transparent 50%,var(--ink-3) 50%),
    behind it worth seeing yet, and a sheet invites dismissal. */
 .ob{position:fixed; inset:0; z-index:80; background:var(--bg); overflow-y:auto;
   -webkit-overflow-scrolling:touch}
+/* The front door is its own layout: a centred column with the actions pinned
+   to the bottom, rather than the stacked questions the other steps use. */
+.ob-glow{position:absolute; inset:0; pointer-events:none; display:none;
+  background:radial-gradient(120% 55% at 50% -8%, rgba(200,169,106,.13), rgba(200,169,106,0) 60%)}
+.ob.welcome .ob-glow{display:block}
+.ob.welcome .ob-body{display:flex; flex-direction:column; align-items:center;
+  justify-content:center; text-align:center; padding:0 14px}
+.ob.welcome .ob-foot{margin-top:0}
+.ob-logo{margin-bottom:26px}
+.ob-word{font-family:var(--disp); font-size:40px; line-height:1; letter-spacing:.01em}
+.ob-word span{font-style:italic; color:var(--accent)}
+.ob-tag{font-size:10px; font-weight:700; letter-spacing:.28em; text-transform:uppercase;
+  color:var(--ink-3); margin-top:12px}
+.ob-rule{width:36px; height:1px; background:var(--line-strong); margin:26px 0}
+.ob-copy{font-size:14px; line-height:1.65; color:var(--ink-2); margin:0 0 9px; max-width:300px}
+.ob-copy:last-child{margin-bottom:0}
+.ob-or{display:flex; align-items:center; gap:12px; margin:20px 0 16px}
+.ob-or i{flex:1; height:1px; background:var(--line)}
+.ob-or b{font-size:10px; font-weight:700; letter-spacing:.16em; color:var(--ink-4)}
+@media (max-height:900px){
+  .ob.welcome .ob-logo{width:74px; height:74px; margin-bottom:18px}
+  .ob.welcome .ob-word{font-size:34px}
+  .ob.welcome .ob-rule{margin:18px 0}
+  .ob.welcome .ob-or{margin:15px 0 13px}
+}
+@media (max-height:760px){
+  .ob.welcome .ob-logo{width:60px; height:60px; margin-bottom:13px}
+  .ob.welcome .ob-word{font-size:29px}
+  .ob.welcome .ob-tag{margin-top:9px}
+  .ob.welcome .ob-rule{margin:13px 0}
+}
 .ob[hidden]{display:none}
 .ob-inner{box-sizing:border-box; width:100%; max-width:520px; margin:0 auto; min-height:100%;
   display:flex; flex-direction:column;
@@ -444,7 +481,7 @@ body.dragging{cursor:grabbing}
 <header class="top">
   <div class="wrap">
     <div class="top-in">
-      <div class="brand">Eat <span class="amp">&amp;</span> Train</div>
+      <div class="brand">True<span class="mark">Count</span></div>
       <div class="unit-toggle" role="group" aria-label="Energy unit">
         <button id="u-kj" aria-pressed="true">kJ</button>
         <button id="u-kcal" aria-pressed="false">Cal</button>
@@ -1048,6 +1085,7 @@ body.dragging{cursor:grabbing}
 
 <!-- first run -->
 <div class="ob" id="onboard" hidden role="dialog" aria-modal="true" aria-label="Set up">
+  <div class="ob-glow" aria-hidden="true"></div>
   <div class="ob-inner">
     <div class="ob-dots" id="ob-dots"></div>
     <div class="ob-body" id="ob-body"></div>
@@ -1060,7 +1098,7 @@ body.dragging{cursor:grabbing}
 'use strict';
 
 /* =========================================================================
-   Eat & Train — offline calorie + training tracker
+   TrueCount — offline calorie + training tracker
    Energy is stored internally in kilojoules; kcal is a display conversion.
    ========================================================================= */
 
@@ -10968,7 +11006,7 @@ function renderOffResults(q, via){
 /* Bumped on every deploy. When something fails, knowing which build is
    actually loaded is the difference between debugging the bug and debugging
    a stale cache. */
-var APP_VERSION = '2026.08.20-27';
+var APP_VERSION = '2026.08.20-28';
 var SB_URL = 'https://lsrxqviwgqjpuzzcqcpu.supabase.co';
 var SB_KEY = 'sb_publishable_0lk-0UAlfW-tALEgPiqFHg_8vF9Hp63';
 var AUTH_KEY = 'eatandtrain.auth';
@@ -11060,6 +11098,19 @@ function sbOAuth(provider){
   location.href = SB_URL + '/auth/v1/authorize?provider=' + encodeURIComponent(provider) +
     '&redirect_to=' + encodeURIComponent(back);
 }
+
+/* The mark: four ivory tally strokes and a champagne fifth, inside a ring
+   three-quarters filled. Same geometry as the icon in the head. */
+var LOGO_MARK =
+  '<svg class="ob-logo" viewBox="0 0 96 96" width="88" height="88" aria-hidden="true">' +
+  '<circle cx="48" cy="48" r="46" fill="none" stroke="var(--line-strong)" stroke-width="1.5"/>' +
+  '<circle cx="48" cy="48" r="46" fill="none" stroke="var(--accent)" stroke-width="1.5" ' +
+    'stroke-linecap="round" stroke-dasharray="216.8 289.03" transform="rotate(-90 48 48)"/>' +
+  '<g stroke="var(--ink)" stroke-width="4" stroke-linecap="round">' +
+  '<line x1="33" y1="32" x2="33" y2="64"/><line x1="43" y1="32" x2="43" y2="64"/>' +
+  '<line x1="53" y1="32" x2="53" y2="64"/><line x1="63" y1="32" x2="63" y2="64"/></g>' +
+  '<line x1="26" y1="58" x2="70" y2="38" stroke="var(--accent)" stroke-width="4.5" stroke-linecap="round"/>' +
+  '</svg>';
 
 var GOOGLE_MARK =
   '<svg viewBox="0 0 48 48" width="17" height="17" aria-hidden="true">' +
@@ -11356,7 +11407,7 @@ function restore(json){
     S = o; save(); load(); renderCats(); renderAll();
     toast('Backup restored.');
     closeSheet();
-  } catch(e){ toast('That does not look like an Eat & Train backup.'); }
+  } catch(e){ toast('That does not look like a TrueCount backup.'); }
 }
 /* A sync failure is usually the page not being allowed out, not a bad code. */
 function syncErr(e){
@@ -11907,6 +11958,7 @@ function obField(id, label, val, attrs){
 function renderOnboard(){
   var d = obDraft, body = el('ob-body'), foot = el('ob-foot'), under = el('ob-under');
   var i = OB_FLOW.indexOf(obStep);
+  el('onboard').classList.toggle('welcome', obStep === 'welcome');
   el('ob-dots').innerHTML = i < 0 ? '' :
     OB_FLOW.map(function(s, n){ return '<i class="' + (n <= i ? 'on' : '') + '"></i>'; }).join('');
   under.innerHTML = '';
@@ -11914,20 +11966,22 @@ function renderOnboard(){
   if (obStep === 'welcome'){
     var back = S.profile.onboarded;   // a diary already lives in this browser
     body.innerHTML =
-      '<h1>Eat &amp; Train</h1>' +
+      LOGO_MARK +
+      '<div class="ob-word">True<span>Count</span></div>' +
+      '<div class="ob-tag">Every kilojoule, honestly kept</div>' +
+      '<div class="ob-rule"></div>' +
       (back
-        ? '<p class="lede">Your diary is on this device and needs no account to open. Sign in to ' +
+        ? '<p class="ob-copy">Your diary is on this device and needs no account to open. Sign in to ' +
           'keep it on a server as well, and to pick it up on another phone.</p>'
-        : '<p class="lede">A food and training diary on the Australian food data — 4,127 foods ' +
-          'from FSANZ, with their own portion weights.</p>' +
-          '<p class="lede">It works out what you burn from the session you actually did: the ' +
-          'repeats, the recoveries, the pace. Not from a step count and a guess.</p>' +
-          '<p class="lede">Everything stays in this browser, and all of it works with no signal.</p>');
+        : '<p class="ob-copy">4,127 Australian foods from FSANZ, and an expenditure worked out ' +
+          'from the session you actually did &mdash; the repeats, the recoveries, the pace. ' +
+          'No account needed, and all of it works with no signal.</p>');
     foot.innerHTML = '<button class="btn google" id="ob-google">' + GOOGLE_MARK +
-      '<span style="margin-left:8px">Continue with Google</span></button>';
+      '<span>Continue with Google</span></button>';
     under.innerHTML =
-      '<button class="ob-skip" data-ob-go="signin">Use an email code instead</button>' +
-      '<button class="ob-skip" id="ob-adhoc" style="margin-top:2px">' +
+      '<div class="ob-or"><i></i><b>OR</b><i></i></div>' +
+      '<button class="btn outline" data-ob-go="signin">Use an email code instead</button>' +
+      '<button class="ob-skip" id="ob-adhoc" style="margin-top:14px">' +
       (back ? 'Continue without an account' : 'Set up without an account') + '</button>';
     return;
   }

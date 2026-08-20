@@ -1,6 +1,6 @@
-# Eat & Train
+# TrueCount
 
-A calorie and training tracker in a single HTML file, built on **AUSNUT 2023** and the
+Every kilojoule, honestly kept. A calorie and training tracker in a single HTML file, built on **AUSNUT 2023** and the
 **Australian Food Composition Database, Release 3** (FSANZ). No build step, no server,
 no account — open `index.html` and it works, including with no signal.
 
