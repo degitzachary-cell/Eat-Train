@@ -12615,8 +12615,10 @@ var PANEL_MODEL = 'claude-opus-5';
 var PANEL_SYSTEM =
   'You read Australian and New Zealand Nutrition Information Panels from a photograph.\n\n' +
   'Reply with JSON Lines: one complete JSON object per line, nothing else. No prose, no ' +
-  'markdown, no code fences, no wrapping array. Emit each line as soon as you are sure of ' +
-  'it and order them as they appear on the panel.\n\n' +
+  'markdown, no code fences, no wrapping array. Emit each line as soon as you are sure of it.\n\n' +
+  'Order: name, then serve_g and serves, then the eight rows every panel must carry — kj, ' +
+  'protein, fat, sat, carbs, sugars, fibre, sodium — and only then anything else the panel ' +
+  'declares. Sodium is on every Australian panel; do not leave it out.\n\n' +
   'Line shapes:\n' +
   '  {"f":"name","v":"<product name, including the brand>"}\n' +
   '  {"f":"serve_g","v":<grams or millilitres in one serving>}\n' +
@@ -12757,7 +12759,12 @@ function readPanel(dataUrl){
     return fetch(SB_URL + '/functions/v1/claude-proxy', {
       method:'POST', headers:sbHeaders(true),
       body: JSON.stringify({
-        model: PANEL_MODEL, max_tokens: 2000, stream: true,
+        /* Generous, because thinking tokens come out of the same allowance
+           and running out of room truncates the tail of the answer — which on
+           a panel is sodium and everything printed after it. Low effort
+           because reading a table is not a problem that wants thinking. */
+        model: PANEL_MODEL, max_tokens: 8000, stream: true,
+        output_config: {effort: 'low'},
         systemPrompt: PANEL_SYSTEM,
         userMsg: [
           {type:'image', source:{type:'base64', media_type:'image/jpeg', data:b64}},
@@ -12770,29 +12777,47 @@ function readPanel(dataUrl){
     var reader = res.body.getReader(), dec = new TextDecoder(), buf = '', text = '';
     /* Two buffers: the SSE frames arriving from the function, and the model's
        own output accumulating inside them. A line of that output is only acted
-       on once it is terminated, which is what makes a partial number
-       impossible to write into a field. */
+       on once it is terminated, which is what stops half a number reaching a
+       field — and which is why the end of the stream has to be flushed rather
+       than dropped. The last line never carries a newline, so leaving it in
+       the buffer silently lost whichever row the panel happened to end on. */
+    function drain(final){
+      var parts = text.split('\n');
+      text = final ? '' : parts.pop();
+      parts.forEach(function(l){
+        l = l.trim(); if (!l || l.charAt(0) !== '{') return;
+        try { panelLine(JSON.parse(l)); } catch(e){}
+      });
+      if (final && parts.length === 0) return;
+    }
+    function feed(chunk){
+      buf += chunk;
+      var frames = buf.split('\n\n');
+      buf = frames.pop();
+      frames.forEach(function(frame){
+        frame.split('\n').forEach(function(line){
+          if (line.indexOf('data:') !== 0) return;
+          var ev;
+          try { ev = JSON.parse(line.slice(5).trim()); } catch(e){ return; }
+          if (ev.type === 'content_block_delta' && ev.delta && ev.delta.text) text += ev.delta.text;
+          /* Why it stopped, so a truncated answer reports itself instead of
+             looking like a panel with fewer rows on it. */
+          if (ev.type === 'message_delta' && ev.delta && ev.delta.stop_reason)
+            panelCtx.stop = ev.delta.stop_reason;
+          if (ev.type === 'error') panelCtx.err = (ev.error && ev.error.message) || 'stream error';
+        });
+      });
+    }
     function pump(){
       return reader.read().then(function(r){
-        if (r.done) return;
-        buf += dec.decode(r.value, {stream:true});
-        var frames = buf.split('\n\n');
-        buf = frames.pop();
-        frames.forEach(function(frame){
-          frame.split('\n').forEach(function(line){
-            if (line.indexOf('data:') !== 0) return;
-            var ev;
-            try { ev = JSON.parse(line.slice(5).trim()); } catch(e){ return; }
-            if (ev.type === 'content_block_delta' && ev.delta && ev.delta.text) text += ev.delta.text;
-            if (ev.type === 'error') throw new Error((ev.error && ev.error.message) || 'stream error');
-          });
-        });
-        var parts = text.split('\n');
-        text = parts.pop();
-        parts.forEach(function(l){
-          l = l.trim(); if (!l || l.charAt(0) !== '{') return;
-          try { panelLine(JSON.parse(l)); } catch(e){}
-        });
+        if (r.done){
+          feed(dec.decode());                     /* whatever is left in the decoder */
+          if (buf){ feed('\n\n'); }               /* and in the frame buffer */
+          drain(true);                            /* and the unterminated last line */
+          return;
+        }
+        feed(dec.decode(r.value, {stream:true}));
+        drain(false);
         panelStatus(panelCtx.got ? panelCtx.got + ' field' + (panelCtx.got === 1 ? '' : 's') +
           ' read…' : 'Reading the panel…', true);
         return pump();
@@ -12801,9 +12826,12 @@ function readPanel(dataUrl){
     return pump();
   }).then(function(){
     var n = panelCtx.got;
+    if (panelCtx.err) throw new Error(panelCtx.err);
     panelStatus(n
-      ? n + ' field' + (n === 1 ? '' : 's') + ' read off the panel. Check them against the pack ' +
-        'before saving — a photograph is not a database.'
+      ? n + ' field' + (n === 1 ? '' : 's') + ' read off the panel' +
+        (panelCtx.stop === 'max_tokens'
+          ? ', and it ran out of room before finishing — the last rows are missing.'
+          : '. Check them against the pack before saving — a photograph is not a database.')
       : 'Nothing readable in that shot. Try again with the panel filling the frame.', false);
   }).catch(function(err){
     panelStatus(/Not signed in/.test(String(err))
@@ -13079,7 +13107,7 @@ function renderOffResults(q, via){
 /* Bumped on every deploy. When something fails, knowing which build is
    actually loaded is the difference between debugging the bug and debugging
    a stale cache. */
-var APP_VERSION = '2026.08.21-47';
+var APP_VERSION = '2026.08.21-48';
 var SB_URL = 'https://lsrxqviwgqjpuzzcqcpu.supabase.co';
 var SB_KEY = 'sb_publishable_0lk-0UAlfW-tALEgPiqFHg_8vF9Hp63';
 var AUTH_KEY = 'eatandtrain.auth';

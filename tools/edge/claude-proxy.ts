@@ -15,7 +15,8 @@ serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
   try {
-    const { systemPrompt, userMsg, model, max_tokens, stream } = await req.json();
+    const { systemPrompt, userMsg, model, max_tokens, stream, output_config } =
+      await req.json();
 
     const body = {
       model: model || DEFAULT_MODEL,
@@ -24,6 +25,10 @@ serve(async (req) => {
       /* A string or an array of content blocks — an image block passes through
          here untouched, which is what lets a photograph of a label be read. */
       messages: [{ role: "user", content: userMsg }],
+      /* Effort, when the caller sets it. Reading a table off a photograph is
+         not a problem that wants thinking, and thinking comes out of the same
+         token allowance as the answer. */
+      ...(output_config ? { output_config } : {}),
       ...(stream ? { stream: true } : {}),
     };
 

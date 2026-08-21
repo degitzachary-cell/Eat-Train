@@ -341,6 +341,14 @@ line lands in its field as it completes and the field flashes to say so. Partial
 cannot be written, because a line is only acted on once it is terminated. It also shows
 you which rows it never managed, which a single blob arriving at the end does not.
 
+The end of the stream is flushed rather than dropped. A model's last line carries no
+newline, so leaving it in the buffer silently lost whichever row the panel happened to
+end on — which on an Australian panel is sodium. And if the answer is cut off by the
+token allowance the status line says so, instead of a truncated read looking like a panel
+with fewer rows printed on it. Effort is set low and the allowance is generous, because
+thinking tokens come out of the same budget as the answer and reading a table is not a
+problem that wants thinking.
+
 Energy is normalised to kJ, sodium to mg, *Less than 1g* to 0. Per 100 g is preferred and
 a panel with only a per-serve column is converted using the serve size it printed. And
 critically: **whatever the pack declares beyond the eight mandatory rows is kept as the
