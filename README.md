@@ -471,6 +471,24 @@ markup, so the same one can be shown in more than one card, and so the total of 
 be read — and cut — in one sitting. The button is a real `<button>` with `aria-expanded`
 and `aria-controls`: drawn at 17px, tapped at 35.
 
+**Twelve of them, one per card:** how a session is priced, why training steps come back
+out, the three resting-rate equations, why daily activity excludes training, how the day
+is split into protein, fat and carbohydrate, what the coach does, measured versus
+estimated expenditure, why everything runs on the trend and not the scale, how the
+vitamin targets are read, where the food data comes from, what Open Food Facts is, and
+where your data lives.
+
+Measured across the screens they cover, words on screen went from **992 to 363** — the
+food sheet alone from 293 to 59, and the vitamin sheet's two closing paragraphs to none.
+Roughly a third of what came out was deleted rather than moved: it was the app arguing
+with itself, and a button that makes prose cheap to keep is exactly the thing that lets
+that survive.
+
+What stayed out in the open is the instructions and the results. *Two 40-second sets with
+a 20-second walk after each is `40` sec × `2` sets, walk `20`* is how you fill the fields,
+not why they exist, so it belongs on the screen. So does every sentence that reports what
+your own numbers did.
+
 ## Coach
 
 A tracker that measures your expenditure but never acts on it leaves the useful half

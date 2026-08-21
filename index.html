@@ -719,7 +719,8 @@ body.dragging{cursor:grabbing}
 
   <div class="subpane on" data-pane="session">
   <div class="card">
-    <div class="card-head"><h2>Log a session</h2><span class="right" id="tr-date">&mdash;</span></div>
+<div class="card-head"><h2>Log a session</h2><button class="info" data-info="session" aria-expanded="false" aria-controls="info-session" aria-label="How a session is priced">i</button><span class="right" id="tr-date">&mdash;</span></div>
+    <div class="infobox" id="info-session" data-for="session" hidden></div>
     <!-- Three things you do, then which kind of it. Four flat buttons put
          "Workout" beside "Run" as though they were different sports, and left
          Lift looking like an afterthought at the end. -->
@@ -767,8 +768,7 @@ body.dragging{cursor:grabbing}
       <label class="f"><span>kg</span><input type="number" id="s-load" inputmode="decimal" min="0" step="2.5" value="60"></label>
     </div>
     <button class="btn ghost" id="s-save">Add to session log</button>
-    <p class="hint">What you lifted, kept so you can see it move. Its energy cost is already in the
-      session above, so adding sets here does not change your budget.</p>
+    <p class="hint">Does not change your budget — the session above already paid for it.</p>
   </div>
   </div>
 
@@ -776,7 +776,8 @@ body.dragging{cursor:grabbing}
 
   <div class="subpane" data-pane="steps">
   <div class="card">
-    <div class="card-head"><h2>Steps</h2><span class="right">Outside training only</span></div>
+<div class="card-head"><h2>Steps</h2><button class="info" data-info="steps" aria-expanded="false" aria-controls="info-steps" aria-label="Why training steps come back out">i</button><span class="right">Outside training only</span></div>
+    <div class="infobox" id="info-steps" data-for="steps" hidden></div>
     <div class="grid2">
       <label class="f"><span>Steps today, as counted</span>
         <input type="number" id="steps-in" inputmode="numeric" min="0" step="100" placeholder="0"></label>
@@ -864,7 +865,8 @@ body.dragging{cursor:grabbing}
   </div>
 
   <div class="card">
-    <div class="card-head"><h2>Daily activity</h2><span class="right">Excluding workouts</span></div>
+<div class="card-head"><h2>Daily activity</h2><button class="info" data-info="neat" aria-expanded="false" aria-controls="info-neat" aria-label="Why this excludes training">i</button><span class="right">Excluding workouts</span></div>
+    <div class="infobox" id="info-neat" data-for="neat" hidden></div>
     <label class="f"><span>How your day goes</span>
       <select id="p-neat">
         <option value="1.2">Desk job, little walking</option>
@@ -872,8 +874,7 @@ body.dragging{cursor:grabbing}
         <option value="1.5">On your feet most of the day</option>
         <option value="1.7">Manual labour / trade</option>
       </select></label>
-    <p class="hint">Sessions are added on top, so pick your <strong>non-exercise</strong> day only —
-      that is what stops training being counted twice.</p>
+    <p class="hint">Your day <strong>without</strong> the workout in it.</p>
   </div>
 
 
@@ -893,7 +894,11 @@ body.dragging{cursor:grabbing}
 
   <div class="subpane" data-pane="targets">
   <div class="card">
-    <div class="card-head"><h2>Coach</h2><span class="right" id="coach-state">Off</span></div>
+    <div class="card-head"><h2>Coach</h2>
+      <button class="info" data-info="coach" aria-expanded="false" aria-controls="info-coach"
+              aria-label="What the coach does">i</button>
+      <span class="right" id="coach-state">Off</span></div>
+    <div class="infobox" id="info-coach" data-for="coach" hidden></div>
     <div class="seg" id="coach-tog" role="group" aria-label="Coach">
       <button data-coach="0" aria-pressed="true">Fixed targets</button>
       <button data-coach="1" aria-pressed="false">Adjust weekly</button>
@@ -902,7 +907,8 @@ body.dragging{cursor:grabbing}
   </div>
 
   <div class="card">
-    <div class="card-head"><h2>Goal</h2></div>
+<div class="card-head"><h2>Goal</h2><button class="info" data-info="targets" aria-expanded="false" aria-controls="info-targets" aria-label="How the day is split up">i</button></div>
+    <div class="infobox" id="info-targets" data-for="targets" hidden></div>
     <div class="seg" id="p-goal" role="group" aria-label="Goal">
       <button data-goal="cut" aria-pressed="false">Lose</button>
       <button data-goal="lean" aria-pressed="false">Lose slow</button>
@@ -937,7 +943,8 @@ body.dragging{cursor:grabbing}
 
   <div class="subpane" data-pane="energy">
   <div class="card">
-    <div class="card-head"><h2>Measured metabolism</h2><span class="right" id="adapt-badge"></span></div>
+<div class="card-head"><h2>Measured metabolism</h2><button class="info" data-info="measured" aria-expanded="false" aria-controls="info-measured" aria-label="Measured, not estimated">i</button><span class="right" id="adapt-badge"></span></div>
+    <div class="infobox" id="info-measured" data-for="measured" hidden></div>
     <div id="adapt-body"></div>
   </div>
 
@@ -956,7 +963,11 @@ body.dragging{cursor:grabbing}
 
   <div class="subpane on" data-pane="weight">
   <div class="card">
-    <div class="card-head"><h2>Weight trend</h2><span class="right" id="wt-rate">—</span></div>
+    <div class="card-head"><h2>Weight trend</h2>
+      <button class="info" data-info="trend" aria-expanded="false" aria-controls="info-trend"
+              aria-label="Why the trend and not the scale">i</button>
+      <span class="right" id="wt-rate">—</span></div>
+    <div class="infobox" id="info-trend" data-for="trend" hidden></div>
     <div class="scroll-x"><svg class="chart" id="ch-weight" viewBox="0 0 340 140" preserveAspectRatio="xMidYMid meet"></svg></div>
   </div>
 
@@ -1102,14 +1113,13 @@ body.dragging{cursor:grabbing}
   <div class="sheet-head"><h2>Food database</h2><button class="iconbtn sheet-close" aria-label="Close">&#10005;</button></div>
   <div class="sheet-body">
   <div class="card" style="margin-top:12px">
-    <div class="card-head"><h2>Food database</h2><span class="right" id="db-count">&mdash;</span></div>
-    <p class="note"><strong>AUSNUT 2023</strong> (FSANZ) is built in whole &mdash; 3,741 foods,
-      straight from the official nutrient profiles, including the composite dishes and commercial
-      products the national survey actually recorded. The 386 foods from <strong>Food Composition
-      Database Release 3</strong> that AUSNUT has no entry for are carried over, so nothing is lost.
-      Solids are per 100 g; the 348 foods FSANZ measures by volume are per 100 mL, which is the
-      honest basis for a drink. Energy is the label figure, calculated with dietary fibre.
-      Household portions come from FSANZ's own measures file wherever it has them.</p>
+    <div class="card-head"><h2>Food database</h2>
+      <button class="info" data-info="ausnut" aria-expanded="false" aria-controls="info-ausnut"
+              aria-label="Where the food data comes from">i</button>
+      <span class="right" id="db-count">&mdash;</span></div>
+    <div class="infobox" id="info-ausnut" data-for="ausnut" hidden></div>
+    <p class="note"><strong>AUSNUT 2023</strong> and the <strong>Australian Food Composition
+      Database</strong>, both from FSANZ, with their own household portions.</p>
     <div class="btnrow" style="margin-top:12px">
       <button class="btn sm" id="btn-browse" style="flex:1">Search foods</button>
       <button class="btn sm ghost" id="btn-newfood" style="flex:1">New food</button>
@@ -1117,27 +1127,18 @@ body.dragging{cursor:grabbing}
   </div>
 
   <div class="card">
-    <div class="card-head"><h2>Supermarket products</h2></div>
-    <p class="note">FSANZ covers named products where the survey met them, not the whole branded
-      shelf at Coles. For the rest,
-      <strong>Open Food Facts</strong> is the open, barcode-level database &mdash; filter it by brand
-      or country on their advanced search, download the result as CSV, and load it here. Tab-separated
-      exports, sodium in grams and salt-only rows are all handled.</p>
-    <p class="note" style="margin-top:8px">It is crowd-sourced, so coverage is patchy and the odd entry
-      is wrong &mdash; imports stay under their own <strong>Packaged</strong> category so you always know
-      which numbers came from FSANZ and which did not. For a single item, the panel on the box beats
-      any database: use <strong>New food</strong>.</p>
-    <p class="note" style="margin-top:8px">Product data from <strong>Open Food Facts</strong>, used under the
-      <strong>Open Database License</strong>. Their API allows about ten searches a minute per person, so
-      lookups are deliberately one tap at a time rather than as you type.</p>
+    <div class="card-head"><h2>Supermarket products</h2>
+      <button class="info" data-info="off" aria-expanded="false" aria-controls="info-off"
+              aria-label="About Open Food Facts">i</button></div>
+    <div class="infobox" id="info-off" data-for="off" hidden></div>
+    <p class="note">The branded shelf FSANZ does not cover, from <strong>Open Food Facts</strong>
+      &mdash; as a CSV you load, or looked up one product at a time.</p>
     <div class="seg" id="online-tog" role="group" aria-label="Online lookup" style="margin-top:11px">
       <button data-online="0" aria-pressed="true">Offline only</button>
       <button data-online="1" aria-pressed="false">Look up online</button>
     </div>
-    <p class="hint" id="online-note" style="margin-top:8px">Off by default. Switched on, the search
-      sheet offers a button to query Open Food Facts for whatever you typed — one request, on your tap,
-      carrying the search text and nothing else. No account, no identifier, no history. Anything you
-      pick is saved to this device so it works offline afterwards.</p>
+    <p class="hint" id="online-note" style="margin-top:8px">Off by default. One request, on your
+      tap, carrying the search text and nothing else.</p>
     <div class="btnrow" style="margin-top:12px">
       <label class="btn sm ghost" style="flex:1; cursor:pointer">
         Choose CSV<input type="file" id="csv-in" accept=".csv,.tsv,text/csv,text/tab-separated-values" hidden>
@@ -1198,8 +1199,12 @@ body.dragging{cursor:grabbing}
 
 <!-- micronutrient detail -->
 <div class="sheet" id="sh-micro" role="dialog" aria-modal="true" aria-label="Vitamins and minerals">
-  <div class="sheet-head"><h2>Vitamins &amp; minerals</h2><button class="iconbtn sheet-close" aria-label="Close">&#10005;</button></div>
-  <div class="sheet-body" id="micro-detail"></div>
+  <div class="sheet-head"><h2>Vitamins &amp; minerals</h2>
+    <button class="info" data-info="micro" aria-expanded="false" aria-controls="info-micro"
+            aria-label="How these are read">i</button>
+    <button class="iconbtn sheet-close" aria-label="Close">&#10005;</button></div>
+  <div class="sheet-body"><div class="infobox" id="info-micro" data-for="micro" hidden></div>
+    <div id="micro-detail"></div></div>
 </div>
 
 <!-- data sheet -->
@@ -1207,12 +1212,15 @@ body.dragging{cursor:grabbing}
   <div class="sheet-head"><h2>Account &amp; data</h2><button class="iconbtn sheet-close" aria-label="Close">✕</button></div>
   <div class="sheet-body">
     <div class="card" style="background:var(--surface-2); box-shadow:none; margin:0 0 14px">
-      <div class="card-head"><h2>Sync</h2><span class="right" id="sync-state">Not signed in</span></div>
+      <div class="card-head"><h2>Sync</h2>
+        <button class="info" data-info="sync" aria-expanded="false" aria-controls="info-sync"
+                aria-label="Where your data lives">i</button>
+        <span class="right" id="sync-state">Not signed in</span></div>
+      <div class="infobox" id="info-sync" data-for="sync" hidden></div>
       <div id="sync-body"></div>
     </div>
 
-    <p class="note">Everything lives in this browser's storage on this device. Nothing is sent anywhere,
-      and there is no account. Clearing site data wipes it — so keep a backup.</p>
+    <p class="note">Clearing site data wipes what is on this device, so keep a backup.</p>
     <div class="btnrow" style="margin-top:12px">
       <button class="btn sm" id="bk-copy" style="flex:1">Copy backup</button>
       <label class="btn sm ghost" style="flex:1; cursor:pointer">Restore file<input type="file" id="bk-file" accept=".json,application/json" hidden></label>
@@ -9262,17 +9270,10 @@ function renderMicroDetail(){
       (r.ul ? 'No RDI — caution above ' + fmtAmt(r.ul, r.u) : 'No Australian target set') + '</div></div>';
   }).join('');
 
+  /* The two paragraphs that used to close this sheet are behind the ⓘ in its
+     head. What is left is the sheet's actual job: a row per nutrient. */
   el('micro-detail').innerHTML = rows +
-    '<div class="card-head" style="margin:18px 0 0"><h2>Tracked without a target</h2></div>' + extras +
-    '<p class="note" style="margin-top:16px">Targets are the <strong>Nutrient Reference Values for ' +
-    'Australia and New Zealand</strong> (NHMRC), for a ' + (S.profile.sex === 'f' ? 'woman' : 'man') +
-    ' aged ' + (+S.profile.age || 30) + '. Values come from AUSNUT 2023, which fills every nutrient ' +
-    'for every food, so a shortfall here is real rather than missing data — but it only counts what ' +
-    'you logged, and takes no account of supplements. Where NHMRC sets only an Adequate Intake and ' +
-    'no RDI, the bar reads against that.</p>' +
-    '<p class="note" style="margin-top:8px">Some upper limits are narrower than they look — they were ' +
-    'written for a supplement form rather than for food. Those are shown for reference but never ' +
-    'flagged as exceeded, since going past them on diet alone does not mean what the number suggests.</p>';
+    '<div class="card-head" style="margin:18px 0 0"><h2>Tracked without a target</h2></div>' + extras;
 }
 
 function renderMeals(){
@@ -9517,9 +9518,9 @@ function renderRunFields(){
         '<div class="grid2">' +
           fld('compwalk', 'Walk after each set, sec', 'number', saved('wo.compwalk', '0')) +
           fld('compwalkp', 'Walk pace min/km', 'text', saved('wo.compwalkp', '9:00')) + '</div>' +
-        '<p class="hint">Set it up the way you actually do it &mdash; two 40-second sets with a ' +
-        '20-second walk after each is <code>40</code> sec × <code>2</code> sets, walk <code>20</code>. ' +
-        'The walk runs on the belt so it earns distance; the sets do not.</p>';
+        /* The worked example stays: it is how you fill the fields, not why. */
+        '<p class="hint">Two 40-second sets with a 20-second walk after each is <code>40</code> sec × ' +
+        '<code>2</code> sets, walk <code>20</code>.</p>';
     } else if (bt === 'rest'){
       html += '<div class="grid2">' + fld('recd', 'Duration', 'text', saved('wo.recd', '1:00')) + '</div>';
     } else {
@@ -9537,10 +9538,7 @@ function renderRunFields(){
         fld('actual', 'Distance km', 'number', saved('wo.actual', '')) +
         fld('actualt', 'Time h:mm:ss', 'text', saved('wo.actualt', '')) +
         fld('gain', 'Elevation gain m', 'number', saved('wo.gain', '')) + '</div>' +
-      '<p class="hint">Optional, and worth filling in. A plan only prices the running it spells ' +
-      'out; whatever your watch or treadmill recorded beyond it becomes its own block, costed at ' +
-      'the pace those leftover minutes and kilometres imply &mdash; walking if that is what it ' +
-      'works out to.</p>';
+      '<p class="hint">Optional, and worth filling in.</p>';
   }
 
   if (t === 'lift'){
@@ -9549,8 +9547,7 @@ function renderRunFields(){
       sub('Effort') +
       toggle('lmet', 'lmet', LIFT_METS.map(function(m){ return [m[0], m[1]]; }),
              saved('lift.effort', 'moderate')) +
-      '<p class="hint">Priced by MET for the time under the bar. Log what you lifted underneath — ' +
-      'that is for watching the numbers move, and does not touch your budget.</p>';
+      '<p class="hint">Log what you lifted underneath — that is for watching the numbers move.</p>';
   }
 
   if (t === 'hyb'){
@@ -9562,10 +9559,7 @@ function renderRunFields(){
       sub('Effort on the stations') +
       toggle('hmet', 'hmet', HYB_METS.map(function(m){ return [m[0], m[1]]; }),
              saved('hyb.effort', 'moderate')) +
-      '<p class="hint">A Hyrox or a circuit is two things at once and the watch records it as one. ' +
-      'Give it the running and the running is priced by the same equations a run gets; whatever ' +
-      'minutes are left over are the stations, priced by MET. Leave the kilometres blank and it is ' +
-      'all stations.</p>';
+      '<p class="hint">Leave the kilometres blank and it is all stations.</p>';
   }
 
   html += toggle('epoc', 'epoc', [['0','Session only'],['1','+ 6% afterburn']], saved('epoc','0'));
@@ -9835,9 +9829,9 @@ function renderTrainView(){
       '<div class="readout lead"><div class="k">Everything else<em>What actually gets added</em></div>' +
         '<div class="v num">' + g(net) + ' · ' + fmtE(stepsKj(net), true) + '</div></div>'
     : '';
-  el('steps-note').textContent = 'Your watch counts training steps too, and the session is already ' +
-    'priced in full — so those come back out. Cadence only sets the estimate; if your watch reports ' +
-    'steps per activity you can trust that figure more.';
+  /* The reasoning is behind the ⓘ; what is left is the one instruction. */
+  el('steps-note').textContent = 'Cadence only sets the estimate — if your watch reports steps per ' +
+    'activity, trust that figure over this one.';
   updateWorkoutPreview();
   renderTrainingList('tr-list2', 'tr-total2');
 }
@@ -9896,6 +9890,258 @@ var EXPLAIN = {
         (want === 'auto' ? ', because ' + why : ', because you chose it') + '.' +
         (waiting.length ? ' ' + waiting.join('. ') + '.' : '') + '</div>';
       return html;
+    }
+  },
+
+  neat: {
+    t: 'Why this excludes training',
+    b: function(){
+      var p = S.profile, mult = +p.neat || 1.2;
+      return '<p>Your resting rate is what you would burn lying still all day. This multiplies it ' +
+        'for everything else you do that is not a workout — walking to the car, standing at a bench, ' +
+        'fidgeting. It is the single biggest source of difference between two people the same size.</p>' +
+        '<p>Sessions are added on top of the result, one at a time, at what each session actually ' +
+        'cost. That is what stops training being paid for twice, and it is why the choice here ' +
+        'describes your day <strong>without</strong> the workout in it, however hard you train.</p>' +
+        '<div class="inow">You are on <b>×' + g(mult, 2) + '</b>, which puts your baseline at <b>' +
+        fmtE(rmr() * mult, true) + '</b> before any session.</div>';
+    }
+  },
+
+  targets: {
+    t: 'How the day is split up',
+    b: function(){
+      var p = S.profile, kg = bodyKg(), e = dayEnergy(todayISO());
+      var t = macroTargets(e.target);
+      var html = '<p><strong>Protein and fat are set per kilogram</strong> of trend weight, because ' +
+        'that is how the requirement actually scales — they are what your body needs, not what is ' +
+        'left over. Carbohydrate then fills whatever energy remains, which is why it moves and they ' +
+        'do not.</p>' +
+        '<p><strong>Fuel around training</strong> answers a gap in that. Training energy already ' +
+        'lifts a session day, and carbohydrate absorbs all of it — but nothing takes any of it back ' +
+        'on a rest day. Moderate and Strong do: rest days give some up so session days get more, ' +
+        'with the factors normalised to a mean of one so the week lands where it started.</p>' +
+        '<div class="irow"><b>Even</b><span>no shift</span>' +
+          '<em>Every day gets the same base. Hard days rise only by what the session cost.</em></div>' +
+        '<div class="irow"><b>Moderate</b><span>±22%</span>' +
+          '<em>Enough to notice on a long-run day without making a rest day feel like a diet.</em></div>' +
+        '<div class="irow"><b>Strong</b><span>±45%</span>' +
+          '<em>For weeks with a clear hard/easy shape. Floored at 80% and capped at 135% of base.</em></div>';
+      var pf = periodiseFactor(todayISO());
+      html += '<div class="inow">At <b>' + g(kg,1) + ' kg</b> that is <b>' + g(t.p) + ' g protein</b> and <b>' +
+        g(t.f) + ' g fat</b>, leaving <b>' + g(t.c) + ' g carbohydrate</b>' +
+        (Math.abs(pf - 1) > 0.02
+          ? ', with today sitting at <b>' + Math.round(pf * 100) + '%</b> of base against this week\'s load.'
+          : '.') + '</div>';
+      return html;
+    }
+  },
+
+  coach: {
+    t: 'What the coach does',
+    b: function(){
+      var c = S.coach || {};
+      var html = '<p>A tracker that measures your expenditure but never acts on it leaves the useful ' +
+        'half undone. Once a week this compares the trend in your weight against the rate your goal ' +
+        'implies, and moves your target by the difference — priced at <strong>32,200 kJ per kilogram ' +
+        'of body mass</strong>.</p>' +
+        '<div class="irow"><b>Capped at 8%</b><span>per change</span>' +
+          '<em>A week is noisy. Nothing moves far on the strength of one of them.</em></div>' +
+        '<div class="irow"><b>Floored at your resting rate</b><span>always</span>' +
+          '<em>No amount of arithmetic will set a target below what your body costs at rest.</em></div>' +
+        '<div class="irow"><b>Below 70% coverage it says so and stops</b><span>and does nothing</span>' +
+          '<em>Fitting a target to a half-recorded week is fitting the gaps.</em></div>' +
+        '<p style="margin-top:10px">The number it produces is a <strong>rest-day base</strong>. The ' +
+        'day\'s own training is still added on top of it.</p>';
+      if (c.on && c.target) html += '<div class="inow">Coached base is <b>' + fmtE(c.target, true) +
+        '</b>' + (c.last ? ', set ' + daysBetween(c.last, todayISO()) + ' days ago' : '') + '.</div>';
+      else if (c.on) html += '<div class="inow">On, and waiting for its first full week.</div>';
+      return html;
+    }
+  },
+
+  session: {
+    t: 'How a session is priced',
+    b: function(){
+      var t = runType(), kg = bodyKg();
+      var run = '<p><strong>Running uses the ACSM metabolic equations</strong> rather than a MET ' +
+        'value, because a MET bin cannot tell a 3:30 kilometre from a 5:30 one and cannot price a ' +
+        'hill at all. Every block — a warm up, a rep, a float — is costed at its own pace, net of ' +
+        'the resting cost your baseline already covers. It falls out near <strong>1 kcal per kg per ' +
+        'km whatever the pace</strong>, which is the long-standing finding; elevation is where a ' +
+        'session really departs from that, which is why gain is an input.</p>';
+      var recorded = '<p><strong>Recorded distance and time are worth filling in.</strong> A plan ' +
+        'only accounts for the running it describes — the jog between rep starts, the drills, the ' +
+        'ground covered during a carry are all real and invisible to it. Whatever the device saw ' +
+        'beyond the plan becomes its own block at the pace those leftover minutes imply. When the ' +
+        'plan describes <em>more</em> than was recorded, that is reported rather than quietly ' +
+        'corrected.</p>';
+      var comp = '<p>A <strong>compromised</strong> recovery puts a strength or plyometric effort ' +
+        'between reps instead of a rest, priced by MET for its duration. The sets are paused-belt ' +
+        'time and earn no distance; the walk after each one runs on the belt and does.</p>';
+      var lift = '<p><strong>Strength</strong> is priced by MET for the time under the bar — 3.5, 5.0 ' +
+        'and 6.0 for light, moderate and heavy, from the Compendium of Physical Activities. The sets ' +
+        'you log underneath are for watching the numbers move; their cost is already in the session, ' +
+        'so adding them does not change your budget.</p>';
+      var hyb = '<p>A <strong>hybrid</strong> — a Hyrox, a circuit — is two things at once, and the ' +
+        'watch hands it over as one. Give it the running and that part is priced by the same ACSM ' +
+        'equations a run gets; whatever minutes are left are the stations, at 7.2, 8.5 or 10 METs. ' +
+        'Leave the kilometres blank and it is all stations. The running can never claim more minutes ' +
+        'than the session lasted, so a slip in one field cannot price time that did not happen.</p>' +
+        '<p>Steps are read off those parts separately: the running comes out of your daily count, ' +
+        'the stations do not.</p>';
+      var epoc = '<p><strong>Afterburn</strong> is an optional flat 6%, off by default. It is real ' +
+        'after hard sessions but too variable to state precisely, so it is a labelled choice rather ' +
+        'than something folded silently into the number.</p>';
+      var body = t === 'lift' ? lift
+               : t === 'hyb'  ? hyb
+               : t === 'wo'   ? run + recorded + comp
+               : run + recorded;
+      return body + epoc +
+        '<div class="inow">Everything here is computed at your trend weight, <b>' + g(kg,1) + ' kg</b>.</div>';
+    }
+  },
+
+  steps: {
+    t: 'Why training steps come back out',
+    b: function(){
+      var tot = dayRO(DAY).steps || 0, sess = daySessionSteps(DAY), net = dayNetSteps(DAY);
+      var html = '<p>A watch counts every step, training included — and the session above is already ' +
+        'priced in full. Counting both pays for the run twice, which on an hour-long session is worth ' +
+        'over a thousand kilojoules.</p>' +
+        '<p>So the steps taken during logged sessions are estimated from cadence and taken back out. ' +
+        'Only what is left is added. Cadence sets that estimate and is yours to adjust; if your watch ' +
+        'reports steps per activity, trust that figure over this one. The estimate is stored with the ' +
+        'session when you log it, so changing cadence later does not rewrite your history.</p>';
+      if (tot > 0) html += '<div class="inow"><b>' + g(tot) + '</b> counted, <b>' + g(sess) +
+        '</b> taken during sessions, <b>' + g(net) + '</b> added — worth <b>' +
+        fmtE(stepsKj(net), true) + '</b>.</div>';
+      return html;
+    }
+  },
+
+  measured: {
+    t: 'Measured, not estimated',
+    b: function(){
+      var a = measured();
+      var html = '<p>Every formula on the previous screen is an estimate. Your own data is not: ' +
+        'average intake, adjusted by the least-squares trend in your weight at <strong>32,200 kJ ' +
+        'per kilogram</strong>, gives the expenditure that actually produced that result. No ' +
+        'equation required, and it beats all three of them.</p>' +
+        '<p>It needs about <strong>ten logged days and three weigh-ins spread over ten days</strong> ' +
+        'before it will say anything, because a short window measures noise. Once it is available it ' +
+        'is worth switching your targets over to — which is what the coach does.</p>';
+      if (a && a.ok) html += '<div class="inow">Measured at <b>' + fmtE(a.tdee, true) +
+        '</b> from <b>' + a.covered + '</b> logged days and <b>' + a.weighins + '</b> weigh-ins.</div>';
+      return html;
+    }
+  },
+
+  trend: {
+    t: 'Why the trend and not the scale',
+    b: function(){
+      var kg = bodyKg(), last = (S.weights || []).slice(-1)[0];
+      var html = '<p>A scale reading is body mass plus water, gut contents and yesterday. Every ' +
+        'calculation here — resting rate, macro targets, the energy cost of a run or a step — runs ' +
+        'on an <strong>exponentially weighted average with a ten-day half-life</strong> rather than ' +
+        'on the last reading, so a dehydrated post-run weigh-in does not rewrite the day.</p>' +
+        '<p>The half-life is expressed in days, not in readings, so a gap between weigh-ins is ' +
+        'weighted correctly instead of counting as a single step.</p>';
+      if (last) html += '<div class="inow">Last reading <b>' + g(last.kg,1) + ' kg</b>; the trend ' +
+        'everything runs on is <b>' + g(kg,1) + ' kg</b>.</div>';
+      return html;
+    }
+  },
+
+  micro: {
+    t: 'How these are read',
+    b: function(){
+      return '<p>Targets are the <strong>Nutrient Reference Values for Australia and New Zealand</strong> ' +
+        '(NHMRC), read from your sex and age — both change them. Each nutrient is read against two ' +
+        'numbers at once: the bar runs from zero to the Upper Level with a tick marking the RDI, so ' +
+        'short of target, in range, and over the limit are one glance apart.</p>' +
+        '<p><strong>Some upper limits are narrower than they look.</strong> Magnesium\'s was written ' +
+        'for supplements, niacin\'s for nicotinic acid, B6\'s for supplemental pyridoxine, vitamin ' +
+        'E\'s for alpha-tocopherol. Passing those on food alone does not mean what the number ' +
+        'suggests, so they are shown and never flagged.</p>' +
+        '<p><strong>Vitamin A and folate used to be in that list.</strong> Their limits are written ' +
+        'against preformed retinol and folic acid, and AUSNUT reports both of those separately — so ' +
+        'the RDI is read against retinol equivalents and dietary folate equivalents, while the limit ' +
+        'is checked against the form it was actually set for.</p>' +
+        '<p>FSANZ populates every nutrient for every food, so a low total is a real shortfall rather ' +
+        'than a gap in the data. It still only counts what you logged, and knows nothing about ' +
+        'supplements.</p>' +
+        '<div class="inow">Read for a <b>' + (S.profile.sex === 'f' ? 'woman' : 'man') + '</b> aged <b>' +
+        (+S.profile.age || 30) + '</b>.</div>';
+    }
+  },
+
+  ausnut: {
+    t: 'Where the food data comes from',
+    b: function(){
+      return '<p>The base is <strong>AUSNUT 2023</strong>, the FSANZ survey database: 3,741 foods, ' +
+        'and unlike a composition table it does not stop at raw commodities — lasagne, pad thai, a ' +
+        'Big Mac, a flat white with reduced-fat milk. The <strong>386 foods from the Australian Food ' +
+        'Composition Database Release 3</strong> that AUSNUT has no entry for are carried over, so ' +
+        'nothing is lost. The two are matched on the public food key they share, not on the name.</p>' +
+        '<div class="irow"><b>Solids</b><span>per 100 g</span></div>' +
+        '<div class="irow"><b>The 348 foods FSANZ measures by volume</b><span>per 100 mL</span>' +
+          '<em>Drinks, milks, oils, stock — the honest basis for a drink, since a schooner is 425 mL ' +
+          'and not 425 g. Converted with each food\'s own specific gravity.</em></div>' +
+        '<div class="irow"><b>Energy</b><span>with dietary fibre</span>' +
+          '<em>The label figure.</em></div>' +
+        '<p style="margin-top:10px">Household portions come from AUSNUT\'s own measures file wherever ' +
+        'it has them — 2,604 of the foods — with a rule table behind it for the rest and for the local ' +
+        'sizes the survey never recorded. AUSNUT has no schooner, middy or pint.</p>' +
+        '<div class="inow"><b>' + g(allFoods().length) + '</b> foods loaded' +
+        (imported.length ? ', including <b>' + g(imported.length) + '</b> imported' : '') + '.</div>';
+    }
+  },
+
+  off: {
+    t: 'About Open Food Facts',
+    b: function(){
+      return '<p>FSANZ covers named products where the survey met them, not the whole branded shelf ' +
+        'at Coles. <strong>Open Food Facts</strong> is the open, barcode-level database that fills ' +
+        'the rest — filter it by brand or country on their advanced search, download the result as ' +
+        'CSV, and load it here. Tab-separated exports, sodium in grams and salt-only rows are all ' +
+        'handled.</p>' +
+        '<p>It is crowd-sourced, so coverage is patchy and the odd entry is wrong. Imports land under ' +
+        'their own <strong>Packaged</strong> category so FSANZ numbers stay visually distinct from ' +
+        'crowd-sourced ones. For a single item the panel on the box beats any database — use ' +
+        '<strong>New food</strong>.</p>' +
+        '<p><strong>Live lookup is off by default.</strong> Switched on, the search sheet offers a ' +
+        'button to query them for whatever you typed: one request, on your tap, carrying the search ' +
+        'text and nothing else. No account, no identifier, no history. Anything you pick is written ' +
+        'to this device, so the same product never needs a second request. Their API allows about ten ' +
+        'searches a minute per person, which is why it is a deliberate tap rather than a search as ' +
+        'you type.</p>' +
+        '<p>Product data used under the <strong>Open Database License</strong>.</p>' +
+        '<div class="inow">Live lookup is <b>' + (S.profile.online ? 'on' : 'off') + '</b>' +
+        (imported.length ? ', and <b>' + g(imported.length) + '</b> products are imported' : '') +
+        '.</div>';
+    }
+  },
+
+  sync: {
+    t: 'Where your data lives',
+    b: function(){
+      var signed = !!(auth && auth.access_token);
+      return '<p>On this device first and always. The app is fully usable with no account and no ' +
+        'signal, and nothing leaves the browser unless you sign in.</p>' +
+        '<p>Signing in also keeps it on a server, so a new phone or a laptop picks up where you left ' +
+        'off. The sync is a <strong>two-way merge, per row, newest wins</strong> — a day edited on ' +
+        'the phone and a different day edited on the laptop both survive; the same day edited on both ' +
+        'keeps the later one. Days, weigh-ins and your own foods are each their own row, so a ' +
+        'conflict is scoped to the thing that actually conflicts rather than to the whole history.</p>' +
+        '<p>Bulk CSV imports stay local. They are a convenience cache, not your data, and thousands ' +
+        'of rows do not belong on a server.</p>' +
+        '<p>Every table is protected by row-level security keyed to the signed-in user. The ' +
+        'publishable key in the source is meant to be public; that is what makes it safe.</p>' +
+        '<div class="inow">' + (signed
+          ? 'Signed in, so this device and the server both hold it.'
+          : 'Not signed in — this browser is the only copy. <b>Copy backup</b> below is the whole of it.') +
+        '</div>';
     }
   }
 };
@@ -9980,16 +10226,13 @@ function renderBodyView(){
   el('model-compare').innerHTML = cmp;
 
   el('ppk-note').textContent = 'At ' + g(bodyKg(),1) + ' kg trend weight that is ' +
-    g((+p.ppk) * bodyKg()) + ' g protein and ' + g((+p.fpk) * bodyKg()) + ' g fat. ' +
-    'Carbohydrate fills the rest.';
+    g((+p.ppk) * bodyKg()) + ' g protein and ' + g((+p.fpk) * bodyKg()) + ' g fat.';
   var pf = periodiseFactor(todayISO());
+  /* What is left is only ever about today; the mechanism is behind the ⓘ. */
   el('per-note').innerHTML = (p.periodise === 'off' || p.periodise === undefined)
-    ? 'Every day gets the same base, and hard days rise only by what the session cost. ' +
-      'Turning this on takes some of that back on rest days and puts it into session days, ' +
-      'leaving the week about where it was.'
+    ? 'Every day gets the same base.'
     : 'Today sits at <strong>' + Math.round(pf * 100) + '%</strong> of your base against this ' +
-      'week\'s average training load. Protein and fat hold at g/kg; carbohydrate does the moving. ' +
-      'Rest days give up fuel so session days get it.';
+      'week\'s average training load.';
 
   /* Expenditure is always today's. This screen answers "what does my body
      cost", and paging back through the diary on the Today tab should not
@@ -10074,10 +10317,8 @@ function renderCoach(){
     press('coach-tog', 'coach', c.on ? '1' : '0');
     st.textContent = c.on ? (c.target ? fmtE(c.target, true) + ' base' : 'Awaiting check-in') : 'Off';
     el('coach-hint').innerHTML = c.on
-      ? 'Once a week your target moves to match what your weight trend actually did. The check-in ' +
-        'itself lives under <strong>Progress</strong>, where the evidence for it is.'
-      : 'Targets come straight from the formula and never move. Switched on, once a week the target ' +
-        'is compared against what your weight trend actually did, and adjusted by the difference.';
+      ? 'The check-in itself lives under <strong>Progress</strong>, with the evidence for it.'
+      : 'Off, so targets come straight from the formula and never move.';
   }
   if (!body) return;
 
@@ -10142,7 +10383,7 @@ function press(groupId, attr, val){
 
 function renderFoodView(){
   press('online-tog', 'online', S.profile.online ? '1' : '0');
-  el('db-count').textContent = allFoods().length + ' foods';
+  el('db-count').textContent = g(allFoods().length) + ' foods';
   el('csv-status').textContent = imported.length
     ? (S.importNote || imported.length.toLocaleString('en-AU') + ' products imported.') +
       ' They sit under the Packaged category, kept separate from AFCD.'
@@ -10213,10 +10454,8 @@ function renderTrends(){
     if (a.covered < 10) need.push((10 - a.covered) + ' more logged day' + (10 - a.covered === 1 ? '' : 's'));
     if (a.weighins < 3) need.push((3 - a.weighins) + ' more weigh-in' + (3 - a.weighins === 1 ? '' : 's'));
     if (a.weighins >= 3 && a.span < 10) need.push('weigh-ins spread over at least 10 days');
-    body.innerHTML = '<p class="note">Formulas estimate your metabolism. Your own data <strong>measures</strong> it: ' +
-      'once there is enough of it, average intake and the trend in your weight give the expenditure that ' +
-      'actually produced that result — no equation required.</p>' +
-      '<div class="readout" style="margin-top:10px"><div class="k">Still needed</div>' +
+    body.innerHTML =
+      '<div class="readout"><div class="k">Still needed</div>' +
       '<div class="v" style="font-size:13px;font-family:var(--body)">' + (need.join(' · ') || 'a few more days') + '</div></div>' +
       '<div class="readout"><div class="k">Logged days in window<em>Last 28 days</em></div><div class="v num">' + a.covered + '</div></div>' +
       '<div class="readout"><div class="k">Weigh-ins in window</div><div class="v num">' + a.weighins + '</div></div>';
@@ -12293,7 +12532,7 @@ function renderOffResults(q, via){
 /* Bumped on every deploy. When something fails, knowing which build is
    actually loaded is the difference between debugging the bug and debugging
    a stale cache. */
-var APP_VERSION = '2026.08.21-38';
+var APP_VERSION = '2026.08.21-39';
 var SB_URL = 'https://lsrxqviwgqjpuzzcqcpu.supabase.co';
 var SB_KEY = 'sb_publishable_0lk-0UAlfW-tALEgPiqFHg_8vF9Hp63';
 var AUTH_KEY = 'eatandtrain.auth';
