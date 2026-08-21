@@ -12432,13 +12432,20 @@ function startScan(){
       function tick(){
         if (!scan) return;
         var now = Date.now();
-        /* Fifteen looks a second, and fewer when a look is expensive. A real
-           barcode is found on an early row and costs a millisecond or two; a
-           field of stripes that is not a barcode makes the decoder try every
-           guard candidate on every row and can cost thirty. Backing off to
-           three times the last look keeps that from pinning the phone while
-           you wave it at a striped shirt, and changes nothing when it is
-           quick. */
+        /* Sixteen looks a second, and fewer when a look is slow.
+
+           A real barcode is found on an early row and costs a millisecond or
+           two. A field of stripes that is not a barcode costs thirty: a
+           plausible guard turns up on nearly every row, each one is followed
+           to a dead end, and there is no answer to stop early on. Which is to
+           say the slowest input is the one with nothing in it.
+
+           Waiting five times the last look before taking another caps the
+           share of the processor this can occupy at a fifth, whatever a look
+           happens to cost — the multiplier is the duty cycle. It costs no
+           detection, because the case it slows down is the case with no
+           barcode in it; swing onto a real one and the next look is quick and
+           the gap is back at its floor. */
         if (video.readyState >= 2 && !scan.busy && now - scan.at > scan.gap){
           scan.at = now;
           var vw = video.videoWidth || 1280, vh = video.videoHeight || 720;
@@ -12456,7 +12463,7 @@ function startScan(){
           } else {
             var t0 = Date.now();
             var code = decodeFrame(ctx, cv.width, cv.height);
-            scan.gap = Math.max(60, Math.min((Date.now() - t0) * 3, 400));
+            scan.gap = Math.max(60, Math.min((Date.now() - t0) * 5, 400));
             /* Two frames have to agree. A single misread that happens to pass
                its checksum is rare; two identical ones are not something a
                misread does. */
@@ -13078,7 +13085,7 @@ function renderOffResults(q, via){
 /* Bumped on every deploy. When something fails, knowing which build is
    actually loaded is the difference between debugging the bug and debugging
    a stale cache. */
-var APP_VERSION = '2026.08.21-45';
+var APP_VERSION = '2026.08.21-46';
 var SB_URL = 'https://lsrxqviwgqjpuzzcqcpu.supabase.co';
 var SB_KEY = 'sb_publishable_0lk-0UAlfW-tALEgPiqFHg_8vF9Hp63';
 var AUTH_KEY = 'eatandtrain.auth';
