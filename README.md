@@ -439,6 +439,38 @@ Two honesty notes:
   a 3,000 µg ceiling. It also says how much of the day's total is that form, so the flag
   is never arbitrary.
 
+## The ⓘ
+
+There is a lot to explain in here and it was all explained on the screen, which is how a
+tracker ends up mostly prose. The explanations are moving behind a small ⓘ in the card
+head, opening into a box under it rather than into a sheet — the point is to read about
+the thing while still looking at it.
+
+**One per card, never per control.** A card is one idea. The resting rate is three
+equations, but it is not three ideas: split it across the three buttons and the shared
+half of the explanation — *nothing measures this directly, and the estimate improves as
+you tell it more about your body* — has to be written three times. Where a card looks
+like it wants two of these, the card is doing two things and should be two cards, which
+makes the count of them a check on the layout rather than a decoration.
+
+What stays out in the open is what is only true today. On the resting-rate card that is
+one line — *Auto picked Katch-McArdle* — where it used to be that line plus a paragraph
+about the equation. Twenty-six words down to four; on the tissue model, fifty-nine down
+to twenty-six, because one caveat earned its place outside. A limitation that qualifies
+the number belongs beside the number: a figure leaning on a bioimpedance reading has to
+say so, or it over-claims.
+
+**The box can be alive**, which a paragraph cannot. Under the three equations it says
+which one is running and what the others are still waiting for — *Katch-McArdle is
+running, because you have entered body fat. Tissue-level needs body fat % and muscle
+mass.* It is rebuilt whenever the screen is, so entering a body fat with the box open
+updates it rather than leaving it describing a body you no longer have.
+
+Explanations live in one place in the source rather than as another paragraph in the
+markup, so the same one can be shown in more than one card, and so the total of them can
+be read — and cut — in one sitting. The button is a real `<button>` with `aria-expanded`
+and `aria-controls`: drawn at 17px, tapped at 35.
+
 ## Coach
 
 A tracker that measures your expenditure but never acts on it leaves the useful half

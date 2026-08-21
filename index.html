@@ -181,6 +181,36 @@ nav.tabs::after{content:''; position:absolute; left:0; right:0; top:100%;
   padding:14px; margin-bottom:12px; box-shadow:var(--shadow)}
 .card.flush{padding:0; overflow:hidden}
 .eyebrow{font-size:10px; font-weight:700; letter-spacing:.18em; text-transform:uppercase; color:var(--ink-3)}
+/* ---------- the ⓘ ----------
+   One per card, never per control: a card is one idea, and three buttons on
+   three parts of one idea would make you read the shared half of it three
+   times. Where a card seems to want two of these, the card is doing two
+   things. The box opens under the heading rather than in a sheet, because the
+   point is to read about the thing while still looking at it. */
+.info{width:17px; height:17px; flex:none; align-self:center; border-radius:50%;
+  border:1px solid var(--line-strong); color:var(--ink-3);
+  font-family:var(--disp); font-size:11px; font-style:italic; line-height:1;
+  display:grid; place-items:center; position:relative}
+/* Drawn small, tapped large. */
+.info::after{content:''; position:absolute; inset:-9px}
+.info:hover{color:var(--accent); border-color:var(--accent-deep)}
+.info[aria-expanded="true"]{color:var(--accent-ink); background:var(--accent); border-color:var(--accent)}
+.infobox{margin:0 0 12px; padding:11px 13px; background:var(--sunken);
+  border-left:2px solid var(--accent-deep); border-radius:0 8px 8px 0;
+  font-size:12px; line-height:1.55; color:var(--ink-2)}
+.infobox p{margin:0 0 9px}
+.infobox p:last-child{margin-bottom:0}
+.infobox strong{color:var(--ink)}
+.irow{display:grid; grid-template-columns:1fr auto; gap:1px 10px;
+  padding:8px 0; border-top:1px solid var(--line-soft)}
+.irow:first-of-type{border-top:none; padding-top:2px}
+.irow b{font-size:12.5px; color:var(--ink); font-weight:600}
+.irow span{font-size:11px; color:var(--ink-3); text-align:right; white-space:nowrap}
+.irow em{grid-column:1/-1; font-style:normal; font-size:11.5px; color:var(--ink-3)}
+.inow{margin-top:10px; padding-top:9px; border-top:1px solid var(--line);
+  font-size:11.5px; color:var(--ink-3)}
+.inow b{color:var(--accent); font-weight:600}
+
 .card-head{display:flex; align-items:baseline; gap:8px; margin-bottom:10px}
 .card-head h2{font-size:14px; font-weight:600; font-variation-settings:'wdth' 105}
 .card-head .right{margin-left:auto; font-size:12px; color:var(--ink-3)}
@@ -818,7 +848,11 @@ body.dragging{cursor:grabbing}
 
   <div class="subpane" data-pane="model">
   <div class="card">
-    <div class="card-head"><h2>Resting rate model</h2><span class="right" id="bmr-formula">—</span></div>
+    <div class="card-head"><h2>Resting rate model</h2>
+      <button class="info" data-info="rmr" aria-expanded="false" aria-controls="info-rmr"
+              aria-label="How the resting rate is worked out">i</button>
+      <span class="right" id="bmr-formula">—</span></div>
+    <div class="infobox" id="info-rmr" data-for="rmr" hidden></div>
     <div class="seg" id="p-formula" role="group" aria-label="Formula">
       <button data-f="auto" aria-pressed="true">Auto</button>
       <button data-f="mifflin" aria-pressed="false">Mifflin</button>
@@ -8813,7 +8847,7 @@ function coachSkip(){
 /* ------------------------------ rendering -------------------------------- */
 function renderAll(){
   renderDateBar(); renderToday(); renderTrainView(); renderBodyView();
-  renderFoodView(); renderRecipesView(); renderTrends();
+  renderFoodView(); renderRecipesView(); renderTrends(); refreshInfo();
 }
 
 function renderDateBar(){
@@ -9818,6 +9852,77 @@ function updateWorkoutPreview(){
     fmtE(kj, true) + ' on top of your baseline (resting cost already deducted).';
 }
 
+/* ------------------------------ the ⓘ -------------------------------------
+   One explanation per card, written once and kept here rather than as another
+   paragraph on the screen. A card is one idea; splitting it across the three
+   or four controls that make up that idea would mean writing the shared half
+   of it three or four times, which is how a screen ends up mostly prose.
+
+   An entry is a title and a body. The body may be a function, because the
+   useful half of an explanation is often about your numbers rather than about
+   the method — "Katch is running because you gave it 12.8% body fat" beats any
+   paragraph, and there is nowhere else for a sentence like that to live.
+   ------------------------------------------------------------------------- */
+var EXPLAIN = {
+  rmr: {
+    t: 'How this is worked out',
+    b: function(){
+      var rows = [
+        ['Mifflin-St Jeor', 'height, weight, age, sex',
+         'The best-validated equation that asks nothing about your composition. Within about 10% for most people.'],
+        ['Katch-McArdle', '+ body fat %',
+         '370 + 21.6 × lean mass. Better when you are lean or muscular, because it stops guessing what you are made of.'],
+        ['Tissue-level', '+ muscle mass',
+         'Burns each tissue at its own rate — muscle, fat, liver, brain, heart and kidneys — rather than the body as one lump.']
+      ];
+      var html = '<p>Nothing measures your resting metabolism directly. Three equations estimate ' +
+        'it, and the more you can tell them about your body the less they have to guess.</p>' +
+        rows.map(function(r){
+          return '<div class="irow"><b>' + r[0] + '</b><span>' + r[1] + '</span><em>' + r[2] + '</em></div>';
+        }).join('') +
+        '<p style="margin-top:10px"><strong>Auto</strong> uses the best one your inputs support. ' +
+        'Forcing one is there for comparison — it will not make the number more accurate, only ' +
+        'different.</p>';
+
+      /* The live half: which one is running, and what the others are waiting for. */
+      var am = activeModel(), want = S.profile.formula || 'auto';
+      var why = am === 'tissue' ? 'you have entered both body fat and muscle mass'
+              : am === 'katch'  ? 'you have entered body fat'
+              : 'height, weight, age and sex are all it has to go on';
+      var waiting = [];
+      if (katchKcal()  === null) waiting.push('Katch-McArdle needs body fat %');
+      if (tissueKcal() === null) waiting.push('Tissue-level needs body fat % and muscle mass');
+      html += '<div class="inow"><b>' + MODEL_NAMES[am] + '</b> is running' +
+        (want === 'auto' ? ', because ' + why : ', because you chose it') + '.' +
+        (waiting.length ? ' ' + waiting.join('. ') + '.' : '') + '</div>';
+      return html;
+    }
+  }
+};
+
+function explainHtml(key){
+  var e = EXPLAIN[key]; if (!e) return '';
+  return '<p><strong>' + esc(e.t) + '</strong></p>' +
+         (typeof e.b === 'function' ? e.b() : e.b);
+}
+/* Rebuilt on every open rather than once, and emptied on close, so nothing
+   stale is left sitting in the page for a screen reader to find. */
+function toggleInfo(key, btn){
+  var box = document.getElementById('info-' + key); if (!box) return;
+  var opening = box.hidden;
+  box.innerHTML = opening ? explainHtml(key) : '';
+  box.hidden = !opening;
+  btn.setAttribute('aria-expanded', opening ? 'true' : 'false');
+}
+/* The live half of an explanation is about numbers that can change while it is
+   open — enter your body fat with the box showing and it would otherwise still
+   be telling you what Katch-McArdle is waiting for. */
+function refreshInfo(){
+  Array.prototype.forEach.call(document.querySelectorAll('.infobox'), function(box){
+    if (!box.hidden) box.innerHTML = explainHtml(box.dataset.for);
+  });
+}
+
 function renderBodyView(){
   renderAccountCard();
   renderCoach();
@@ -9850,15 +9955,17 @@ function renderBodyView(){
   var am = activeModel();
   el('bmr-formula').textContent = MODEL_NAMES[am];
   var want = p.formula || 'auto';
-  var notes = {
-    mifflin:'Height, weight, age and sex only. The best-validated equation when body composition is unknown, and within about 10% for most people.',
-    katch:'370 + 21.6 × lean mass. Beats Mifflin when you are lean or muscular, because it stops guessing your composition and uses it.',
-    tissue:'Burns each tissue at its own rate — muscle 13, fat 4.5, liver 200, brain 240, heart and kidneys 440 kcal/kg/day. The most detailed model here, and only as good as the muscle figure you feed it. Bioimpedance scales carry real error, so treat it as a sharper estimate, not a measurement.'
-  };
-  var msg = notes[am];
-  if (want !== 'auto' && want !== am) msg = 'Not enough inputs for ' + MODEL_NAMES[want] +
-    ' yet, so ' + MODEL_NAMES[am] + ' is running. ' + msg;
-  else if (want === 'auto') msg = 'Auto picked ' + MODEL_NAMES[am] + '. ' + msg;
+  /* Three paragraphs of background used to sit here. They are behind the ⓘ
+     now, where they can be read once rather than every time this screen is
+     opened; what is left is the part that is only true today. The one caveat
+     that stays out in the open is the tissue model's, because it qualifies the
+     number rather than explaining it — a figure that leans on a bioimpedance
+     reading should say so where the figure is. */
+  var msg = want !== 'auto' && want !== am
+    ? 'Not enough inputs for ' + MODEL_NAMES[want] + ' yet, so ' + MODEL_NAMES[am] + ' is running.'
+    : (want === 'auto' ? 'Auto picked ' + MODEL_NAMES[am] + '.' : MODEL_NAMES[am] + ', your choice.');
+  if (am === 'tissue') msg += ' Only as good as the muscle figure behind it — a scale reading is ' +
+    'a sharper estimate, not a measurement.';
   el('formula-note').innerHTML = msg;
 
   var cmp = ['mifflin','katch','tissue'].map(function(m){
@@ -12186,7 +12293,7 @@ function renderOffResults(q, via){
 /* Bumped on every deploy. When something fails, knowing which build is
    actually loaded is the difference between debugging the bug and debugging
    a stale cache. */
-var APP_VERSION = '2026.08.21-37';
+var APP_VERSION = '2026.08.21-38';
 var SB_URL = 'https://lsrxqviwgqjpuzzcqcpu.supabase.co';
 var SB_KEY = 'sb_publishable_0lk-0UAlfW-tALEgPiqFHg_8vF9Hp63';
 var AUTH_KEY = 'eatandtrain.auth';
@@ -12693,6 +12800,8 @@ function bind(){
     if (suppressClick){ ev.stopPropagation(); ev.preventDefault(); return; }
     var t = ev.target;
 
+    var inf = t.closest('[data-info]');
+    if (inf){ toggleInfo(inf.dataset.info, inf); return; }
     var ib = t.closest('[data-items]');
     if (ib){
       var ip = ib.dataset.items.split(':');
