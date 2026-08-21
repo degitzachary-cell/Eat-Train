@@ -240,6 +240,12 @@ Eight results, then it scrolls. A list that runs off the bottom of the screen re
 endless and buries whatever sits under it; eight is enough to choose between and short
 enough to see the end of.
 
+**Your foods** gets the same treatment: eight rows visible, the rest a scroll away, and
+the rows themselves compact — the unit is printed once in the heading rather than
+twenty-one times down the list, which is the difference between *117 Cal/100 g · P 6.8 ·
+C 4.5 · F 8* and *117 · P 6.8 · C 4.5 · F 8*. It is not collapsed behind anything: the
+list is a list, it is just not an endless one.
+
 **Two rows are pinned below it and never scroll away** — *Search Open Food Facts for
 "…"* and *Not there? Scan or add it*. They are the way out of a list that does not have
 what you want, so having to scroll to the bottom of that list to find them was exactly

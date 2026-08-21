@@ -53,6 +53,7 @@
      hunted down at every .num in the file. */
   --mono:'Newsreader',Georgia,'Times New Roman',serif;
   --fres-h:60px;                 /* one search result, measured */
+  --row-tight-h:51.4px;          /* one compact list row, measured */
 }
 .num, [class*="num"]{font-variant-numeric:tabular-nums}
 
@@ -531,6 +532,13 @@ select{background-image:linear-gradient(45deg,transparent 50%,var(--ink-3) 50%),
    reads as endless and buries everything under it; eight is enough to choose
    from and short enough to see the end of. */
 #search-scroll{max-height:calc(var(--fres-h) * 8)}
+/* A list you scan rather than read: the name carries it, and the numbers
+   underneath are a check rather than the point. Same eight-and-scroll rule as
+   the search results, so a long one never runs off the bottom of the sheet. */
+.row.tight{padding:5px 15px}
+.row.tight .t{font-size:12.5px}
+.row.tight .s{font-size:10.5px; margin-top:0}
+.cap8{max-height:calc(var(--row-tight-h) * 8); overflow-y:auto; -webkit-overflow-scrolling:touch}
 .searchfoot{flex:none; border-top:1px solid var(--line); background:var(--surface);
   padding-bottom:env(safe-area-inset-bottom)}
 .searchfoot .fres:last-child{border-bottom:none}
@@ -1160,8 +1168,10 @@ body.dragging{cursor:grabbing}
   </div>
 
   <div class="card flush">
-    <div class="meal-head"><h3>Your foods</h3><span class="kj num" id="custom-count">0</span></div>
-    <div id="custom-list"></div>
+    <div class="meal-head"><h3>Your foods</h3><span class="right" id="custom-unit"
+      style="margin-left:auto;font-size:11px;color:var(--ink-3)">per 100 g</span>
+      <span class="kj num" id="custom-count" style="margin-left:8px">0</span></div>
+    <div id="custom-list" class="cap8"></div>
   </div>
 </div>
 </div>
@@ -10400,9 +10410,11 @@ function renderFoodView(){
       ' They sit under the Packaged category, kept separate from AFCD.'
     : 'No imported foods.';
   el('custom-count').textContent = S.custom.length;
+  /* Printed once in the heading rather than on every row. */
+  el('custom-unit').textContent = unitName() + ' per 100 g';
   el('custom-list').innerHTML = S.custom.length ? S.custom.map(function(c, i){
-    return '<div class="row"><div class="row-main"><div class="t">' + esc(c.name) + '</div>' +
-      '<div class="s">' + fmtE(c.kj) + ' ' + unitName() + '/100 g · P ' + g(c.p,1) + ' · C ' + g(c.c,1) + ' · F ' + g(c.f,1) + '</div></div>' +
+    return '<div class="row tight"><div class="row-main"><div class="t">' + esc(c.name) + '</div>' +
+      '<div class="s">' + fmtE(c.kj) + ' · P ' + g(c.p,1) + ' · C ' + g(c.c,1) + ' · F ' + g(c.f,1) + '</div></div>' +
       '<button class="row-del" data-del-custom="' + i + '" aria-label="Delete ' + esc(c.name) + '">' +
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M5 5l14 14M19 5L5 19"/></svg></button></div>';
   }).join('') : '<div class="empty">Nothing of your own yet</div>';
@@ -12554,7 +12566,7 @@ function renderOffResults(q, via){
 /* Bumped on every deploy. When something fails, knowing which build is
    actually loaded is the difference between debugging the bug and debugging
    a stale cache. */
-var APP_VERSION = '2026.08.21-40';
+var APP_VERSION = '2026.08.21-41';
 var SB_URL = 'https://lsrxqviwgqjpuzzcqcpu.supabase.co';
 var SB_KEY = 'sb_publishable_0lk-0UAlfW-tALEgPiqFHg_8vF9Hp63';
 var AUTH_KEY = 'eatandtrain.auth';
