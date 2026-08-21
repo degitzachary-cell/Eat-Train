@@ -34,24 +34,26 @@ cards, and the only elevated surfaces left are the sheets.
 
 ## What it does
 
-Four tabs, ordered by how often you actually use them. Where a tab runs long it splits
+Five tabs, ordered by how often you actually use them. Where a tab runs long it splits
 into sub-sections rather than a three-storey scroll — and where it does not, it is left
 alone, because a diary is meant to scroll.
 
 - **Today** — the log. Energy budget, the weekly check-in when one is due, a weigh-in
   prompt until you have, macros, vitamins and minerals, meals and training.
 - **Train** — one card, one session: Run, Workout, Other or Lift. Plus steps.
+- **Recipes** — what to cook, opening on what fits what is left of today.
 - **Progress** — where you go to review: the coach check-in and its evidence, measured
   expenditure, 14-day energy, weight trend, composition, weekly averages, and the
   weigh-in form with its history.
 - **Me** — who you are and how the maths is set up: account, markers, composition,
-  resting-rate model, daily activity, coach and goal, and the resulting numbers — always for today, not for whichever
-  day the diary happens to be showing.
+  resting-rate model, daily activity, coach and goal, and the resulting numbers — always
+  for today, not for whichever day the diary happens to be showing.
 
-**Foods & recipes** is not a tab. You never set out to visit a food library — you hit
+**The food database** is not a tab. You never set out to visit a food library — you hit
 it mid-flow when something is missing, so it lives behind a glyph in the header, and
 every search result list ends with *"Not there? Scan or add it"*. That is the moment
-you find out, so that is where the offer belongs.
+you find out, so that is where the offer belongs. Recipes used to live there too, which
+was the wrong shelf: choosing dinner is a thing you set out to do.
 
 ## First run
 
@@ -363,6 +365,43 @@ are sitting there. Tap the save icon on any meal, name it, say how many servings
 makes, and it becomes a single food whose portion is one serving. Everything downstream
 works unchanged, micronutrients included: log one serving of a two-serve batch and you
 get exactly half of what went in.
+
+### The tab
+
+Recipes get their own tab because choosing what to cook is its own moment. You are not
+mid-log hunting for a food; you are standing in the kitchen with a number left to eat.
+So the tab opens on **what fits that number** rather than on an alphabetical list.
+
+**For today** ranks the library against the day as it actually stands: how much of the
+remaining energy a serve fills, how much of the outstanding protein and fibre it brings,
+and which of the micronutrients you have been short on all week it happens to deliver.
+Each suggestion says why it is there — *31% of what is left · +56 g protein · +9.2 g
+fibre*. Overshooting is priced rather than disqualifying, because a 3,000 kJ dinner with
+400 kJ left is wrong and a 2,000 kJ one is merely a big night. The micronutrient half
+reads the **last seven logged days**, not today: a shortfall you have been carrying all
+week is worth more than one you have had since breakfast.
+
+Whatever is suggested is not listed again underneath. Printing the same recipe twice on
+one screen costs half the screen and says nothing the first row did not.
+
+Once you type, the suggestions go — you have stopped asking that question. Search covers
+the four things people actually reach for:
+
+| You type | You get |
+|---|---|
+| `tahini` | every recipe with tahini in it |
+| `thai` | everything tagged Thai |
+| `noodles` | everything built on noodles |
+| `<400` | everything at or under 400 per serve, in whatever unit is on screen |
+
+Every term has to land somewhere — name, ingredient, cuisine or base — so a second word
+narrows the list rather than widening it. A bare number is never a search for the word,
+so it is read as a ceiling; a `>` makes it a floor. The chips above filter by meal:
+breakfast, lunch, dinner, snacks.
+
+Recipes are still ordinary foods underneath, so they also come up in the normal food
+search when you are logging — filed under a **Recipes** category. That path logs a serve
+as written. The tab is where the variations live.
 
 ### The starter set
 

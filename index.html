@@ -115,7 +115,7 @@ nav.tabs{
    one bar reaching the bottom rather than a strip floating above a band. */
 nav.tabs::after{content:''; position:absolute; left:0; right:0; top:100%;
   height:120px; background:var(--sunken); pointer-events:none}
-.tabs-in{max-width:560px; margin:0 auto; display:grid; grid-template-columns:repeat(4,1fr)}
+.tabs-in{max-width:560px; margin:0 auto; display:grid; grid-template-columns:repeat(5,1fr)}
 .tab{display:flex; flex-direction:column; align-items:center; gap:4px; padding:10px 0 9px;
   color:var(--ink-3); font-size:8.5px; font-weight:700; letter-spacing:.16em; text-transform:uppercase}
 .tab svg{width:19px; height:19px}
@@ -125,6 +125,16 @@ nav.tabs::after{content:''; position:absolute; left:0; right:0; top:100%;
 .view.on{display:block}
 @keyframes in{from{opacity:0; transform:translateY(4px)}to{opacity:1; transform:none}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important; transition:none!important}}
+
+/* ---------- recipes tab ---------- */
+/* The chip row and the search field are borrowed from the food sheet, which
+   is where the same two controls already live. In a sheet they sit on a
+   surface with a rule under them; on a page they sit on the page. */
+.rsearch{padding:12px 0 10px}
+.catrow.flat{padding:0 0 12px; border-bottom:none}
+#v-recipes .sec-h{margin:14px 0 8px}
+#v-recipes .sec-h:first-of-type{margin-top:2px}
+.why{font-size:11px; color:var(--accent); margin-top:2px}
 
 /* ---------- sub-tabs ---------- */
 /* Only used where a tab genuinely runs long. A diary is meant to scroll; a
@@ -518,7 +528,7 @@ body.dragging{cursor:grabbing}
         <button id="u-kj" aria-pressed="true">kJ</button>
         <button id="u-kcal" aria-pressed="false">Cal</button>
       </div>
-      <button class="iconbtn" id="btn-foods" aria-label="Foods and recipes">
+      <button class="iconbtn" id="btn-foods" aria-label="Food database">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="17" height="17">
           <path d="M6 3v8a3 3 0 006 0V3M9 11v10M15 3c-1.5 1.5-2 3.5-2 5.5S14 13 15.5 13H17V3z"/><path d="M17 13v8"/>
         </svg>
@@ -617,6 +627,20 @@ body.dragging{cursor:grabbing}
     <div id="tr-list"></div>
   </div>
   </div>
+</section>
+
+<!-- ============ RECIPES ============ -->
+<section class="view" id="v-recipes">
+  <div class="rsearch">
+    <input type="search" id="rq" placeholder="Recipe, ingredient, cuisine, number"
+           autocomplete="off" autocorrect="off" autocapitalize="off">
+  </div>
+  <div class="catrow flat" id="rcats"></div>
+  <div id="rec-sug"></div>
+  <div id="rec-all"></div>
+  <button class="btn ghost" id="rec-new" style="margin:14px 0 9px">Save a meal as a recipe</button>
+  <p class="hint" style="margin:0 0 8px">The list icon edits a recipe for next time. Days you have
+    already logged keep what you actually ate.</p>
 </section>
 
 <!-- ============ TRAIN ============ -->
@@ -900,6 +924,8 @@ body.dragging{cursor:grabbing}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3 12h4l2.5-7 4 14 2.5-7H21"/></svg>Today</button>
     <button class="tab" data-v="train">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M6.5 6.5v11M3.5 9v6M17.5 6.5v11M20.5 9v6M6.5 12h11"/></svg>Train</button>
+    <button class="tab" data-v="recipes">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M3.6 11h16.8a8.4 8.4 0 01-16.8 0z"/><path d="M2.5 21h19"/><path d="M9 7.6c0-1.3 1-1.7 1-2.8M13.5 7.6c0-1.3 1-1.7 1-2.8"/></svg>Recipes</button>
     <button class="tab" data-v="trends">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 19V5M4 19h16"/><path d="M7.5 15l3.5-4.5 3 2.5 4.5-6"/></svg>Progress</button>
     <button class="tab" data-v="body">
@@ -998,8 +1024,8 @@ body.dragging{cursor:grabbing}
 </div>
 
 <!-- food library -->
-<div class="sheet" id="sh-foods" role="dialog" aria-modal="true" aria-label="Foods and recipes">
-  <div class="sheet-head"><h2>Foods &amp; recipes</h2><button class="iconbtn sheet-close" aria-label="Close">&#10005;</button></div>
+<div class="sheet" id="sh-foods" role="dialog" aria-modal="true" aria-label="Food database">
+  <div class="sheet-head"><h2>Food database</h2><button class="iconbtn sheet-close" aria-label="Close">&#10005;</button></div>
   <div class="sheet-body">
   <div class="card" style="margin-top:12px">
     <div class="card-head"><h2>Food database</h2><span class="right" id="db-count">&mdash;</span></div>
@@ -1045,11 +1071,6 @@ body.dragging{cursor:grabbing}
       <button class="btn sm danger" id="csv-clear" style="flex:none">Clear imported</button>
     </div>
     <p class="hint" id="csv-status">No imported foods.</p>
-  </div>
-
-  <div class="card flush">
-    <div class="meal-head"><h3>Recipes</h3><span class="kj num" id="rec-count">0</span></div>
-    <div id="rec-list"></div>
   </div>
 
   <div class="card flush">
@@ -8719,7 +8740,7 @@ function coachSkip(){
 /* ------------------------------ rendering -------------------------------- */
 function renderAll(){
   renderDateBar(); renderToday(); renderTrainView(); renderBodyView();
-  renderFoodView(); renderTrends();
+  renderFoodView(); renderRecipesView(); renderTrends();
 }
 
 function renderDateBar(){
@@ -9797,21 +9818,6 @@ function renderFoodView(){
     ? (S.importNote || imported.length.toLocaleString('en-AU') + ' products imported.') +
       ' They sit under the Packaged category, kept separate from AFCD.'
     : 'No imported foods.';
-  var recs = S.recipes || [];
-  el('rec-count').textContent = recs.length;
-  el('rec-list').innerHTML = recs.length ? recs.map(function(r, i){
-    return '<div class="row"><button class="row-main" data-cook="' + i +
-      '" style="text-align:left"><div class="t">' + esc(r.name) + '</div>' +
-      '<div class="s">' + g(r.servings,1) + ' serving' + (r.servings === 1 ? '' : 's') + ' · ' +
-      fmtE(r.kj * r.serveG / 100) + ' ' + unitName() + ' each · ' +
-      esc(r.items.map(function(x){ return x.name.split(',')[0]; }).slice(0,3).join(', ')) +
-      (r.items.length > 3 ? ' +' + (r.items.length - 3) : '') + '</div></button>' +
-      '<button class="row-move" data-edit-rec="' + i + '" aria-label="Edit ' + esc(r.name) + '">' +
-      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" width="14" height="14">' +
-      '<path d="M4 6h16M4 12h16M4 18h10"/></svg></button>' +
-      '<button class="row-del" data-del-rec="' + i + '" aria-label="Delete ' + esc(r.name) + '">' +
-      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M5 5l14 14M19 5L5 19"/></svg></button></div>';
-  }).join('') : '<div class="empty">Log a meal, then tap the save icon on it</div>';
   el('custom-count').textContent = S.custom.length;
   el('custom-list').innerHTML = S.custom.length ? S.custom.map(function(c, i){
     return '<div class="row"><div class="row-main"><div class="t">' + esc(c.name) + '</div>' +
@@ -10589,6 +10595,177 @@ function openSaveRecipe(meal){
   el('rec-name').value = '';
   el('rec-serves').value = '1';
   sheet('sh-recipe');
+}
+
+/* ------------------------------- recipes tab ------------------------------
+   Deciding what to cook is its own moment. You are not mid-log hunting for a
+   food; you are standing in the kitchen with a number left to eat. So the tab
+   opens on what fits that number rather than on an alphabetical list, and the
+   search covers the four things people actually reach for — a name, an
+   ingredient, a cuisine or style, and an energy ceiling.
+   ------------------------------------------------------------------------- */
+var recQ = '', recMeal = 'all', recTimer = null;
+
+var REC_MEALS = [['all','All'],['breakfast','Breakfast'],['lunch','Lunch'],
+                 ['dinner','Dinner'],['snack','Snacks']];
+
+/* One serve, derived from the ingredients like everything else about a
+   recipe — never read off the totals it was saved with. */
+function recServe(r){
+  var t = recipeTotals(r), p = t.per100 || {}, k = (t.serveG || 0) / 100;
+  var o = {g:t.serveG || 0, m:{}};
+  ['kj','p','f','sat','c','sug','fib','na','alc'].forEach(function(x){ o[x] = (p[x] || 0) * k; });
+  MICRO_KEYS.forEach(function(x){ o.m[x] = (p.m ? p.m[x] || 0 : 0) * k; });
+  return o;
+}
+
+/* Every term has to land somewhere — name, ingredient, cuisine or base — so a
+   second word narrows the list instead of widening it. */
+function recMatch(r, terms){
+  var hay = [r.name, (r.tags || {}).cuisine || '', (r.tags || {}).base || '']
+    .concat((r.items || []).map(function(it){ return (it.label || '') + ' ' + it.name; }))
+    .join(' ').toLowerCase();
+  return terms.every(function(t){ return hay.indexOf(t) >= 0; });
+}
+/* A bare number in a recipe search is never a search for the word. It is a
+   ceiling, in whatever unit is on screen; a > turns it into a floor. */
+function recEnergyLimit(q){
+  var m = /^([<>]?)\s*(\d{2,5})\s*$/.exec(q || '');
+  if (!m) return null;
+  return {op:m[1] === '>' ? '>' : '<', kj:isKcal() ? +m[2] * 4.184 : +m[2]};
+}
+
+/* What the day still wants: energy first, then whichever macro is behind,
+   then the micronutrients the last week actually missed. A shortfall you have
+   been carrying for days is worth more than one you have had since breakfast,
+   which is why the micro half looks at the week and not at today. */
+function recNeeds(){
+  var e = dayEnergy(DAY), tg = macroTargets(e.target), got = dayTotals(DAY);
+  var fibT = S.profile.sex === 'm' ? 30 : 25;
+  var days = lastDays(7, DAY).filter(function(d){ return dayTotals(d).kj > 0; });
+  var short = [];
+  if (days.length >= 3){
+    Object.keys(NRV).forEach(function(k){
+      if (k === 'na') return;                       /* sodium is a ceiling, not a target */
+      var t = nrvTarget(k); if (!t) return;
+      var avg = days.reduce(function(a, d){ return a + (dayTotals(d).m[k] || 0); }, 0) / days.length;
+      if (avg / t < 0.8) short.push({k:k, pct:avg / t});
+    });
+    short.sort(function(a, b){ return a.pct - b.pct; });
+    short = short.slice(0, 3);
+  }
+  return {left:e.remaining, target:e.target, days:days.length, micro:short,
+          p:Math.max(0, tg.p - got.p), c:Math.max(0, tg.c - got.c),
+          f:Math.max(0, tg.f - got.f), fib:Math.max(0, fibT - got.fib)};
+}
+
+/* Overshooting is priced rather than disqualifying: a 3,000 kJ dinner with
+   400 kJ left is wrong, a 2,000 kJ one is merely a big night. */
+function recScore(r, need){
+  var s = recServe(r), sc = 0, why = [];
+  if (need.left > 400 && s.kj > 0){
+    var fit = s.kj <= need.left ? s.kj / need.left
+                                : Math.max(0, 1 - (s.kj - need.left) / need.left);
+    sc += fit * 100;
+    why.push(s.kj <= need.left
+      ? Math.round(s.kj / need.left * 100) + '% of what is left'
+      : fmtE(s.kj - need.left, true) + ' over');
+  }
+  if (need.p > 15 && s.p > 0){
+    sc += Math.min(1, s.p / need.p) * 55;
+    if (s.p >= need.p * 0.35) why.push('+' + g(s.p) + ' g protein');
+  }
+  if (need.fib > 8 && s.fib > 0){
+    sc += Math.min(1, s.fib / need.fib) * 30;
+    if (s.fib >= need.fib * 0.3) why.push('+' + g(s.fib, 1) + ' g fibre');
+  }
+  need.micro.forEach(function(x, i){
+    var t = nrvTarget(x.k), have = s.m[x.k] || 0;
+    if (!t || have / t < 0.2) return;
+    sc += Math.min(1, have / t) * (28 - i * 6);
+    why.push(NRV[x.k].n.toLowerCase() + ' ' + Math.round(have / t * 100) + '%');
+  });
+  return {score:sc, why:why.slice(0, 3).join(' · ')};
+}
+
+function recRow(r, i, why){
+  var s = recServe(r), tg = r.tags || {};
+  var meta = [tg.cuisine && tg.cuisine !== 'None' ? tg.cuisine : '', tg.base,
+              tg.time ? tg.time + ' min' : '',
+              (r.servings || 1) + ' serve' + ((r.servings || 1) === 1 ? '' : 's')]
+             .filter(Boolean).join(' · ');
+  return '<div class="row"><button class="row-main" data-cook="' + i + '" style="text-align:left">' +
+    '<div class="t">' + esc(r.name) + '</div>' +
+    '<div class="s">' + esc(meta) + '</div>' +
+    (why ? '<div class="why">' + esc(why) + '</div>' : '') + '</button>' +
+    '<div class="row-kj">' + fmtE(s.kj) + '</div>' +
+    '<button class="row-move" data-edit-rec="' + i + '" aria-label="Edit ' + esc(r.name) + '">' +
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" width="14" height="14">' +
+    '<path d="M4 6h16M4 12h16M4 18h10"/></svg></button>' +
+    '<button class="row-del" data-del-rec="' + i + '" aria-label="Delete ' + esc(r.name) + '">' +
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">' +
+    '<path d="M5 5l14 14M19 5L5 19"/></svg></button></div>';
+}
+
+function renderRecipesView(){
+  if (!el('rec-all')) return;
+  var recs = S.recipes || [];
+
+  el('rcats').innerHTML = REC_MEALS.map(function(m){
+    return '<button data-rmeal="' + m[0] + '" aria-pressed="' +
+      (recMeal === m[0] ? 'true' : 'false') + '">' + m[1] + '</button>';
+  }).join('');
+
+  if (!recs.length){
+    el('rec-sug').innerHTML = '';
+    el('rec-all').innerHTML = '<div class="card"><p class="note">No recipes yet. Log a meal on ' +
+      '<strong>Today</strong> and tap the save icon on it — the ingredients and the amounts are ' +
+      'already sitting there, so a recipe costs one tap and a name.</p></div>';
+    return;
+  }
+
+  var lim = recEnergyLimit(recQ);
+  var terms = lim ? [] : recQ.toLowerCase().split(/\s+/).filter(Boolean);
+  var list = recs.map(function(r, i){ return {r:r, i:i}; }).filter(function(x){
+    var meals = (x.r.tags || {}).meal || [];
+    if (recMeal !== 'all' && meals.indexOf(recMeal) < 0) return false;
+    if (lim){ var kj = recServe(x.r).kj;
+              return lim.op === '<' ? kj <= lim.kj : kj >= lim.kj; }
+    return !terms.length || recMatch(x.r, terms);
+  });
+
+  /* The suggestions answer "what should I cook tonight", which is a question
+     you have stopped asking the moment you type something. */
+  var need = recNeeds(), sug = '', shown = [];
+  if (!recQ && need.left > 400 && list.length > 2){
+    var ranked = list.map(function(x){ return {x:x, sc:recScore(x.r, need)}; })
+      .filter(function(o){ return o.sc.score > 0; })
+      .sort(function(a, b){ return b.sc.score - a.sc.score; }).slice(0, 3);
+    if (ranked.length) sug =
+      '<div class="sec-h"><h3>' + (DAY === todayISO() ? 'For today' : 'For ' +
+        isoToDate(DAY).toLocaleDateString('en-AU', {day:'numeric', month:'short'})) + '</h3>' +
+        '<span class="right">' + fmtE(need.left, true) + ' left' +
+        (need.micro.length ? ' · short on ' + esc(NRV[need.micro[0].k].n.toLowerCase()) : '') +
+        '</span></div><div class="card flush">' +
+      ranked.map(function(o){ return recRow(o.x.r, o.x.i, o.sc.why); }).join('') + '</div>';
+    /* Whatever is suggested is not listed again underneath. Printing the same
+       recipe twice on one screen costs half the screen and tells you nothing
+       the first row did not. */
+    shown = ranked.map(function(o){ return o.x.i; });
+  }
+  el('rec-sug').innerHTML = sug;
+
+  var filtered = recQ || recMeal !== 'all';
+  list = list.filter(function(x){ return shown.indexOf(x.i) < 0; });
+  list.sort(function(a, b){ return a.r.name.localeCompare(b.r.name); });
+  el('rec-all').innerHTML =
+    '<div class="sec-h"><h3>' + (filtered ? 'Matches' : (shown.length ? 'Everything else' : 'All recipes')) + '</h3>' +
+      '<span class="right">per serve · ' +
+      (filtered ? list.length + ' of ' + recs.length : list.length) + '</span></div>' +
+    (list.length
+      ? '<div class="card flush">' + list.map(function(x){ return recRow(x.r, x.i); }).join('') + '</div>'
+      : '<div class="card flush"><div class="empty" style="padding:14px 15px">Nothing here matches' +
+        (recQ ? ' “' + esc(recQ) + '”' : ' that meal') + '</div></div>');
 }
 
 /* ------------------------------- search ---------------------------------- */
@@ -11409,7 +11586,7 @@ function renderOffResults(q, via){
 /* Bumped on every deploy. When something fails, knowing which build is
    actually loaded is the difference between debugging the bug and debugging
    a stale cache. */
-var APP_VERSION = '2026.08.21-32';
+var APP_VERSION = '2026.08.21-33';
 var SB_URL = 'https://lsrxqviwgqjpuzzcqcpu.supabase.co';
 var SB_KEY = 'sb_publishable_0lk-0UAlfW-tALEgPiqFHg_8vF9Hp63';
 var AUTH_KEY = 'eatandtrain.auth';
@@ -11867,7 +12044,7 @@ function bindSubs(){
 
 function switchView(v){
   VIEW = v;
-  ['today','train','body','trends'].forEach(function(k){
+  ['today','train','recipes','body','trends'].forEach(function(k){
     el('v-' + k).classList.toggle('on', k === v);
   });
   Array.prototype.forEach.call(el('tabbar').children, function(b){
@@ -11876,6 +12053,9 @@ function switchView(v){
   });
   window.scrollTo(0, 0);
   if (v === 'trends') renderTrends();
+  /* Suggestions are read off the day as it stands, so they are recomputed on
+     the way in rather than left as they were when the tab was last open. */
+  if (v === 'recipes') renderRecipesView();
 }
 
 function bind(){
@@ -11960,7 +12140,8 @@ function bind(){
     if (t.closest('#wt-more')){ wtAll = true; renderTrends(); return; }
     if (t.closest('#wt-less')){ wtAll = false; renderTrends(); return; }
     var dr = t.closest('[data-del-rec]');
-    if (dr){ S.recipes.splice(+dr.dataset.delRec, 1); save(); renderFoodView(); renderCats(); return; }
+    if (dr){ S.recipes.splice(+dr.dataset.delRec, 1); save();
+             renderRecipesView(); renderFoodView(); renderCats(); return; }
 
     var favBtn = t.closest('[data-fav]');
     if (favBtn){
@@ -12061,12 +12242,27 @@ function bind(){
     S.recipes = S.recipes.filter(function(r){ return r.name !== nm; });
     S.recipes.push(recipeFromEntries(nm, el('rec-serves').value, recCtx.entries));
     recCtx = null; save(); renderAll(); closeSheet();
-    toast('“' + nm + '” saved. Search for it any time.');
+    /* Straight to where it now lives, rather than a toast about a tab you
+       have to go and find. */
+    switchView('recipes');
+    toast('“' + nm + '” saved.');
   });
   el('acct-card').addEventListener('click', function(){ renderDataSheet(); sheet('sh-data'); });
   el('weigh-card').addEventListener('click', function(){ switchView('trends');
     setTimeout(function(){ var w = el('wl-kg'); if (w){ w.scrollIntoView({block:'center'}); w.focus(); } }, 120); });
   el('micro-card').addEventListener('click', function(){ renderMicroDetail(); sheet('sh-micro'); });
+  el('rq').addEventListener('input', function(){
+    var v = this.value;
+    clearTimeout(recTimer);
+    recTimer = setTimeout(function(){ recQ = v.trim(); renderRecipesView(); }, 140);
+  });
+  el('rcats').addEventListener('click', function(ev){
+    var b = ev.target.closest('[data-rmeal]'); if (!b) return;
+    recMeal = b.dataset.rmeal; renderRecipesView();
+  });
+  el('rec-new').addEventListener('click', function(){
+    switchView('today'); setSub('today', 'log');
+  });
   el('btn-browse').addEventListener('click', function(){ openSearch('snack'); });
   el('btn-newfood').addEventListener('click', function(){ sheet('sh-custom'); });
   el('btn-data').addEventListener('click', function(){ renderDataSheet(); sheet('sh-data'); });
