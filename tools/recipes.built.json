@@ -1,0 +1,1311 @@
+[
+ {
+  "name": "Pad grapao",
+  "servings": 2,
+  "cuisine": "Thai",
+  "base": "rice",
+  "time": 15,
+  "meal": [
+   "lunch",
+   "dinner"
+  ],
+  "items": [
+   {
+    "key": "F002806",
+    "q": "chicken thigh lean raw",
+    "grams": 300,
+    "label": "Chicken thigh, hand chopped to a rough mince"
+   },
+   {
+    "key": "F007661",
+    "q": "rice white cooked",
+    "grams": 300,
+    "label": "Jasmine rice, cooked (55 g dry)"
+   },
+   {
+    "key": "F006191",
+    "q": "oil vegetable",
+    "grams": 28,
+    "label": "Neutral oil, 1 tbsp"
+   },
+   {
+    "key": "F004193",
+    "q": "garlic peeled fresh raw",
+    "grams": 24,
+    "label": "Garlic, 3–4 cloves, roughly chopped"
+   },
+   {
+    "key": "F002899",
+    "q": "chilli fresh raw",
+    "grams": 16,
+    "label": "Bird's eye chilli, 2–4, chopped"
+   },
+   {
+    "key": "F000431",
+    "q": "bean green fresh raw",
+    "grams": 80,
+    "label": "Green beans, 2 cm lengths"
+   },
+   {
+    "key": "F008065",
+    "q": "sauce soy commercial",
+    "grams": 32,
+    "label": "Light soy sauce, 1 tbsp"
+   },
+   {
+    "key": "F008026",
+    "q": "sauce oyster",
+    "grams": 24,
+    "label": "Oyster sauce, 2 tsp"
+   },
+   {
+    "key": "F008065",
+    "q": "sauce soy commercial",
+    "grams": 10,
+    "label": "Dark soy sauce, 1 tsp"
+   },
+   {
+    "key": "F008976",
+    "q": "sugar white granulated",
+    "grams": 8,
+    "label": "Palm or caster sugar, 1 tsp"
+   },
+   {
+    "key": "F009527",
+    "q": "water tap",
+    "grams": 60,
+    "label": "Water"
+   },
+   {
+    "key": "F000396",
+    "q": "basil fresh raw",
+    "grams": 30,
+    "label": "Holy basil leaves, picked"
+   }
+  ],
+  "method": [
+   "Have the rice cooked and hot before you start. The stir fry takes four minutes and won't wait for you.",
+   "Mix the light soy, oyster, dark soy, sugar and water in a small bowl. Set it next to the pan.",
+   "Pound or chop the garlic and chilli together into a coarse paste. A mortar is better than a knife here, it releases more.",
+   "Get a wok or heavy frying pan very hot. Add the oil, then the garlic and chilli. Ten seconds, no more — fragrant, not browned.",
+   "Add the chicken. Spread it out and leave it 45 seconds to catch some colour, then break it up and stir fry until just cooked through, about 2 minutes.",
+   "Add the beans and the sauce mix. It will hiss and reduce. Toss for 60 to 90 seconds until it clings to the meat and there's only a spoonful of liquid left.",
+   "Kill the heat, throw in the basil and fold it through until it wilts. Basil goes bitter if you cook it.",
+   "Rice in the bowl, chicken over the top."
+  ],
+  "mods": [
+   {
+    "name": "Less carbs",
+    "note": "Rice down, cauliflower rice fried in the same pan first.",
+    "set": [
+     {
+      "key": "F007661",
+      "grams": 150
+     }
+    ],
+    "add": [
+     {
+      "key": "F002378",
+      "grams": 240,
+      "label": "Cauliflower rice"
+     }
+    ]
+   },
+   {
+    "name": "More carbs",
+    "note": "More rice for a session day, and a little more sauce so it isn't dry.",
+    "set": [
+     {
+      "key": "F007661",
+      "grams": 480
+     },
+     {
+      "key": "F008065",
+      "grams": 40
+     }
+    ],
+    "add": []
+   },
+   {
+    "name": "More protein",
+    "note": "More chicken plus a fried egg. Sauce up by half or it tastes thin.",
+    "set": [
+     {
+      "key": "F002806",
+      "grams": 440
+     },
+     {
+      "key": "F008065",
+      "grams": 48
+     },
+     {
+      "key": "F008026",
+      "grams": 36
+     },
+     {
+      "key": "F009527",
+      "grams": 90
+     }
+    ],
+    "add": [
+     {
+      "key": "F003729",
+      "grams": 110,
+      "label": "Egg, fried"
+     }
+    ]
+   },
+   {
+    "name": "More fibre",
+    "note": "Double the beans and add snake bean or broccolini.",
+    "set": [
+     {
+      "key": "F000431",
+      "grams": 160
+     }
+    ],
+    "add": [
+     {
+      "key": "F001905",
+      "grams": 160,
+      "label": "Broccolini, cut short"
+     }
+    ]
+   },
+   {
+    "name": "More iron",
+    "note": "A big handful of spinach folded through at the very end, with the basil. The chilli and the lime you squeeze over help you absorb it.",
+    "set": [],
+    "add": [
+     {
+      "key": "F008749",
+      "grams": 200,
+      "label": "Baby spinach, folded through with the basil"
+     }
+    ]
+   }
+  ],
+  "check": {
+   "kcal": 565,
+   "p": 31,
+   "c": 48,
+   "f": 26
+  }
+ },
+ {
+  "name": "Caramelised onion pasta with paprika chicken",
+  "servings": 2,
+  "cuisine": "Italian",
+  "base": "pasta",
+  "time": 40,
+  "meal": [
+   "dinner"
+  ],
+  "items": [
+   {
+    "key": "F002806",
+    "q": "chicken thigh lean raw",
+    "grams": 360,
+    "label": "Chicken thigh, skinless boneless"
+   },
+   {
+    "key": "F006316",
+    "q": "paprika dried ground",
+    "grams": 8,
+    "label": "Smoked paprika, 2 tsp"
+   },
+   {
+    "key": "F004193",
+    "q": "garlic dried ground",
+    "grams": 2,
+    "label": "Garlic powder, ½ tsp"
+   },
+   {
+    "key": "F007878",
+    "q": "salt",
+    "grams": 6,
+    "label": "Fine salt, for chicken and onions"
+   },
+   {
+    "key": "F006618",
+    "q": "pepper black ground",
+    "grams": 1,
+    "label": "Black pepper"
+   },
+   {
+    "key": "F006177",
+    "q": "oil olive",
+    "grams": 36,
+    "label": "Olive oil, for the chicken and the onions"
+   },
+   {
+    "key": "F006225",
+    "q": "onion mature brown peeled raw",
+    "grams": 400,
+    "label": "Brown onion, sliced 3 mm"
+   },
+   {
+    "key": "F009499",
+    "q": "vinegar",
+    "grams": 10,
+    "label": "Balsamic vinegar, 1 tsp"
+   },
+   {
+    "key": "F006458",
+    "q": "pasta plain dried",
+    "grams": 160,
+    "label": "Rigatoni or penne, dried"
+   },
+   {
+    "key": "F002478",
+    "q": "cheese parmesan",
+    "grams": 40,
+    "label": "Parmesan, finely grated"
+   },
+   {
+    "key": "F003251",
+    "q": "cream dairy thickened",
+    "grams": 30,
+    "label": "Thickened cream, 1 tbsp"
+   },
+   {
+    "key": "F006321",
+    "q": "parsley fresh raw",
+    "grams": 10,
+    "label": "Flat leaf parsley, chopped"
+   }
+  ],
+  "method": [
+   "Rub the chicken with the paprika, garlic powder, salt and pepper. Leave it on the bench while you do the onions.",
+   "Heat half the oil in a wide pan over medium low. Add the onions and a pinch of salt. Stir to coat, then let them go 20 to 25 minutes, stirring every few minutes. If they catch, add a tablespoon of water and scrape the base. Collapsed and jammy, deep brown, not black.",
+   "Add the balsamic, stir 30 seconds until it disappears, then tip the onions into a bowl and wipe the pan.",
+   "Salt a pot of water and put the pasta on. Set a timer for one minute under the packet time.",
+   "Heat the rest of the oil over medium high. Chicken in, 5 to 6 minutes on the first side without moving it, 4 to 5 on the second, to 74°C. Rest 5 minutes.",
+   "Lift the pasta straight into the pan with the onions, 80 ml of pasta water and the cream. Medium heat, tossing hard for a minute.",
+   "Off the heat, add the parmesan in two goes, tossing between each. Glossy and coating. More pasta water if it looks tight.",
+   "Slice the chicken across the grain, lay it over the pasta, parsley on top."
+  ],
+  "mods": [
+   {
+    "name": "Less carbs",
+    "note": "Half the pasta, courgette ribbons tossed in at the end.",
+    "set": [
+     {
+      "key": "F006458",
+      "grams": 80
+     }
+    ],
+    "add": [
+     {
+      "key": "F009775",
+      "grams": 300,
+      "label": "Courgette, in ribbons"
+     }
+    ]
+   },
+   {
+    "name": "More carbs",
+    "note": "A bigger bowl for a hard day.",
+    "set": [
+     {
+      "key": "F006458",
+      "grams": 240
+     }
+    ],
+    "add": []
+   },
+   {
+    "name": "More protein",
+    "note": "More chicken, and ricotta through the sauce in place of cream.",
+    "set": [
+     {
+      "key": "F002806",
+      "grams": 500
+     },
+     {
+      "key": "F003251",
+      "grams": 0
+     }
+    ],
+    "add": [
+     {
+      "key": "F002488",
+      "grams": 80,
+      "label": "Ricotta, stirred through off the heat"
+     }
+    ]
+   },
+   {
+    "name": "More fibre",
+    "note": "Wholemeal pasta and a handful of peas.",
+    "set": [],
+    "add": [
+     {
+      "key": "F006536",
+      "grams": 160,
+      "label": "Peas, in with the pasta for the last minute"
+     }
+    ]
+   },
+   {
+    "name": "More calcium",
+    "note": "More parmesan, and ricotta through the sauce as well as the cream.",
+    "set": [
+     {
+      "key": "F002478",
+      "grams": 70
+     }
+    ],
+    "add": [
+     {
+      "key": "F002488",
+      "grams": 100,
+      "label": "Ricotta, stirred through off the heat"
+     }
+    ]
+   }
+  ],
+  "check": {
+   "kcal": 930,
+   "p": 49,
+   "c": 78,
+   "f": 43
+  }
+ },
+ {
+  "name": "Dan dan mian",
+  "servings": 2,
+  "cuisine": "Chinese",
+  "base": "noodles",
+  "time": 20,
+  "meal": [
+   "lunch",
+   "dinner"
+  ],
+  "items": [
+   {
+    "key": "F009076",
+    "q": "tahini",
+    "grams": 44,
+    "label": "Chinese sesame paste, or tahini, 1½ tbsp"
+   },
+   {
+    "key": "F008065",
+    "q": "sauce soy commercial",
+    "grams": 32,
+    "label": "Light soy sauce, 1 tbsp"
+   },
+   {
+    "key": "F006187",
+    "q": "oil sesame",
+    "grams": 20,
+    "label": "Chilli oil, with the sediment, 2 tsp"
+   },
+   {
+    "key": "F009499",
+    "q": "vinegar",
+    "grams": 10,
+    "label": "Chinkiang black vinegar, 1 tsp"
+   },
+   {
+    "key": "F008976",
+    "q": "sugar white granulated",
+    "grams": 4,
+    "label": "Caster sugar, ½ tsp"
+   },
+   {
+    "key": "F006618",
+    "q": "pepper black ground",
+    "grams": 3,
+    "label": "Sichuan peppercorns, toasted and ground"
+   },
+   {
+    "key": "F004193",
+    "q": "garlic peeled fresh raw",
+    "grams": 10,
+    "label": "Garlic, grated"
+   },
+   {
+    "key": "F008936",
+    "q": "stock liquid",
+    "grams": 80,
+    "label": "Chicken stock, or hot noodle water"
+   },
+   {
+    "key": "F007057",
+    "q": "pork mince raw",
+    "grams": 240,
+    "label": "Pork mince"
+   },
+   {
+    "key": "F006191",
+    "q": "oil vegetable",
+    "grams": 10,
+    "label": "Neutral oil, 1 tsp"
+   },
+   {
+    "key": "F009588",
+    "q": "wine white",
+    "grams": 10,
+    "label": "Shaoxing wine, 1 tsp"
+   },
+   {
+    "key": "F008065",
+    "q": "sauce soy commercial",
+    "grams": 10,
+    "label": "Dark soy sauce, 1 tsp"
+   },
+   {
+    "key": "F001996",
+    "q": "cabbage chinese raw",
+    "grams": 40,
+    "label": "Sui mi ya cai, rinsed and squeezed dry"
+   },
+   {
+    "key": "F006458",
+    "q": "noodle dried",
+    "grams": 140,
+    "label": "Wheat noodles, dried"
+   },
+   {
+    "key": "F001301",
+    "q": "bok choy raw",
+    "grams": 160,
+    "label": "Bok choy or gai lan, halved"
+   },
+   {
+    "key": "F006250",
+    "q": "onion spring fresh raw",
+    "grams": 20,
+    "label": "Spring onion, sliced thin"
+   },
+   {
+    "key": "F006110",
+    "q": "peanut roasted",
+    "grams": 20,
+    "label": "Roasted peanuts, crushed"
+   }
+  ],
+  "method": [
+   "Toast the Sichuan peppercorns in a dry pan for 60 seconds until you can smell them, then grind. Do this first, it makes the dish.",
+   "Whisk all the sauce ingredients together in the bowl you're going to eat from. It'll look split at first — keep going and it emulsifies to the texture of thin cream. A splash more stock if it's claggy.",
+   "Heat the oil in a wok over high. Pork in, press it flat and leave it 2 minutes to crust, then break it up and keep frying until properly browned and a bit crisp, 4 to 5 minutes. Don't rush this; soft mince makes a sad bowl.",
+   "Add the Shaoxing and dark soy, let it sizzle away, then the ya cai. One more minute. Off the heat.",
+   "Boil the noodles to packet time. Greens in for the last 60 seconds. Reserve 50 ml of the water before draining.",
+   "Noodles straight into the sauce bowl, greens on the side, pork over the top, then spring onion and peanuts.",
+   "Toss it all together yourself before the first mouthful. It's meant to be mixed, not layered."
+  ],
+  "mods": [
+   {
+    "name": "Less carbs",
+    "note": "Half the noodles, shredded wombok for the bulk.",
+    "set": [
+     {
+      "key": "F006458",
+      "grams": 70
+     }
+    ],
+    "add": [
+     {
+      "key": "F001996",
+      "grams": 240,
+      "label": "Wombok, shredded"
+     }
+    ]
+   },
+   {
+    "name": "More carbs",
+    "note": "A full nest and a half for a session day.",
+    "set": [
+     {
+      "key": "F006458",
+      "grams": 220
+     }
+    ],
+    "add": []
+   },
+   {
+    "name": "More protein",
+    "note": "More pork and a soft boiled egg. Sauce up by a third.",
+    "set": [
+     {
+      "key": "F007057",
+      "grams": 360
+     },
+     {
+      "key": "F009076",
+      "grams": 60
+     },
+     {
+      "key": "F008065",
+      "grams": 42
+     },
+     {
+      "key": "F008936",
+      "grams": 110
+     }
+    ],
+    "add": [
+     {
+      "key": "F003729",
+      "grams": 130,
+      "label": "Egg, soft boiled"
+     }
+    ]
+   },
+   {
+    "name": "More fibre",
+    "note": "Double the greens.",
+    "set": [
+     {
+      "key": "F001301",
+      "grams": 320
+     }
+    ],
+    "add": []
+   },
+   {
+    "name": "More calcium",
+    "note": "Sesame paste is the quiet source here. More of it, more greens, and sesame seeds over the top.",
+    "set": [
+     {
+      "key": "F009076",
+      "grams": 64
+     },
+     {
+      "key": "F001301",
+      "grams": 280
+     }
+    ],
+    "add": [
+     {
+      "key": "F008214",
+      "grams": 16,
+      "label": "Toasted sesame seeds, over the top"
+     }
+    ]
+   }
+  ],
+  "check": {
+   "kcal": 800,
+   "p": 38,
+   "c": 58,
+   "f": 42
+  }
+ },
+ {
+  "name": "Protein yoghurt bowl",
+  "servings": 2,
+  "cuisine": "None",
+  "base": "yoghurt",
+  "time": 5,
+  "meal": [
+   "breakfast",
+   "snack"
+  ],
+  "items": [
+   {
+    "key": "F009690",
+    "q": "yoghurt natural greek",
+    "grams": 200,
+    "label": "Greek yoghurt, natural, 0–2% fat"
+   },
+   {
+    "key": "F007493",
+    "q": "protein powder whey",
+    "grams": 60,
+    "label": "Vanilla protein powder"
+   },
+   {
+    "key": "F007502",
+    "q": "psyllium",
+    "grams": 20,
+    "label": "Psyllium husk"
+   },
+   {
+    "key": "F005637",
+    "q": "milk cow fluid skim",
+    "grams": 160,
+    "label": "Milk, or water"
+   },
+   {
+    "key": "F001290",
+    "q": "blueberry raw",
+    "grams": 160,
+    "label": "Blueberries"
+   },
+   {
+    "key": "F005839",
+    "q": "breakfast cereal muesli",
+    "grams": 60,
+    "label": "Granola"
+   }
+  ],
+  "method": [
+   "Put the yoghurt in a bowl. Add the protein powder and about two thirds of the milk. Stir until there are no dry pockets. Thick but still moving.",
+   "Add the psyllium and the rest of the milk. Stir fast — it starts gelling within seconds.",
+   "Leave it 5 minutes. The psyllium pulls in the rest of the liquid and the texture goes from gritty to smooth and pudding-like. Beat in another splash if it's stiffer than you like.",
+   "Blueberries and granola on top. Granola last, and eat it soon after or it softens.",
+   "Drink a glass of water with this. 10 g of psyllium needs it."
+  ],
+  "mods": [
+   {
+    "name": "Less carbs",
+    "note": "Less granola and fruit, flaked almonds for the crunch.",
+    "set": [
+     {
+      "key": "F005839",
+      "grams": 30
+     },
+     {
+      "key": "F001290",
+      "grams": 100
+     }
+    ],
+    "add": [
+     {
+      "key": "F006081",
+      "grams": 20,
+      "label": "Flaked almonds"
+     }
+    ]
+   },
+   {
+    "name": "More carbs",
+    "note": "Oats stirred in and more fruit — an overnight version, made the night before.",
+    "set": [
+     {
+      "key": "F001290",
+      "grams": 240
+     },
+     {
+      "key": "F005637",
+      "grams": 240
+     }
+    ],
+    "add": [
+     {
+      "key": "F006143",
+      "grams": 60,
+      "label": "Rolled oats, stirred in at step 2"
+     }
+    ]
+   },
+   {
+    "name": "More protein",
+    "note": "Double the yoghurt and a little more powder.",
+    "set": [
+     {
+      "key": "F009690",
+      "grams": 400
+     },
+     {
+      "key": "F007493",
+      "grams": 80
+     },
+     {
+      "key": "F005637",
+      "grams": 220
+     }
+    ],
+    "add": []
+   },
+   {
+    "name": "More fibre",
+    "note": "Chia as well as psyllium, and the liquid to carry it. Don't go past 20 g of husk and seed in one sitting unless you're used to it.",
+    "set": [
+     {
+      "key": "F005637",
+      "grams": 280
+     }
+    ],
+    "add": [
+     {
+      "key": "F008209",
+      "grams": 20,
+      "label": "Chia seeds, at step 2"
+     }
+    ]
+   },
+   {
+    "name": "More omega-3",
+    "note": "Chia and walnuts. Both are ALA rather than the long chain sort — useful, but not a substitute for oily fish.",
+    "set": [],
+    "add": [
+     {
+      "key": "F008209",
+      "grams": 24,
+      "label": "Chia seeds, at step 2"
+     },
+     {
+      "key": "F006131",
+      "grams": 40,
+      "label": "Walnuts, roughly broken"
+     }
+    ]
+   }
+  ],
+  "check": {
+   "kcal": 380,
+   "p": 36,
+   "c": 34,
+   "f": 7
+  }
+ },
+ {
+  "name": "Chicken breast wrap",
+  "servings": 2,
+  "cuisine": "None",
+  "base": "bread",
+  "time": 15,
+  "meal": [
+   "lunch"
+  ],
+  "items": [
+   {
+    "key": "F002594",
+    "q": "chicken breast lean raw",
+    "grams": 300,
+    "label": "Chicken breast"
+   },
+   {
+    "key": "F006177",
+    "q": "oil olive",
+    "grams": 10,
+    "label": "Olive oil, 1 tsp"
+   },
+   {
+    "key": "F003327",
+    "q": "cumin seed dried ground",
+    "grams": 2,
+    "label": "Ground cumin, ½ tsp"
+   },
+   {
+    "key": "F006316",
+    "q": "paprika dried ground",
+    "grams": 2,
+    "label": "Smoked paprika, ½ tsp"
+   },
+   {
+    "key": "F006281",
+    "q": "oregano dried",
+    "grams": 1,
+    "label": "Dried oregano, ½ tsp"
+   },
+   {
+    "key": "F007878",
+    "q": "salt",
+    "grams": 4,
+    "label": "Fine salt"
+   },
+   {
+    "key": "F006618",
+    "q": "pepper black ground",
+    "grams": 1,
+    "label": "Black pepper"
+   },
+   {
+    "key": "F001411",
+    "q": "bread flat tortilla wholemeal",
+    "grams": 120,
+    "label": "Wholemeal tortilla, 1 large"
+   },
+   {
+    "key": "F005191",
+    "q": "lettuce cos raw",
+    "grams": 80,
+    "label": "Cos lettuce, shredded"
+   },
+   {
+    "key": "F009193",
+    "q": "tomato fresh raw",
+    "grams": 80,
+    "label": "Tomato, sliced"
+   },
+   {
+    "key": "F003320",
+    "q": "cucumber raw",
+    "grams": 60,
+    "label": "Cucumber, sliced thin"
+   },
+   {
+    "key": "F009800",
+    "q": "onion mature red peeled raw",
+    "grams": 40,
+    "label": "Red onion, sliced thin"
+   },
+   {
+    "key": "F002452",
+    "q": "cheese feta",
+    "grams": 40,
+    "label": "Feta, crumbled"
+   },
+   {
+    "key": "F009690",
+    "q": "yoghurt natural greek",
+    "grams": 80,
+    "label": "Greek yoghurt, for the dressing"
+   },
+   {
+    "key": "F004726",
+    "q": "juice lemon",
+    "grams": 10,
+    "label": "Lemon juice, 1 tsp"
+   }
+  ],
+  "method": [
+   "Butterfly the breast, or lay it under baking paper and flatten the thick end until it's an even 1.5 cm. Even thickness is the whole trick with breast.",
+   "Rub with the oil, then the cumin, paprika, oregano, salt and pepper.",
+   "Medium high pan, dry. Chicken in, 4 minutes, turn, 3 to 4 minutes more, to 72°C. Rest 5 minutes, then slice on an angle.",
+   "Mix the yoghurt, lemon juice and a pinch of garlic powder and salt for the dressing.",
+   "Warm the tortilla 20 seconds a side in the same pan. It stops it cracking when you roll.",
+   "Spread the dressing down the middle third, leaving 3 cm clear at each end. Lettuce, cucumber, tomato, onion, then the chicken, then the feta.",
+   "Fold the bottom up over the filling, fold both sides in, and roll away from you, keeping it tight.",
+   "Wrap the bottom half in baking paper and cut on the diagonal."
+  ],
+  "mods": [
+   {
+    "name": "Less carbs",
+    "note": "Cos leaves as cups instead of the tortilla.",
+    "set": [
+     {
+      "key": "F001411",
+      "grams": 0
+     }
+    ],
+    "add": [
+     {
+      "key": "F005191",
+      "grams": 120,
+      "label": "Cos leaves, as cups"
+     }
+    ]
+   },
+   {
+    "name": "More protein",
+    "note": "More chicken, more dressing, more feta. You may need a second tortilla to get it closed.",
+    "set": [
+     {
+      "key": "F002594",
+      "grams": 440
+     },
+     {
+      "key": "F009690",
+      "grams": 120
+     },
+     {
+      "key": "F002452",
+      "grams": 60
+     }
+    ],
+    "add": []
+   },
+   {
+    "name": "More fibre",
+    "note": "Swap in a high fibre wrap and pile in more salad.",
+    "set": [
+     {
+      "key": "F005191",
+      "grams": 140
+     },
+     {
+      "key": "F003320",
+      "grams": 120
+     },
+     {
+      "key": "F009193",
+      "grams": 140
+     }
+    ],
+    "add": []
+   },
+   {
+    "name": "More calcium",
+    "note": "More feta and a bigger dressing.",
+    "set": [
+     {
+      "key": "F002452",
+      "grams": 70
+     },
+     {
+      "key": "F009690",
+      "grams": 140
+     }
+    ],
+    "add": []
+   }
+  ],
+  "check": {
+   "kcal": 520,
+   "p": 45,
+   "c": 34,
+   "f": 20
+  }
+ },
+ {
+  "name": "Chicken garden salad",
+  "servings": 2,
+  "cuisine": "None",
+  "base": "salad",
+  "time": 20,
+  "meal": [
+   "lunch",
+   "dinner"
+  ],
+  "items": [
+   {
+    "key": "F002594",
+    "q": "chicken breast lean raw",
+    "grams": 320,
+    "label": "Chicken breast"
+   },
+   {
+    "key": "F006177",
+    "q": "oil olive",
+    "grams": 34,
+    "label": "Olive oil, for cooking and for the dressing"
+   },
+   {
+    "key": "F007878",
+    "q": "salt",
+    "grams": 5,
+    "label": "Fine salt"
+   },
+   {
+    "key": "F006618",
+    "q": "pepper black ground",
+    "grams": 2,
+    "label": "Black pepper"
+   },
+   {
+    "key": "F005191",
+    "q": "lettuce cos raw",
+    "grams": 200,
+    "label": "Cos or mixed leaves"
+   },
+   {
+    "key": "F009190",
+    "q": "tomato cherry raw",
+    "grams": 200,
+    "label": "Cherry tomatoes, halved"
+   },
+   {
+    "key": "F003320",
+    "q": "cucumber raw",
+    "grams": 160,
+    "label": "Cucumber, half moons"
+   },
+   {
+    "key": "F002247",
+    "q": "capsicum red raw",
+    "grams": 80,
+    "label": "Red capsicum, sliced"
+   },
+   {
+    "key": "F009800",
+    "q": "onion mature red peeled raw",
+    "grams": 60,
+    "label": "Red onion, paper thin"
+   },
+   {
+    "key": "F002276",
+    "q": "carrot mature peeled raw",
+    "grams": 100,
+    "label": "Carrot, coarsely grated"
+   },
+   {
+    "key": "F008212",
+    "q": "pumpkin seed",
+    "grams": 30,
+    "label": "Pumpkin seeds, toasted"
+   },
+   {
+    "key": "F004726",
+    "q": "juice lemon",
+    "grams": 18,
+    "label": "Lemon juice, 2 tsp"
+   },
+   {
+    "key": "F005973",
+    "q": "mustard",
+    "grams": 6,
+    "label": "Dijon mustard, ½ tsp"
+   },
+   {
+    "key": "F004380",
+    "q": "honey",
+    "grams": 6,
+    "label": "Honey, ½ tsp"
+   }
+  ],
+  "method": [
+   "Flatten the breast to an even thickness, rub with 5 g of the oil, salt and pepper. Medium high pan, 4 minutes, turn, 3 to 4 minutes, to 72°C. Rest 5 minutes, then slice.",
+   "Soak the sliced onion in cold water for 10 minutes while you do everything else, then drain. It takes the harsh edge off.",
+   "Shake or whisk the rest of the oil with the lemon, mustard and honey until the mustard thickens it slightly.",
+   "Toast the pumpkin seeds in a dry pan for 2 minutes, until they start popping. Tip them straight out or they'll keep cooking.",
+   "Leaves, tomato, cucumber, capsicum, carrot and drained onion in a big bowl. Dress and toss with your hands, gently, until every leaf has a shine.",
+   "Plate it, chicken over the top, seeds scattered last."
+  ],
+  "mods": [
+   {
+    "name": "Less carbs",
+    "note": "Drop the carrot and the honey, add avocado. It is already low carb.",
+    "set": [
+     {
+      "key": "F002276",
+      "grams": 0
+     },
+     {
+      "key": "F004380",
+      "grams": 0
+     }
+    ],
+    "add": [
+     {
+      "key": "F000162",
+      "grams": 120,
+      "label": "Avocado"
+     }
+    ]
+   },
+   {
+    "name": "More carbs",
+    "note": "Freekeh or quinoa and roast pumpkin turn it into a proper dinner.",
+    "set": [],
+    "add": [
+     {
+      "key": "F007596",
+      "grams": 200,
+      "label": "Cooked freekeh or quinoa"
+     },
+     {
+      "key": "F011005",
+      "grams": 120,
+      "label": "Roast pumpkin"
+     }
+    ]
+   },
+   {
+    "name": "More protein",
+    "note": "More chicken, a boiled egg and feta.",
+    "set": [
+     {
+      "key": "F002594",
+      "grams": 480
+     }
+    ],
+    "add": [
+     {
+      "key": "F003729",
+      "grams": 130,
+      "label": "Egg, boiled"
+     },
+     {
+      "key": "F002452",
+      "grams": 60,
+      "label": "Feta"
+     }
+    ]
+   },
+   {
+    "name": "More fibre",
+    "note": "Chickpeas through the leaves.",
+    "set": [],
+    "add": [
+     {
+      "key": "F002880",
+      "grams": 160,
+      "label": "Chickpeas, drained"
+     }
+    ]
+   },
+   {
+    "name": "More iron",
+    "note": "Spinach through the leaves and chickpeas on top. The lemon and capsicum are already doing the vitamin C work that makes plant iron count.",
+    "set": [],
+    "add": [
+     {
+      "key": "F008749",
+      "grams": 120,
+      "label": "Baby spinach, through the leaves"
+     },
+     {
+      "key": "F002880",
+      "grams": 160,
+      "label": "Chickpeas, drained"
+     }
+    ]
+   }
+  ],
+  "check": {
+   "kcal": 500,
+   "p": 43,
+   "c": 26,
+   "f": 24
+  }
+ },
+ {
+  "name": "Eggs and salmon on rye",
+  "servings": 2,
+  "cuisine": "None",
+  "base": "eggs",
+  "time": 10,
+  "meal": [
+   "breakfast"
+  ],
+  "items": [
+   {
+    "key": "F003729",
+    "q": "egg chicken whole raw",
+    "grams": 220,
+    "label": "Eggs, 2 large"
+   },
+   {
+    "key": "F007864",
+    "q": "salmon smoked",
+    "grams": 100,
+    "label": "Smoked salmon"
+   },
+   {
+    "key": "F001440",
+    "q": "bread rye",
+    "grams": 120,
+    "label": "Light rye bread, 2 slices"
+   },
+   {
+    "key": "F009193",
+    "q": "tomato fresh raw",
+    "grams": 160,
+    "label": "Tomato, sliced 5 mm"
+   },
+   {
+    "key": "F001973",
+    "q": "butter",
+    "grams": 10,
+    "label": "Butter, for the pan"
+   },
+   {
+    "key": "F002435",
+    "q": "cheese cottage",
+    "grams": 60,
+    "label": "Cottage cheese, or cream cheese"
+   },
+   {
+    "key": "F003509",
+    "q": "dill fresh",
+    "grams": 6,
+    "label": "Fresh dill, torn"
+   },
+   {
+    "key": "F002907",
+    "q": "chives fresh",
+    "grams": 10,
+    "label": "Chives, sliced"
+   },
+   {
+    "key": "F002220",
+    "q": "caper",
+    "grams": 10,
+    "label": "Capers, drained"
+   },
+   {
+    "key": "F004726",
+    "q": "juice lemon",
+    "grams": 20,
+    "label": "Lemon, for squeezing"
+   }
+  ],
+  "method": [
+   "Beat the eggs with a little salt until the whites and yolks are one colour, no more than that.",
+   "Slice the tomato, lay it on the plate, and season it now. Tomato needs salt to taste of anything.",
+   "Toast the rye.",
+   "Melt the butter in a non stick pan over low heat — not medium. Eggs in, and stir slowly with a spatula, pushing the set curds into the centre. Two to three minutes. Take it off while it still looks slightly underdone; it keeps cooking on the plate.",
+   "Spread the cottage cheese on the toast, tomato over it, then the eggs.",
+   "Drape the salmon over the top, then the capers, dill and chives. Squeeze the lemon over and finish with pepper."
+  ],
+  "mods": [
+   {
+    "name": "Less carbs",
+    "note": "One slice of rye, the rest on wilted spinach.",
+    "set": [
+     {
+      "key": "F001440",
+      "grams": 60
+     }
+    ],
+    "add": [
+     {
+      "key": "F008760",
+      "grams": 160,
+      "label": "Spinach, wilted"
+     }
+    ]
+   },
+   {
+    "name": "More carbs",
+    "note": "A third slice and a little honey on the side for a session morning.",
+    "set": [
+     {
+      "key": "F001440",
+      "grams": 180
+     }
+    ],
+    "add": []
+   },
+   {
+    "name": "More protein",
+    "note": "One whole egg plus liquid egg white, more salmon and cottage cheese.",
+    "set": [
+     {
+      "key": "F003729",
+      "grams": 110
+     },
+     {
+      "key": "F007864",
+      "grams": 160
+     },
+     {
+      "key": "F002435",
+      "grams": 120
+     }
+    ],
+    "add": [
+     {
+      "key": "F003706",
+      "grams": 240,
+      "label": "Liquid egg white"
+     }
+    ]
+   },
+   {
+    "name": "More fibre",
+    "note": "Wholegrain rye and avocado under the eggs.",
+    "set": [],
+    "add": [
+     {
+      "key": "F000162",
+      "grams": 100,
+      "label": "Avocado, smashed"
+     }
+    ]
+   },
+   {
+    "name": "More omega-3",
+    "note": "More salmon. This is the long chain sort, which is the one that is hard to get anywhere else.",
+    "set": [
+     {
+      "key": "F007864",
+      "grams": 200
+     }
+    ],
+    "add": []
+   }
+  ],
+  "check": {
+   "kcal": 460,
+   "p": 32,
+   "c": 30,
+   "f": 22
+  }
+ }
+]

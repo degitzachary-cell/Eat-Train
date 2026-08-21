@@ -1,0 +1,1201 @@
+[
+ {
+  "name": "Pad grapao",
+  "cuisine": "Thai",
+  "base": "rice",
+  "time": 15,
+  "meal": [
+   "lunch",
+   "dinner"
+  ],
+  "check": {
+   "kcal": 565,
+   "p": 31,
+   "c": 48,
+   "f": 26
+  },
+  "items": [
+   [
+    "chicken thigh lean raw",
+    150,
+    "Chicken thigh, hand chopped to a rough mince"
+   ],
+   [
+    "rice white cooked",
+    150,
+    "Jasmine rice, cooked (55 g dry)"
+   ],
+   [
+    "oil vegetable",
+    14,
+    "Neutral oil, 1 tbsp"
+   ],
+   [
+    "garlic peeled fresh raw",
+    12,
+    "Garlic, 3–4 cloves, roughly chopped"
+   ],
+   [
+    "chilli fresh raw",
+    8,
+    "Bird's eye chilli, 2–4, chopped"
+   ],
+   [
+    "bean green fresh raw",
+    40,
+    "Green beans, 2 cm lengths"
+   ],
+   [
+    "sauce soy commercial",
+    16,
+    "Light soy sauce, 1 tbsp"
+   ],
+   [
+    "sauce oyster",
+    12,
+    "Oyster sauce, 2 tsp"
+   ],
+   [
+    "sauce soy commercial",
+    5,
+    "Dark soy sauce, 1 tsp"
+   ],
+   [
+    "sugar white granulated",
+    4,
+    "Palm or caster sugar, 1 tsp"
+   ],
+   [
+    "water tap",
+    30,
+    "Water"
+   ],
+   [
+    "basil fresh raw",
+    15,
+    "Holy basil leaves, picked"
+   ]
+  ],
+  "method": [
+   "Have the rice cooked and hot before you start. The stir fry takes four minutes and won't wait for you.",
+   "Mix the light soy, oyster, dark soy, sugar and water in a small bowl. Set it next to the pan.",
+   "Pound or chop the garlic and chilli together into a coarse paste. A mortar is better than a knife here, it releases more.",
+   "Get a wok or heavy frying pan very hot. Add the oil, then the garlic and chilli. Ten seconds, no more — fragrant, not browned.",
+   "Add the chicken. Spread it out and leave it 45 seconds to catch some colour, then break it up and stir fry until just cooked through, about 2 minutes.",
+   "Add the beans and the sauce mix. It will hiss and reduce. Toss for 60 to 90 seconds until it clings to the meat and there's only a spoonful of liquid left.",
+   "Kill the heat, throw in the basil and fold it through until it wilts. Basil goes bitter if you cook it.",
+   "Rice in the bowl, chicken over the top."
+  ],
+  "mods": [
+   {
+    "name": "Less carbs",
+    "note": "Rice down, cauliflower rice fried in the same pan first.",
+    "set": [
+     [
+      "rice white cooked",
+      75
+     ]
+    ],
+    "add": [
+     [
+      "cauliflower fresh raw",
+      120,
+      "Cauliflower rice"
+     ]
+    ]
+   },
+   {
+    "name": "More carbs",
+    "note": "More rice for a session day, and a little more sauce so it isn't dry.",
+    "set": [
+     [
+      "rice white cooked",
+      240
+     ],
+     [
+      "sauce soy commercial",
+      20
+     ]
+    ]
+   },
+   {
+    "name": "More protein",
+    "note": "More chicken plus a fried egg. Sauce up by half or it tastes thin.",
+    "set": [
+     [
+      "chicken thigh lean raw",
+      220
+     ],
+     [
+      "sauce soy commercial",
+      24
+     ],
+     [
+      "sauce oyster",
+      18
+     ],
+     [
+      "water tap",
+      45
+     ]
+    ],
+    "add": [
+     [
+      "egg chicken whole raw",
+      55,
+      "Egg, fried"
+     ]
+    ]
+   },
+   {
+    "name": "More fibre",
+    "note": "Double the beans and add snake bean or broccolini.",
+    "set": [
+     [
+      "bean green fresh raw",
+      80
+     ]
+    ],
+    "add": [
+     [
+      "broccoli fresh raw",
+      80,
+      "Broccolini, cut short"
+     ]
+    ]
+   },
+   {
+    "name": "More iron",
+    "note": "A big handful of spinach folded through at the very end, with the basil. The chilli and the lime you squeeze over help you absorb it.",
+    "add": [
+     [
+      "spinach baby raw",
+      100,
+      "Baby spinach, folded through with the basil"
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "name": "Caramelised onion pasta with paprika chicken",
+  "cuisine": "Italian",
+  "base": "pasta",
+  "time": 40,
+  "meal": [
+   "dinner"
+  ],
+  "check": {
+   "kcal": 930,
+   "p": 49,
+   "c": 78,
+   "f": 43
+  },
+  "items": [
+   [
+    "chicken thigh lean raw",
+    180,
+    "Chicken thigh, skinless boneless"
+   ],
+   [
+    "paprika dried ground",
+    4,
+    "Smoked paprika, 2 tsp"
+   ],
+   [
+    "garlic dried ground",
+    1,
+    "Garlic powder, ½ tsp"
+   ],
+   [
+    "salt",
+    3,
+    "Fine salt, for chicken and onions"
+   ],
+   [
+    "pepper black ground",
+    0.5,
+    "Black pepper"
+   ],
+   [
+    "oil olive",
+    18,
+    "Olive oil, for the chicken and the onions"
+   ],
+   [
+    "onion mature brown peeled raw",
+    200,
+    "Brown onion, sliced 3 mm"
+   ],
+   [
+    "vinegar",
+    5,
+    "Balsamic vinegar, 1 tsp"
+   ],
+   [
+    "pasta plain dried",
+    80,
+    "Rigatoni or penne, dried"
+   ],
+   [
+    "cheese parmesan",
+    20,
+    "Parmesan, finely grated"
+   ],
+   [
+    "cream dairy thickened",
+    15,
+    "Thickened cream, 1 tbsp"
+   ],
+   [
+    "parsley fresh raw",
+    5,
+    "Flat leaf parsley, chopped"
+   ]
+  ],
+  "method": [
+   "Rub the chicken with the paprika, garlic powder, salt and pepper. Leave it on the bench while you do the onions.",
+   "Heat half the oil in a wide pan over medium low. Add the onions and a pinch of salt. Stir to coat, then let them go 20 to 25 minutes, stirring every few minutes. If they catch, add a tablespoon of water and scrape the base. Collapsed and jammy, deep brown, not black.",
+   "Add the balsamic, stir 30 seconds until it disappears, then tip the onions into a bowl and wipe the pan.",
+   "Salt a pot of water and put the pasta on. Set a timer for one minute under the packet time.",
+   "Heat the rest of the oil over medium high. Chicken in, 5 to 6 minutes on the first side without moving it, 4 to 5 on the second, to 74°C. Rest 5 minutes.",
+   "Lift the pasta straight into the pan with the onions, 80 ml of pasta water and the cream. Medium heat, tossing hard for a minute.",
+   "Off the heat, add the parmesan in two goes, tossing between each. Glossy and coating. More pasta water if it looks tight.",
+   "Slice the chicken across the grain, lay it over the pasta, parsley on top."
+  ],
+  "mods": [
+   {
+    "name": "Less carbs",
+    "note": "Half the pasta, courgette ribbons tossed in at the end.",
+    "set": [
+     [
+      "pasta plain dried",
+      40
+     ]
+    ],
+    "add": [
+     [
+      "zucchini fresh raw",
+      150,
+      "Courgette, in ribbons"
+     ]
+    ]
+   },
+   {
+    "name": "More carbs",
+    "note": "A bigger bowl for a hard day.",
+    "set": [
+     [
+      "pasta plain dried",
+      120
+     ]
+    ]
+   },
+   {
+    "name": "More protein",
+    "note": "More chicken, and ricotta through the sauce in place of cream.",
+    "set": [
+     [
+      "chicken thigh lean raw",
+      250
+     ],
+     [
+      "cream dairy thickened",
+      0
+     ]
+    ],
+    "add": [
+     [
+      "cheese ricotta",
+      40,
+      "Ricotta, stirred through off the heat"
+     ]
+    ]
+   },
+   {
+    "name": "More fibre",
+    "note": "Wholemeal pasta and a handful of peas.",
+    "add": [
+     [
+      "pea green frozen",
+      80,
+      "Peas, in with the pasta for the last minute"
+     ]
+    ]
+   },
+   {
+    "name": "More calcium",
+    "note": "More parmesan, and ricotta through the sauce as well as the cream.",
+    "set": [
+     [
+      "cheese parmesan",
+      35
+     ]
+    ],
+    "add": [
+     [
+      "cheese ricotta",
+      50,
+      "Ricotta, stirred through off the heat"
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "name": "Dan dan mian",
+  "cuisine": "Chinese",
+  "base": "noodles",
+  "time": 20,
+  "meal": [
+   "lunch",
+   "dinner"
+  ],
+  "check": {
+   "kcal": 800,
+   "p": 38,
+   "c": 58,
+   "f": 42
+  },
+  "items": [
+   [
+    "tahini",
+    22,
+    "Chinese sesame paste, or tahini, 1½ tbsp"
+   ],
+   [
+    "sauce soy commercial",
+    16,
+    "Light soy sauce, 1 tbsp"
+   ],
+   [
+    "oil sesame",
+    10,
+    "Chilli oil, with the sediment, 2 tsp"
+   ],
+   [
+    "vinegar",
+    5,
+    "Chinkiang black vinegar, 1 tsp"
+   ],
+   [
+    "sugar white granulated",
+    2,
+    "Caster sugar, ½ tsp"
+   ],
+   [
+    "pepper black ground",
+    1.5,
+    "Sichuan peppercorns, toasted and ground"
+   ],
+   [
+    "garlic peeled fresh raw",
+    5,
+    "Garlic, grated"
+   ],
+   [
+    "stock liquid",
+    40,
+    "Chicken stock, or hot noodle water"
+   ],
+   [
+    "pork mince raw",
+    120,
+    "Pork mince"
+   ],
+   [
+    "oil vegetable",
+    5,
+    "Neutral oil, 1 tsp"
+   ],
+   [
+    "wine white",
+    5,
+    "Shaoxing wine, 1 tsp"
+   ],
+   [
+    "sauce soy commercial",
+    5,
+    "Dark soy sauce, 1 tsp"
+   ],
+   [
+    "cabbage chinese raw",
+    20,
+    "Sui mi ya cai, rinsed and squeezed dry"
+   ],
+   [
+    "noodle dried",
+    70,
+    "Wheat noodles, dried"
+   ],
+   [
+    "bok choy raw",
+    80,
+    "Bok choy or gai lan, halved"
+   ],
+   [
+    "onion spring fresh raw",
+    10,
+    "Spring onion, sliced thin"
+   ],
+   [
+    "peanut roasted",
+    10,
+    "Roasted peanuts, crushed"
+   ]
+  ],
+  "method": [
+   "Toast the Sichuan peppercorns in a dry pan for 60 seconds until you can smell them, then grind. Do this first, it makes the dish.",
+   "Whisk all the sauce ingredients together in the bowl you're going to eat from. It'll look split at first — keep going and it emulsifies to the texture of thin cream. A splash more stock if it's claggy.",
+   "Heat the oil in a wok over high. Pork in, press it flat and leave it 2 minutes to crust, then break it up and keep frying until properly browned and a bit crisp, 4 to 5 minutes. Don't rush this; soft mince makes a sad bowl.",
+   "Add the Shaoxing and dark soy, let it sizzle away, then the ya cai. One more minute. Off the heat.",
+   "Boil the noodles to packet time. Greens in for the last 60 seconds. Reserve 50 ml of the water before draining.",
+   "Noodles straight into the sauce bowl, greens on the side, pork over the top, then spring onion and peanuts.",
+   "Toss it all together yourself before the first mouthful. It's meant to be mixed, not layered."
+  ],
+  "mods": [
+   {
+    "name": "Less carbs",
+    "note": "Half the noodles, shredded wombok for the bulk.",
+    "set": [
+     [
+      "noodle dried",
+      35
+     ]
+    ],
+    "add": [
+     [
+      "cabbage chinese raw",
+      120,
+      "Wombok, shredded"
+     ]
+    ]
+   },
+   {
+    "name": "More carbs",
+    "note": "A full nest and a half for a session day.",
+    "set": [
+     [
+      "noodle dried",
+      110
+     ]
+    ]
+   },
+   {
+    "name": "More protein",
+    "note": "More pork and a soft boiled egg. Sauce up by a third.",
+    "set": [
+     [
+      "pork mince raw",
+      180
+     ],
+     [
+      "tahini",
+      30
+     ],
+     [
+      "sauce soy commercial",
+      21
+     ],
+     [
+      "stock liquid",
+      55
+     ]
+    ],
+    "add": [
+     [
+      "egg chicken whole raw",
+      65,
+      "Egg, soft boiled"
+     ]
+    ]
+   },
+   {
+    "name": "More fibre",
+    "note": "Double the greens.",
+    "set": [
+     [
+      "bok choy raw",
+      160
+     ]
+    ]
+   },
+   {
+    "name": "More calcium",
+    "note": "Sesame paste is the quiet source here. More of it, more greens, and sesame seeds over the top.",
+    "set": [
+     [
+      "tahini",
+      32
+     ],
+     [
+      "bok choy raw",
+      140
+     ]
+    ],
+    "add": [
+     [
+      "sesame seed",
+      8,
+      "Toasted sesame seeds, over the top"
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "name": "Protein yoghurt bowl",
+  "cuisine": "None",
+  "base": "yoghurt",
+  "time": 5,
+  "meal": [
+   "breakfast",
+   "snack"
+  ],
+  "check": {
+   "kcal": 380,
+   "p": 36,
+   "c": 34,
+   "f": 7
+  },
+  "items": [
+   [
+    "yoghurt natural greek",
+    100,
+    "Greek yoghurt, natural, 0–2% fat"
+   ],
+   [
+    "protein powder whey",
+    30,
+    "Vanilla protein powder"
+   ],
+   [
+    "psyllium",
+    10,
+    "Psyllium husk"
+   ],
+   [
+    "milk cow fluid skim",
+    80,
+    "Milk, or water"
+   ],
+   [
+    "blueberry raw",
+    80,
+    "Blueberries"
+   ],
+   [
+    "breakfast cereal muesli",
+    30,
+    "Granola"
+   ]
+  ],
+  "method": [
+   "Put the yoghurt in a bowl. Add the protein powder and about two thirds of the milk. Stir until there are no dry pockets. Thick but still moving.",
+   "Add the psyllium and the rest of the milk. Stir fast — it starts gelling within seconds.",
+   "Leave it 5 minutes. The psyllium pulls in the rest of the liquid and the texture goes from gritty to smooth and pudding-like. Beat in another splash if it's stiffer than you like.",
+   "Blueberries and granola on top. Granola last, and eat it soon after or it softens.",
+   "Drink a glass of water with this. 10 g of psyllium needs it."
+  ],
+  "mods": [
+   {
+    "name": "Less carbs",
+    "note": "Less granola and fruit, flaked almonds for the crunch.",
+    "set": [
+     [
+      "breakfast cereal muesli",
+      15
+     ],
+     [
+      "blueberry raw",
+      50
+     ]
+    ],
+    "add": [
+     [
+      "nut almond raw",
+      10,
+      "Flaked almonds"
+     ]
+    ]
+   },
+   {
+    "name": "More carbs",
+    "note": "Oats stirred in and more fruit — an overnight version, made the night before.",
+    "set": [
+     [
+      "blueberry raw",
+      120
+     ],
+     [
+      "milk cow fluid skim",
+      120
+     ]
+    ],
+    "add": [
+     [
+      "oats rolled uncooked",
+      30,
+      "Rolled oats, stirred in at step 2"
+     ]
+    ]
+   },
+   {
+    "name": "More protein",
+    "note": "Double the yoghurt and a little more powder.",
+    "set": [
+     [
+      "yoghurt natural greek",
+      200
+     ],
+     [
+      "protein powder whey",
+      40
+     ],
+     [
+      "milk cow fluid skim",
+      110
+     ]
+    ]
+   },
+   {
+    "name": "More fibre",
+    "note": "Chia as well as psyllium, and the liquid to carry it. Don't go past 20 g of husk and seed in one sitting unless you're used to it.",
+    "set": [
+     [
+      "milk cow fluid skim",
+      140
+     ]
+    ],
+    "add": [
+     [
+      "chia seed",
+      10,
+      "Chia seeds, at step 2"
+     ]
+    ]
+   },
+   {
+    "name": "More omega-3",
+    "note": "Chia and walnuts. Both are ALA rather than the long chain sort — useful, but not a substitute for oily fish.",
+    "add": [
+     [
+      "chia seed",
+      12,
+      "Chia seeds, at step 2"
+     ],
+     [
+      "walnut raw",
+      20,
+      "Walnuts, roughly broken"
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "name": "Chicken breast wrap",
+  "cuisine": "None",
+  "base": "bread",
+  "time": 15,
+  "meal": [
+   "lunch"
+  ],
+  "check": {
+   "kcal": 520,
+   "p": 45,
+   "c": 34,
+   "f": 20
+  },
+  "items": [
+   [
+    "chicken breast lean raw",
+    150,
+    "Chicken breast"
+   ],
+   [
+    "oil olive",
+    5,
+    "Olive oil, 1 tsp"
+   ],
+   [
+    "cumin seed dried ground",
+    1,
+    "Ground cumin, ½ tsp"
+   ],
+   [
+    "paprika dried ground",
+    1,
+    "Smoked paprika, ½ tsp"
+   ],
+   [
+    "oregano dried",
+    0.5,
+    "Dried oregano, ½ tsp"
+   ],
+   [
+    "salt",
+    2,
+    "Fine salt"
+   ],
+   [
+    "pepper black ground",
+    0.5,
+    "Black pepper"
+   ],
+   [
+    "bread flat tortilla wholemeal",
+    60,
+    "Wholemeal tortilla, 1 large"
+   ],
+   [
+    "lettuce cos raw",
+    40,
+    "Cos lettuce, shredded"
+   ],
+   [
+    "tomato fresh raw",
+    40,
+    "Tomato, sliced"
+   ],
+   [
+    "cucumber raw",
+    30,
+    "Cucumber, sliced thin"
+   ],
+   [
+    "onion mature red peeled raw",
+    20,
+    "Red onion, sliced thin"
+   ],
+   [
+    "cheese feta",
+    20,
+    "Feta, crumbled"
+   ],
+   [
+    "yoghurt natural greek",
+    40,
+    "Greek yoghurt, for the dressing"
+   ],
+   [
+    "juice lemon",
+    5,
+    "Lemon juice, 1 tsp"
+   ]
+  ],
+  "method": [
+   "Butterfly the breast, or lay it under baking paper and flatten the thick end until it's an even 1.5 cm. Even thickness is the whole trick with breast.",
+   "Rub with the oil, then the cumin, paprika, oregano, salt and pepper.",
+   "Medium high pan, dry. Chicken in, 4 minutes, turn, 3 to 4 minutes more, to 72°C. Rest 5 minutes, then slice on an angle.",
+   "Mix the yoghurt, lemon juice and a pinch of garlic powder and salt for the dressing.",
+   "Warm the tortilla 20 seconds a side in the same pan. It stops it cracking when you roll.",
+   "Spread the dressing down the middle third, leaving 3 cm clear at each end. Lettuce, cucumber, tomato, onion, then the chicken, then the feta.",
+   "Fold the bottom up over the filling, fold both sides in, and roll away from you, keeping it tight.",
+   "Wrap the bottom half in baking paper and cut on the diagonal."
+  ],
+  "mods": [
+   {
+    "name": "Less carbs",
+    "note": "Cos leaves as cups instead of the tortilla.",
+    "set": [
+     [
+      "bread flat tortilla wholemeal",
+      0
+     ]
+    ],
+    "add": [
+     [
+      "lettuce cos raw",
+      60,
+      "Cos leaves, as cups"
+     ]
+    ]
+   },
+   {
+    "name": "More protein",
+    "note": "More chicken, more dressing, more feta. You may need a second tortilla to get it closed.",
+    "set": [
+     [
+      "chicken breast lean raw",
+      220
+     ],
+     [
+      "yoghurt natural greek",
+      60
+     ],
+     [
+      "cheese feta",
+      30
+     ]
+    ]
+   },
+   {
+    "name": "More fibre",
+    "note": "Swap in a high fibre wrap and pile in more salad.",
+    "set": [
+     [
+      "lettuce cos raw",
+      70
+     ],
+     [
+      "cucumber raw",
+      60
+     ],
+     [
+      "tomato fresh raw",
+      70
+     ]
+    ]
+   },
+   {
+    "name": "More calcium",
+    "note": "More feta and a bigger dressing.",
+    "set": [
+     [
+      "cheese feta",
+      35
+     ],
+     [
+      "yoghurt natural greek",
+      70
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "name": "Chicken garden salad",
+  "cuisine": "None",
+  "base": "salad",
+  "time": 20,
+  "meal": [
+   "lunch",
+   "dinner"
+  ],
+  "check": {
+   "kcal": 500,
+   "p": 43,
+   "c": 26,
+   "f": 24
+  },
+  "items": [
+   [
+    "chicken breast lean raw",
+    160,
+    "Chicken breast"
+   ],
+   [
+    "oil olive",
+    17,
+    "Olive oil, for cooking and for the dressing"
+   ],
+   [
+    "salt",
+    2.5,
+    "Fine salt"
+   ],
+   [
+    "pepper black ground",
+    1,
+    "Black pepper"
+   ],
+   [
+    "lettuce cos raw",
+    100,
+    "Cos or mixed leaves"
+   ],
+   [
+    "tomato cherry raw",
+    100,
+    "Cherry tomatoes, halved"
+   ],
+   [
+    "cucumber raw",
+    80,
+    "Cucumber, half moons"
+   ],
+   [
+    "capsicum red raw",
+    40,
+    "Red capsicum, sliced"
+   ],
+   [
+    "onion mature red peeled raw",
+    30,
+    "Red onion, paper thin"
+   ],
+   [
+    "carrot mature peeled raw",
+    50,
+    "Carrot, coarsely grated"
+   ],
+   [
+    "pumpkin seed",
+    15,
+    "Pumpkin seeds, toasted"
+   ],
+   [
+    "juice lemon",
+    9,
+    "Lemon juice, 2 tsp"
+   ],
+   [
+    "mustard",
+    3,
+    "Dijon mustard, ½ tsp"
+   ],
+   [
+    "honey",
+    3,
+    "Honey, ½ tsp"
+   ]
+  ],
+  "method": [
+   "Flatten the breast to an even thickness, rub with 5 g of the oil, salt and pepper. Medium high pan, 4 minutes, turn, 3 to 4 minutes, to 72°C. Rest 5 minutes, then slice.",
+   "Soak the sliced onion in cold water for 10 minutes while you do everything else, then drain. It takes the harsh edge off.",
+   "Shake or whisk the rest of the oil with the lemon, mustard and honey until the mustard thickens it slightly.",
+   "Toast the pumpkin seeds in a dry pan for 2 minutes, until they start popping. Tip them straight out or they'll keep cooking.",
+   "Leaves, tomato, cucumber, capsicum, carrot and drained onion in a big bowl. Dress and toss with your hands, gently, until every leaf has a shine.",
+   "Plate it, chicken over the top, seeds scattered last."
+  ],
+  "mods": [
+   {
+    "name": "Less carbs",
+    "note": "Drop the carrot and the honey, add avocado. It is already low carb.",
+    "set": [
+     [
+      "carrot mature peeled raw",
+      0
+     ],
+     [
+      "honey",
+      0
+     ]
+    ],
+    "add": [
+     [
+      "avocado raw",
+      60,
+      "Avocado"
+     ]
+    ]
+   },
+   {
+    "name": "More carbs",
+    "note": "Freekeh or quinoa and roast pumpkin turn it into a proper dinner.",
+    "add": [
+     [
+      "quinoa cooked",
+      100,
+      "Cooked freekeh or quinoa"
+     ],
+     [
+      "pumpkin baked",
+      60,
+      "Roast pumpkin"
+     ]
+    ]
+   },
+   {
+    "name": "More protein",
+    "note": "More chicken, a boiled egg and feta.",
+    "set": [
+     [
+      "chicken breast lean raw",
+      240
+     ]
+    ],
+    "add": [
+     [
+      "egg chicken whole raw",
+      65,
+      "Egg, boiled"
+     ],
+     [
+      "cheese feta",
+      30,
+      "Feta"
+     ]
+    ]
+   },
+   {
+    "name": "More fibre",
+    "note": "Chickpeas through the leaves.",
+    "add": [
+     [
+      "chickpea canned drained",
+      80,
+      "Chickpeas, drained"
+     ]
+    ]
+   },
+   {
+    "name": "More iron",
+    "note": "Spinach through the leaves and chickpeas on top. The lemon and capsicum are already doing the vitamin C work that makes plant iron count.",
+    "add": [
+     [
+      "spinach baby raw",
+      60,
+      "Baby spinach, through the leaves"
+     ],
+     [
+      "chickpea canned drained",
+      80,
+      "Chickpeas, drained"
+     ]
+    ]
+   }
+  ]
+ },
+ {
+  "name": "Eggs and salmon on rye",
+  "cuisine": "None",
+  "base": "eggs",
+  "time": 10,
+  "meal": [
+   "breakfast"
+  ],
+  "check": {
+   "kcal": 460,
+   "p": 32,
+   "c": 30,
+   "f": 22
+  },
+  "items": [
+   [
+    "egg chicken whole raw",
+    110,
+    "Eggs, 2 large"
+   ],
+   [
+    "salmon smoked",
+    50,
+    "Smoked salmon"
+   ],
+   [
+    "bread rye",
+    60,
+    "Light rye bread, 2 slices"
+   ],
+   [
+    "tomato fresh raw",
+    80,
+    "Tomato, sliced 5 mm"
+   ],
+   [
+    "butter",
+    5,
+    "Butter, for the pan"
+   ],
+   [
+    "cheese cottage",
+    30,
+    "Cottage cheese, or cream cheese"
+   ],
+   [
+    "dill fresh",
+    3,
+    "Fresh dill, torn"
+   ],
+   [
+    "chives fresh",
+    5,
+    "Chives, sliced"
+   ],
+   [
+    "caper",
+    5,
+    "Capers, drained"
+   ],
+   [
+    "juice lemon",
+    10,
+    "Lemon, for squeezing"
+   ]
+  ],
+  "method": [
+   "Beat the eggs with a little salt until the whites and yolks are one colour, no more than that.",
+   "Slice the tomato, lay it on the plate, and season it now. Tomato needs salt to taste of anything.",
+   "Toast the rye.",
+   "Melt the butter in a non stick pan over low heat — not medium. Eggs in, and stir slowly with a spatula, pushing the set curds into the centre. Two to three minutes. Take it off while it still looks slightly underdone; it keeps cooking on the plate.",
+   "Spread the cottage cheese on the toast, tomato over it, then the eggs.",
+   "Drape the salmon over the top, then the capers, dill and chives. Squeeze the lemon over and finish with pepper."
+  ],
+  "mods": [
+   {
+    "name": "Less carbs",
+    "note": "One slice of rye, the rest on wilted spinach.",
+    "set": [
+     [
+      "bread rye",
+      30
+     ]
+    ],
+    "add": [
+     [
+      "spinach cooked",
+      80,
+      "Spinach, wilted"
+     ]
+    ]
+   },
+   {
+    "name": "More carbs",
+    "note": "A third slice and a little honey on the side for a session morning.",
+    "set": [
+     [
+      "bread rye",
+      90
+     ]
+    ]
+   },
+   {
+    "name": "More protein",
+    "note": "One whole egg plus liquid egg white, more salmon and cottage cheese.",
+    "set": [
+     [
+      "egg chicken whole raw",
+      55
+     ],
+     [
+      "salmon smoked",
+      80
+     ],
+     [
+      "cheese cottage",
+      60
+     ]
+    ],
+    "add": [
+     [
+      "egg white raw",
+      120,
+      "Liquid egg white"
+     ]
+    ]
+   },
+   {
+    "name": "More fibre",
+    "note": "Wholegrain rye and avocado under the eggs.",
+    "add": [
+     [
+      "avocado raw",
+      50,
+      "Avocado, smashed"
+     ]
+    ]
+   },
+   {
+    "name": "More omega-3",
+    "note": "More salmon. This is the long chain sort, which is the one that is hard to get anywhere else.",
+    "set": [
+     [
+      "salmon smoked",
+      100
+     ]
+    ]
+   }
+  ]
+ }
+]

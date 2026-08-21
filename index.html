@@ -374,6 +374,17 @@ select{background-image:linear-gradient(45deg,transparent 50%,var(--ink-3) 50%),
 .ob-copy:last-child{margin-bottom:0}
 .ob-or{display:flex; align-items:center; gap:12px; margin:20px 0 16px}
 .ob-or i{flex:1; height:1px; background:var(--line)}
+.steps{counter-reset:step; margin:0; padding:0; list-style:none}
+.steps li{counter-increment:step; position:relative; padding:0 0 13px 30px; font-size:13.5px;
+  line-height:1.55; color:var(--ink-2)}
+.steps li::before{content:counter(step); position:absolute; left:0; top:0; width:20px;
+  font-family:var(--disp); font-size:14px; color:var(--accent); text-align:right}
+.modrow{display:flex; gap:6px; overflow-x:auto; padding-bottom:2px; scrollbar-width:none}
+.modrow::-webkit-scrollbar{display:none}
+.modrow button{flex:none; font-size:11px; padding:5px 11px; border-radius:99px;
+  border:1px solid var(--line-strong); color:var(--ink-2); white-space:nowrap}
+.modrow button[aria-pressed="true"]{background:var(--accent); color:var(--accent-ink);
+  border-color:var(--accent); font-weight:700}
 .ob-or b{font-size:10px; font-weight:700; letter-spacing:.16em; color:var(--ink-4)}
 @media (max-height:900px){
   .ob.welcome .ob-logo{width:74px; height:74px; margin-bottom:18px}
@@ -970,6 +981,13 @@ body.dragging{cursor:grabbing}
 <div class="sheet" id="sh-move" role="dialog" aria-modal="true" aria-label="Move to meal">
   <div class="sheet-head"><h2 id="move-title">Move</h2><button class="iconbtn sheet-close" aria-label="Close">&#10005;</button></div>
   <div class="sheet-body" id="move-body"></div>
+</div>
+
+<!-- a recipe to cook from -->
+<div class="sheet" id="sh-cook" role="dialog" aria-modal="true" aria-label="Recipe">
+  <div class="sheet-head"><h2 id="cook-title">Recipe</h2>
+    <button class="iconbtn sheet-close" aria-label="Close">&#10005;</button></div>
+  <div class="sheet-body" id="cook-body"></div>
 </div>
 
 <!-- ingredients of one logged recipe, or of the recipe itself -->
@@ -9614,7 +9632,7 @@ function renderBodyView(){
   el('ppk-note').textContent = 'At ' + g(bodyKg(),1) + ' kg trend weight that is ' +
     g((+p.ppk) * bodyKg()) + ' g protein and ' + g((+p.fpk) * bodyKg()) + ' g fat. ' +
     'Carbohydrate fills the rest.';
-  var pf = periodiseFactor(DAY);
+  var pf = periodiseFactor(todayISO());
   el('per-note').innerHTML = (p.periodise === 'off' || p.periodise === undefined)
     ? 'Every day gets the same base, and hard days rise only by what the session cost. ' +
       'Turning this on takes some of that back on rest days and puts it into session days, ' +
@@ -9623,14 +9641,17 @@ function renderBodyView(){
       'week\'s average training load. Protein and fat hold at g/kg; carbohydrate does the moving. ' +
       'Rest days give up fuel so session days get it.';
 
-  /* expenditure */
-  var e = dayEnergy(DAY);
+  /* Expenditure is always today's. This screen answers "what does my body
+     cost", and paging back through the diary on the Today tab should not
+     silently rewrite the answer — a Tuesday you were reviewing is not the day
+     you are deciding about. */
+  var e = dayEnergy(todayISO());
   el('tdee-source').textContent = e.measured ? 'from your own data' : 'from the model';
   el('bmr-note').textContent = MODEL_NAMES[am] + (e.measured ? ' — overridden below' : '');
   el('r-bmr').textContent = fmtE(rmr(), true);
   el('r-base').textContent = fmtE(e.base, true);
   el('r-train').textContent = e.train ? '+ ' + fmtE(e.train, true) : '—';
-  el('r-train-note').textContent = e.train ? 'Sessions logged for this day' : 'Nothing logged for this day';
+  el('r-train-note').textContent = e.train ? 'Sessions logged today' : 'Nothing logged today';
   el('r-tdee').textContent = fmtE(e.burn, true);
   el('r-target').textContent = fmtE(e.target, true);
   el('r-goal-note').textContent = e.goal.label;
@@ -9779,11 +9800,12 @@ function renderFoodView(){
   var recs = S.recipes || [];
   el('rec-count').textContent = recs.length;
   el('rec-list').innerHTML = recs.length ? recs.map(function(r, i){
-    return '<div class="row"><div class="row-main"><div class="t">' + esc(r.name) + '</div>' +
+    return '<div class="row"><button class="row-main" data-cook="' + i +
+      '" style="text-align:left"><div class="t">' + esc(r.name) + '</div>' +
       '<div class="s">' + g(r.servings,1) + ' serving' + (r.servings === 1 ? '' : 's') + ' · ' +
       fmtE(r.kj * r.serveG / 100) + ' ' + unitName() + ' each · ' +
       esc(r.items.map(function(x){ return x.name.split(',')[0]; }).slice(0,3).join(', ')) +
-      (r.items.length > 3 ? ' +' + (r.items.length - 3) : '') + '</div></div>' +
+      (r.items.length > 3 ? ' +' + (r.items.length - 3) : '') + '</div></button>' +
       '<button class="row-move" data-edit-rec="' + i + '" aria-label="Edit ' + esc(r.name) + '">' +
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" width="14" height="14">' +
       '<path d="M4 6h16M4 12h16M4 18h10"/></svg></button>' +
@@ -10205,12 +10227,154 @@ function bindDrag(){
 }
 
 /* Tap alternative — dragging is not the only way, and not everyone can. */
+/* --------------------------- starter recipes ------------------------------
+   Seven written by hand, weighed in grams, every ingredient resolved to a
+   FSANZ food key. Written for one and doubled, so a batch feeds two and one
+   serve is what the recipe was designed around.
+
+   Nutrition is not stored here — it is derived from the ingredients like any
+   other recipe. The totals that are stored are only the fallback for an
+   ingredient that stops resolving. Computed against AUSNUT, all seven land
+   within 15% of the energy their author estimated, five within 8%, which is
+   about what "estimates, and they shift with brands" should look like.
+
+   The mods are deltas rather than rewrites: set an amount, add an ingredient.
+   Less carbs, more carbs, more protein, more fibre, and one micronutrient
+   angle per dish that the dish can actually deliver on.
+
+   They seed into S.recipes once and are yours after that — editable, removable,
+   and they sync like anything else. Nothing re-adds them if you delete one.
+   ------------------------------------------------------------------------- */
+var SEED_RECIPES = JSON.parse(`[{"name":"Pad grapao","servings":2,"items":[{"key":"F002806","name":"Chicken, thigh, lean, raw","grams":300,"liquid":false,"label":"Chicken thigh, hand chopped to a rough mince"},{"key":"F007661","name":"Rice, white, cooked","grams":300,"liquid":false,"label":"Jasmine rice, cooked (55 g dry)"},{"key":"F006191","name":"Oil, vegetable","grams":28,"liquid":true,"label":"Neutral oil, 1 tbsp"},{"key":"F004193","name":"Garlic, peeled, raw","grams":24,"liquid":false,"label":"Garlic, 3–4 cloves, roughly chopped"},{"key":"F002899","name":"Chilli (chili), raw","grams":16,"liquid":false,"label":"Bird's eye chilli, 2–4, chopped"},{"key":"F000431","name":"Bean, green, raw","grams":80,"liquid":false,"label":"Green beans, 2 cm lengths"},{"key":"F008065","name":"Sauce, soy, commercial","grams":32,"liquid":false,"label":"Light soy sauce, 1 tbsp"},{"key":"F008026","name":"Sauce, oyster, commercial","grams":24,"liquid":false,"label":"Oyster sauce, 2 tsp"},{"key":"F008065","name":"Sauce, soy, commercial","grams":10,"liquid":false,"label":"Dark soy sauce, 1 tsp"},{"key":"F008976","name":"Sugar, white, granulated or lump","grams":8,"liquid":false,"label":"Palm or caster sugar, 1 tsp"},{"key":"F009527","name":"Water, tap","grams":60,"liquid":true,"label":"Water"},{"key":"F000396","name":"Basil, green, fresh, raw","grams":30,"liquid":false,"label":"Holy basil leaves, picked"}],"method":["Have the rice cooked and hot before you start. The stir fry takes four minutes and won't wait for you.","Mix the light soy, oyster, dark soy, sugar and water in a small bowl. Set it next to the pan.","Pound or chop the garlic and chilli together into a coarse paste. A mortar is better than a knife here, it releases more.","Get a wok or heavy frying pan very hot. Add the oil, then the garlic and chilli. Ten seconds, no more — fragrant, not browned.","Add the chicken. Spread it out and leave it 45 seconds to catch some colour, then break it up and stir fry until just cooked through, about 2 minutes.","Add the beans and the sauce mix. It will hiss and reduce. Toss for 60 to 90 seconds until it clings to the meat and there's only a spoonful of liquid left.","Kill the heat, throw in the basil and fold it through until it wilts. Basil goes bitter if you cook it.","Rice in the bowl, chicken over the top."],"tags":{"cuisine":"Thai","base":"rice","time":15,"meal":["lunch","dinner"]},"mods":[{"name":"Less carbs","note":"Rice down, cauliflower rice fried in the same pan first.","set":[{"key":"F007661","grams":150}],"add":[{"key":"F002378","name":"Cauliflower, raw","grams":240,"liquid":false,"label":"Cauliflower rice"}]},{"name":"More carbs","note":"More rice for a session day, and a little more sauce so it isn't dry.","set":[{"key":"F007661","grams":480},{"key":"F008065","grams":40}],"add":[]},{"name":"More protein","note":"More chicken plus a fried egg. Sauce up by half or it tastes thin.","set":[{"key":"F002806","grams":440},{"key":"F008065","grams":48},{"key":"F008026","grams":36},{"key":"F009527","grams":90}],"add":[{"key":"F003729","name":"Egg, chicken, whole, raw","grams":110,"liquid":false,"label":"Egg, fried"}]},{"name":"More fibre","note":"Double the beans and add snake bean or broccolini.","set":[{"key":"F000431","grams":160}],"add":[{"key":"F001905","name":"Broccoli, fresh or frozen, raw","grams":160,"liquid":false,"label":"Broccolini, cut short"}]},{"name":"More iron","note":"A big handful of spinach folded through at the very end, with the basil. The chilli and the lime you squeeze over help you absorb it.","set":[],"add":[{"key":"F008749","name":"Spinach, baby, fresh, raw","grams":200,"liquid":false,"label":"Baby spinach, folded through with the basil"}]}],"totalG":912,"serveG":456,"kj":530.2,"p":8.13,"f":4,"sat":0.6,"c":13.62,"sug":1.75,"fib":1.23,"na":379.47,"alc":0.06,"m":{"ca":16.9759,"fe":0.5979,"mg":17.1162,"ph":82.4013,"k":190.6075,"zn":0.7843,"se":8.0671,"i":1.7004,"va":33.6996,"vc":3.7675,"vd":0.4309,"ve":1.11,"b1":0.0647,"b2":0.0602,"b3":3.0755,"fol":21.3969,"b6":0.129,"b12":0.1316,"chol":28.9474,"caf":0,"n3":3.0017,"la":1.0458,"ala":0.2703}},{"name":"Caramelised onion pasta with paprika chicken","servings":2,"items":[{"key":"F002806","name":"Chicken, thigh, lean, raw","grams":360,"liquid":false,"label":"Chicken thigh, skinless boneless"},{"key":"F006316","name":"Paprika, dried, ground","grams":8,"liquid":false,"label":"Smoked paprika, 2 tsp"},{"key":"F004193","name":"Garlic, peeled, raw","grams":2,"liquid":false,"label":"Garlic powder, ½ tsp"},{"key":"F007878","name":"Salt, table, iodised","grams":6,"liquid":false,"label":"Fine salt, for chicken and onions"},{"key":"F006618","name":"Pepper, black or white, ground","grams":1,"liquid":false,"label":"Black pepper"},{"key":"F006177","name":"Oil, olive","grams":36,"liquid":true,"label":"Olive oil, for the chicken and the onions"},{"key":"F006225","name":"Onion, mature, brown skinned, peeled, raw","grams":400,"liquid":false,"label":"Brown onion, sliced 3 mm"},{"key":"F009499","name":"Vinegar, balsamic","grams":10,"liquid":false,"label":"Balsamic vinegar, 1 tsp"},{"key":"F006458","name":"Pasta, white, plain, dry, uncooked","grams":160,"liquid":false,"label":"Rigatoni or penne, dried"},{"key":"F002478","name":"Cheese, parmesan, dried, finely grated","grams":40,"liquid":false,"label":"Parmesan, finely grated"},{"key":"F003251","name":"Cream, dairy, not further defined","grams":30,"liquid":false,"label":"Thickened cream, 1 tbsp"},{"key":"F006321","name":"Parsley, fresh, raw","grams":10,"liquid":false,"label":"Flat leaf parsley, chopped"}],"method":["Rub the chicken with the paprika, garlic powder, salt and pepper. Leave it on the bench while you do the onions.","Heat half the oil in a wide pan over medium low. Add the onions and a pinch of salt. Stir to coat, then let them go 20 to 25 minutes, stirring every few minutes. If they catch, add a tablespoon of water and scrape the base. Collapsed and jammy, deep brown, not black.","Add the balsamic, stir 30 seconds until it disappears, then tip the onions into a bowl and wipe the pan.","Salt a pot of water and put the pasta on. Set a timer for one minute under the packet time.","Heat the rest of the oil over medium high. Chicken in, 5 to 6 minutes on the first side without moving it, 4 to 5 on the second, to 74°C. Rest 5 minutes.","Lift the pasta straight into the pan with the onions, 80 ml of pasta water and the cream. Medium heat, tossing hard for a minute.","Off the heat, add the parmesan in two goes, tossing between each. Glossy and coating. More pasta water if it looks tight.","Slice the chicken across the grain, lay it over the pasta, parsley on top."],"tags":{"cuisine":"Italian","base":"pasta","time":40,"meal":["dinner"]},"mods":[{"name":"Less carbs","note":"Half the pasta, courgette ribbons tossed in at the end.","set":[{"key":"F006458","grams":80}],"add":[{"key":"F009775","name":"Zucchini, green skin, raw","grams":300,"liquid":false,"label":"Courgette, in ribbons"}]},{"name":"More carbs","note":"A bigger bowl for a hard day.","set":[{"key":"F006458","grams":240}],"add":[]},{"name":"More protein","note":"More chicken, and ricotta through the sauce in place of cream.","set":[{"key":"F002806","grams":500},{"key":"F003251","grams":0}],"add":[{"key":"F002488","name":"Cheese, ricotta","grams":80,"liquid":false,"label":"Ricotta, stirred through off the heat"}]},{"name":"More fibre","note":"Wholemeal pasta and a handful of peas.","set":[],"add":[{"key":"F006536","name":"Pea, green, raw","grams":160,"liquid":false,"label":"Peas, in with the pasta for the last minute"}]},{"name":"More calcium","note":"More parmesan, and ricotta through the sauce as well as the cream.","set":[{"key":"F002478","grams":70}],"add":[{"key":"F002488","name":"Cheese, ricotta","grams":100,"liquid":false,"label":"Ricotta, stirred through off the heat"}]}],"totalG":1063,"serveG":531.5,"kj":664.54,"p":10.62,"f":6.77,"sat":2.31,"c":12.92,"sug":2.49,"fib":1.73,"na":292.75,"alc":0,"m":{"ca":55.4741,"fe":0.6629,"mg":20.9793,"ph":135.1251,"k":230.1571,"zn":0.9357,"se":9.8656,"i":28.1656,"va":65.1778,"vc":4.3556,"vd":0.4615,"ve":1.4599,"b1":0.0668,"b2":0.0852,"b3":3.8985,"fol":26.6839,"b6":0.1328,"b12":0.2126,"chol":36.1618,"caf":0,"n3":7.4324,"la":0.5867,"ala":0.0603}},{"name":"Dan dan mian","servings":2,"items":[{"key":"F009076","name":"Tahini","grams":44,"liquid":false,"label":"Chinese sesame paste, or tahini, 1½ tbsp"},{"key":"F008065","name":"Sauce, soy, commercial","grams":32,"liquid":false,"label":"Light soy sauce, 1 tbsp"},{"key":"F006187","name":"Oil, sesame","grams":20,"liquid":true,"label":"Chilli oil, with the sediment, 2 tsp"},{"key":"F009499","name":"Vinegar, balsamic","grams":10,"liquid":false,"label":"Chinkiang black vinegar, 1 tsp"},{"key":"F008976","name":"Sugar, white, granulated or lump","grams":4,"liquid":false,"label":"Caster sugar, ½ tsp"},{"key":"F006618","name":"Pepper, black or white, ground","grams":3,"liquid":false,"label":"Sichuan peppercorns, toasted and ground"},{"key":"F004193","name":"Garlic, peeled, raw","grams":10,"liquid":false,"label":"Garlic, grated"},{"key":"F008936","name":"Stock, liquid, all flavours, prepared","grams":80,"liquid":true,"label":"Chicken stock, or hot noodle water"},{"key":"F007057","name":"Pork, mince, raw","grams":240,"liquid":false,"label":"Pork mince"},{"key":"F006191","name":"Oil, vegetable","grams":10,"liquid":true,"label":"Neutral oil, 1 tsp"},{"key":"F009588","name":"Wine, white","grams":10,"liquid":true,"label":"Shaoxing wine, 1 tsp"},{"key":"F008065","name":"Sauce, soy, commercial","grams":10,"liquid":false,"label":"Dark soy sauce, 1 tsp"},{"key":"F001996","name":"Cabbage, Chinese (wombok), raw","grams":40,"liquid":false,"label":"Sui mi ya cai, rinsed and squeezed dry"},{"key":"F006458","name":"Pasta, white, plain, dry, uncooked","grams":140,"liquid":false,"label":"Wheat noodles, dried"},{"key":"F001301","name":"Bok choy or pak choy, raw","grams":160,"liquid":false,"label":"Bok choy or gai lan, halved"},{"key":"F006250","name":"Onion, spring, raw","grams":20,"liquid":false,"label":"Spring onion, sliced thin"},{"key":"F006110","name":"Nut, peanut, roasted, unsalted","grams":20,"liquid":false,"label":"Roasted peanuts, crushed"}],"method":["Toast the Sichuan peppercorns in a dry pan for 60 seconds until you can smell them, then grind. Do this first, it makes the dish.","Whisk all the sauce ingredients together in the bowl you're going to eat from. It'll look split at first — keep going and it emulsifies to the texture of thin cream. A splash more stock if it's claggy.","Heat the oil in a wok over high. Pork in, press it flat and leave it 2 minutes to crust, then break it up and keep frying until properly browned and a bit crisp, 4 to 5 minutes. Don't rush this; soft mince makes a sad bowl.","Add the Shaoxing and dark soy, let it sizzle away, then the ya cai. One more minute. Off the heat.","Boil the noodles to packet time. Greens in for the last 60 seconds. Reserve 50 ml of the water before draining.","Noodles straight into the sauce bowl, greens on the side, pork over the top, then spring onion and peanuts.","Toss it all together yourself before the first mouthful. It's meant to be mixed, not layered."],"tags":{"cuisine":"Chinese","base":"noodles","time":20,"meal":["lunch","dinner"]},"mods":[{"name":"Less carbs","note":"Half the noodles, shredded wombok for the bulk.","set":[{"key":"F006458","grams":70}],"add":[{"key":"F001996","name":"Cabbage, Chinese (wombok), raw","grams":240,"liquid":false,"label":"Wombok, shredded"}]},{"name":"More carbs","note":"A full nest and a half for a session day.","set":[{"key":"F006458","grams":220}],"add":[]},{"name":"More protein","note":"More pork and a soft boiled egg. Sauce up by a third.","set":[{"key":"F007057","grams":360},{"key":"F009076","grams":60},{"key":"F008065","grams":42},{"key":"F008936","grams":110}],"add":[{"key":"F003729","name":"Egg, chicken, whole, raw","grams":130,"liquid":false,"label":"Egg, soft boiled"}]},{"name":"More fibre","note":"Double the greens.","set":[{"key":"F001301","grams":320}],"add":[]},{"name":"More calcium","note":"Sesame paste is the quiet source here. More of it, more greens, and sesame seeds over the top.","set":[{"key":"F009076","grams":64},{"key":"F001301","grams":280}],"add":[{"key":"F008214","name":"Seed, sesame, unsalted","grams":16,"liquid":false,"label":"Toasted sesame seeds, over the top"}]}],"totalG":853,"serveG":426.5,"kj":828.98,"p":10.64,"f":10.92,"sat":2.23,"c":12.98,"sug":1.18,"fib":2.22,"na":343.31,"alc":0.18,"m":{"ca":44.0621,"fe":1.1378,"mg":37.8933,"ph":139.5873,"k":230.2028,"zn":1.1925,"se":7.4653,"i":3.3937,"va":22.8839,"vc":6.8816,"vd":0.6415,"ve":0.3711,"b1":0.3033,"b2":0.1041,"b3":5.0893,"fol":29.83,"b6":0.2501,"b12":0.1407,"chol":15.1934,"caf":0,"n3":11.3779,"la":3.1511,"ala":0.1385}},{"name":"Protein yoghurt bowl","servings":2,"items":[{"key":"F009690","name":"Yoghurt, natural, reduced fat (~2%)","grams":200,"liquid":false,"label":"Greek yoghurt, natural, 0–2% fat"},{"key":"F007493","name":"Protein powder, whey based, >70% protein","grams":60,"liquid":false,"label":"Vanilla protein powder"},{"key":"F007502","name":"Psyllium, husk, dry, uncooked","grams":20,"liquid":false,"label":"Psyllium husk"},{"key":"F005637","name":"Milk, cow, fluid, skim (~0.1% fat)","grams":160,"liquid":true,"label":"Milk, or water"},{"key":"F001290","name":"Blueberry, raw","grams":160,"liquid":false,"label":"Blueberries"},{"key":"F005839","name":"Muesli, commercial, untoasted or natural, dried fruit & nuts","grams":60,"liquid":false,"label":"Granola"}],"method":["Put the yoghurt in a bowl. Add the protein powder and about two thirds of the milk. Stir until there are no dry pockets. Thick but still moving.","Add the psyllium and the rest of the milk. Stir fast — it starts gelling within seconds.","Leave it 5 minutes. The psyllium pulls in the rest of the liquid and the texture goes from gritty to smooth and pudding-like. Beat in another splash if it's stiffer than you like.","Blueberries and granola on top. Granola last, and eat it soon after or it softens.","Drink a glass of water with this. 10 g of psyllium needs it."],"tags":{"cuisine":"None","base":"yoghurt","time":5,"meal":["breakfast","snack"]},"mods":[{"name":"Less carbs","note":"Less granola and fruit, flaked almonds for the crunch.","set":[{"key":"F005839","grams":30},{"key":"F001290","grams":100}],"add":[{"key":"F006081","name":"Nut, almond, raw/natural, unsalted","grams":20,"liquid":false,"label":"Flaked almonds"}]},{"name":"More carbs","note":"Oats stirred in and more fruit — an overnight version, made the night before.","set":[{"key":"F001290","grams":240},{"key":"F005637","grams":240}],"add":[{"key":"F006143","name":"Oats, rolled, uncooked","grams":60,"liquid":false,"label":"Rolled oats, stirred in at step 2"}]},{"name":"More protein","note":"Double the yoghurt and a little more powder.","set":[{"key":"F009690","grams":400},{"key":"F007493","grams":80},{"key":"F005637","grams":220}],"add":[]},{"name":"More fibre","note":"Chia as well as psyllium, and the liquid to carry it. Don't go past 20 g of husk and seed in one sitting unless you're used to it.","set":[{"key":"F005637","grams":280}],"add":[{"key":"F008209","name":"Seed, chia, dried","grams":20,"liquid":false,"label":"Chia seeds, at step 2"}]},{"name":"More omega-3","note":"Chia and walnuts. Both are ALA rather than the long chain sort — useful, but not a substitute for oily fish.","set":[],"add":[{"key":"F008209","name":"Seed, chia, dried","grams":24,"liquid":false,"label":"Chia seeds, at step 2"},{"key":"F006131","name":"Oat beverage, added Ca","grams":40,"liquid":false,"label":"Walnuts, roughly broken"}]}],"totalG":660,"serveG":330,"kj":480.39,"p":11.42,"f":1.43,"sat":0.58,"c":11.59,"sug":7,"fib":4.47,"na":48.58,"alc":0,"m":{"ca":133.0303,"fe":1.163,"mg":26.5455,"ph":122.5152,"k":237.5758,"zn":0.5218,"se":8.0455,"i":39.4788,"va":8.697,"vc":0.4848,"vd":0.0976,"ve":0.1761,"b1":0.0593,"b2":0.1263,"b3":1.9455,"fol":23.2424,"b6":0.0412,"b12":0.7727,"chol":8.3939,"caf":0,"n3":0,"la":0.277,"ala":0.0133}},{"name":"Chicken breast wrap","servings":2,"items":[{"key":"F002594","name":"Chicken, breast, lean, raw","grams":300,"liquid":false,"label":"Chicken breast"},{"key":"F006177","name":"Oil, olive","grams":10,"liquid":true,"label":"Olive oil, 1 tsp"},{"key":"F003327","name":"Cumin (cummin) seed, dried, ground","grams":2,"liquid":false,"label":"Ground cumin, ½ tsp"},{"key":"F006316","name":"Paprika, dried, ground","grams":2,"liquid":false,"label":"Smoked paprika, ½ tsp"},{"key":"F006281","name":"Oregano, dried","grams":1,"liquid":false,"label":"Dried oregano, ½ tsp"},{"key":"F007878","name":"Salt, table, iodised","grams":4,"liquid":false,"label":"Fine salt"},{"key":"F006618","name":"Pepper, black or white, ground","grams":1,"liquid":false,"label":"Black pepper"},{"key":"F001411","name":"Bread, flat wrap or tortilla, wholemeal, commercial","grams":120,"liquid":false,"label":"Wholemeal tortilla, 1 large"},{"key":"F005191","name":"Lettuce, cos, raw","grams":80,"liquid":false,"label":"Cos lettuce, shredded"},{"key":"F009193","name":"Tomato, common, raw","grams":80,"liquid":false,"label":"Tomato, sliced"},{"key":"F003320","name":"Cucumber, common, unpeeled, raw","grams":60,"liquid":false,"label":"Cucumber, sliced thin"},{"key":"F009800","name":"Onion, mature, red skinned, peeled, raw","grams":40,"liquid":false,"label":"Red onion, sliced thin"},{"key":"F002452","name":"Cheese, fetta (feta)","grams":40,"liquid":false,"label":"Feta, crumbled"},{"key":"F009690","name":"Yoghurt, natural, reduced fat (~2%)","grams":80,"liquid":false,"label":"Greek yoghurt, for the dressing"},{"key":"F004726","name":"Juice, lemon","grams":10,"liquid":true,"label":"Lemon juice, 1 tsp"}],"method":["Butterfly the breast, or lay it under baking paper and flatten the thick end until it's an even 1.5 cm. Even thickness is the whole trick with breast.","Rub with the oil, then the cumin, paprika, oregano, salt and pepper.","Medium high pan, dry. Chicken in, 4 minutes, turn, 3 to 4 minutes more, to 72°C. Rest 5 minutes, then slice on an angle.","Mix the yoghurt, lemon juice and a pinch of garlic powder and salt for the dressing.","Warm the tortilla 20 seconds a side in the same pan. It stops it cracking when you roll.","Spread the dressing down the middle third, leaving 3 cm clear at each end. Lettuce, cucumber, tomato, onion, then the chicken, then the feta.","Fold the bottom up over the filling, fold both sides in, and roll away from you, keeping it tight.","Wrap the bottom half in baking paper and cut on the diagonal."],"tags":{"cuisine":"None","base":"bread","time":15,"meal":["lunch"]},"mods":[{"name":"Less carbs","note":"Cos leaves as cups instead of the tortilla.","set":[{"key":"F001411","grams":0}],"add":[{"key":"F005191","name":"Lettuce, cos, raw","grams":120,"liquid":false,"label":"Cos leaves, as cups"}]},{"name":"More protein","note":"More chicken, more dressing, more feta. You may need a second tortilla to get it closed.","set":[{"key":"F002594","grams":440},{"key":"F009690","grams":120},{"key":"F002452","grams":60}],"add":[]},{"name":"More fibre","note":"Swap in a high fibre wrap and pile in more salad.","set":[{"key":"F005191","grams":140},{"key":"F003320","grams":120},{"key":"F009193","grams":140}],"add":[]},{"name":"More calcium","note":"More feta and a bigger dressing.","set":[{"key":"F002452","grams":70},{"key":"F009690","grams":140}],"add":[]}],"totalG":830,"serveG":415,"kj":466.99,"p":11.13,"f":3.39,"sat":1.17,"c":8.05,"sug":1.64,"fib":1.6,"na":319.88,"alc":0,"m":{"ca":51.0675,"fe":0.8804,"mg":27.0398,"ph":147.5229,"k":270.2494,"zn":0.5779,"se":8.3566,"i":32.5719,"va":27.1012,"vc":3.4819,"vd":0.3398,"ve":0.5971,"b1":0.1355,"b2":0.0679,"b3":6.1951,"fol":55.0386,"b6":0.2394,"b12":0.1422,"chol":28.8675,"caf":0,"n3":4.9157,"la":0.4629,"ala":0.0456}},{"name":"Chicken garden salad","servings":2,"items":[{"key":"F002594","name":"Chicken, breast, lean, raw","grams":320,"liquid":false,"label":"Chicken breast"},{"key":"F006177","name":"Oil, olive","grams":34,"liquid":true,"label":"Olive oil, for cooking and for the dressing"},{"key":"F007878","name":"Salt, table, iodised","grams":5,"liquid":false,"label":"Fine salt"},{"key":"F006618","name":"Pepper, black or white, ground","grams":2,"liquid":false,"label":"Black pepper"},{"key":"F005191","name":"Lettuce, cos, raw","grams":200,"liquid":false,"label":"Cos or mixed leaves"},{"key":"F009190","name":"Tomato, cherry or grape, raw","grams":200,"liquid":false,"label":"Cherry tomatoes, halved"},{"key":"F003320","name":"Cucumber, common, unpeeled, raw","grams":160,"liquid":false,"label":"Cucumber, half moons"},{"key":"F002247","name":"Capsicum, red, raw","grams":80,"liquid":false,"label":"Red capsicum, sliced"},{"key":"F009800","name":"Onion, mature, red skinned, peeled, raw","grams":60,"liquid":false,"label":"Red onion, paper thin"},{"key":"F002276","name":"Carrot, raw","grams":100,"liquid":false,"label":"Carrot, coarsely grated"},{"key":"F008212","name":"Seed, pumpkin, hulled & dried, unsalted","grams":30,"liquid":false,"label":"Pumpkin seeds, toasted"},{"key":"F004726","name":"Juice, lemon","grams":18,"liquid":true,"label":"Lemon juice, 2 tsp"},{"key":"F005973","name":"Mustard, cream style","grams":6,"liquid":false,"label":"Dijon mustard, ½ tsp"},{"key":"F004380","name":"Honey","grams":6,"liquid":false,"label":"Honey, ½ tsp"}],"method":["Flatten the breast to an even thickness, rub with 5 g of the oil, salt and pepper. Medium high pan, 4 minutes, turn, 3 to 4 minutes, to 72°C. Rest 5 minutes, then slice.","Soak the sliced onion in cold water for 10 minutes while you do everything else, then drain. It takes the harsh edge off.","Shake or whisk the rest of the oil with the lemon, mustard and honey until the mustard thickens it slightly.","Toast the pumpkin seeds in a dry pan for 2 minutes, until they start popping. Tip them straight out or they'll keep cooking.","Leaves, tomato, cucumber, capsicum, carrot and drained onion in a big bowl. Dress and toss with your hands, gently, until every leaf has a shine.","Plate it, chicken over the top, seeds scattered last."],"tags":{"cuisine":"None","base":"salad","time":20,"meal":["lunch","dinner"]},"mods":[{"name":"Less carbs","note":"Drop the carrot and the honey, add avocado. It is already low carb.","set":[{"key":"F002276","grams":0},{"key":"F004380","grams":0}],"add":[{"key":"F000162","name":"Avocado, raw","grams":120,"liquid":false,"label":"Avocado"}]},{"name":"More carbs","note":"Freekeh or quinoa and roast pumpkin turn it into a proper dinner.","set":[],"add":[{"key":"F007596","name":"Quinoa, cooked","grams":200,"liquid":false,"label":"Cooked freekeh or quinoa"},{"key":"F011005","name":"Pumpkin, kent/jap, peeled, fresh, baked, no added fat","grams":120,"liquid":false,"label":"Roast pumpkin"}]},{"name":"More protein","note":"More chicken, a boiled egg and feta.","set":[{"key":"F002594","grams":480}],"add":[{"key":"F003729","name":"Egg, chicken, whole, raw","grams":130,"liquid":false,"label":"Egg, boiled"},{"key":"F002452","name":"Cheese, fetta (feta)","grams":60,"liquid":false,"label":"Feta"}]},{"name":"More fibre","note":"Chickpeas through the leaves.","set":[],"add":[{"key":"F002880","name":"Chickpea, canned, drained","grams":160,"liquid":false,"label":"Chickpeas, drained"}]},{"name":"More iron","note":"Spinach through the leaves and chickpeas on top. The lemon and capsicum are already doing the vitamin C work that makes plant iron count.","set":[],"add":[{"key":"F008749","name":"Spinach, baby, fresh, raw","grams":120,"liquid":false,"label":"Baby spinach, through the leaves"},{"key":"F002880","name":"Chickpea, canned, drained","grams":160,"liquid":false,"label":"Chickpeas, drained"}]}],"totalG":1221,"serveG":610.5,"kj":327.12,"p":7.3,"f":3.97,"sat":0.65,"c":2.65,"sug":2.53,"fib":1.38,"na":185.53,"alc":0,"m":{"ca":15.2662,"fe":0.593,"mg":30.0336,"ph":110.3579,"k":268.5586,"zn":0.4277,"se":5.4874,"i":18.7723,"va":156.8665,"vc":23.4611,"vd":0.2464,"ve":1.1581,"b1":0.0521,"b2":0.032,"b3":4.1886,"fol":18.2735,"b6":0.1664,"b12":0.0262,"chol":17.8215,"caf":0,"n3":3.5643,"la":0.7827,"ala":0.0214}},{"name":"Eggs and salmon on rye","servings":2,"items":[{"key":"F003729","name":"Egg, chicken, whole, raw","grams":220,"liquid":false,"label":"Eggs, 2 large"},{"key":"F007864","name":"Salmon, smoked, sliced","grams":100,"liquid":false,"label":"Smoked salmon"},{"key":"F001440","name":"Bread, rye, light, commercial","grams":120,"liquid":false,"label":"Light rye bread, 2 slices"},{"key":"F009193","name":"Tomato, common, raw","grams":160,"liquid":false,"label":"Tomato, sliced 5 mm"},{"key":"F001973","name":"Butter, plain, salted","grams":10,"liquid":false,"label":"Butter, for the pan"},{"key":"F002435","name":"Cheese, cottage","grams":60,"liquid":false,"label":"Cottage cheese, or cream cheese"},{"key":"F003509","name":"Dill, fresh, raw","grams":6,"liquid":false,"label":"Fresh dill, torn"},{"key":"F002907","name":"Chives, fresh, raw","grams":10,"liquid":false,"label":"Chives, sliced"},{"key":"F002220","name":"Capers, pickled, canned, drained","grams":10,"liquid":false,"label":"Capers, drained"},{"key":"F004726","name":"Juice, lemon","grams":20,"liquid":true,"label":"Lemon, for squeezing"}],"method":["Beat the eggs with a little salt until the whites and yolks are one colour, no more than that.","Slice the tomato, lay it on the plate, and season it now. Tomato needs salt to taste of anything.","Toast the rye.","Melt the butter in a non stick pan over low heat — not medium. Eggs in, and stir slowly with a spatula, pushing the set curds into the centre. Two to three minutes. Take it off while it still looks slightly underdone; it keeps cooking on the plate.","Spread the cottage cheese on the toast, tomato over it, then the eggs.","Drape the salmon over the top, then the capers, dill and chives. Squeeze the lemon over and finish with pepper."],"tags":{"cuisine":"None","base":"eggs","time":10,"meal":["breakfast"]},"mods":[{"name":"Less carbs","note":"One slice of rye, the rest on wilted spinach.","set":[{"key":"F001440","grams":60}],"add":[{"key":"F008760","name":"Spinach, fresh, boiled, microwaved or steamed, drained","grams":160,"liquid":false,"label":"Spinach, wilted"}]},{"name":"More carbs","note":"A third slice and a little honey on the side for a session morning.","set":[{"key":"F001440","grams":180}],"add":[]},{"name":"More protein","note":"One whole egg plus liquid egg white, more salmon and cottage cheese.","set":[{"key":"F003729","grams":110},{"key":"F007864","grams":160},{"key":"F002435","grams":120}],"add":[{"key":"F003706","name":"Egg, chicken, white (albumen) only, raw","grams":240,"liquid":false,"label":"Liquid egg white"}]},{"name":"More fibre","note":"Wholegrain rye and avocado under the eggs.","set":[],"add":[{"key":"F000162","name":"Avocado, raw","grams":100,"liquid":false,"label":"Avocado, smashed"}]},{"name":"More omega-3","note":"More salmon. This is the long chain sort, which is the one that is hard to get anywhere else.","set":[{"key":"F007864","grams":200}],"add":[]}],"totalG":716,"serveG":358,"kj":564.73,"p":10.45,"f":6.08,"sat":2.13,"c":8.7,"sug":1.28,"fib":1.31,"na":328.19,"alc":0,"m":{"ca":38.0866,"fe":1.0454,"mg":18.7095,"ph":135.3771,"k":193.8966,"zn":0.636,"se":12.4399,"i":30.2383,"va":77.1648,"vc":5.176,"vd":2.3749,"ve":0.7596,"b1":0.1241,"b2":0.1878,"b3":3.8986,"fol":95.1397,"b6":0.0956,"b12":0.6816,"chol":161.8017,"caf":0,"n3":140.3373,"la":0.6307,"ala":0.1069}}]`);
+
+function seedRecipes(){
+  if (S.ui.seeded) return;
+  S.ui.seeded = 1;
+  var have = {};
+  (S.recipes || []).forEach(function(r){ have[r.name] = 1; });
+  SEED_RECIPES.forEach(function(r){ if (!have[r.name]) S.recipes.push(JSON.parse(JSON.stringify(r))); });
+  invalidateFoods(); save();
+}
+
+/* A mod is applied to a copy, never to the recipe. set matches the first
+   ingredient with that key — deliberate where a recipe uses the same food
+   twice, as pad grapao does with light and dark soy. */
+function applyMod(r, idx){
+  var items = (r.items || []).map(function(it){
+    return {key:it.key, name:it.name, grams:it.grams, liquid:!!it.liquid, label:it.label || ''};
+  });
+  var m = (r.mods || [])[idx];
+  if (!m) return items;
+  (m.set || []).forEach(function(s){
+    for (var i = 0; i < items.length; i++) if (items[i].key === s.key){ items[i].grams = s.grams; return; }
+  });
+  (m.add || []).forEach(function(a){
+    items.push({key:a.key, name:a.name, grams:a.grams, liquid:!!a.liquid, label:a.label || ''});
+  });
+  return items.filter(function(it){ return (+it.grams || 0) > 0; });
+}
+
 /* ---------------------------- ingredients --------------------------------
    A recipe logs as one row, and this is the row opened up. Change a weight,
    drop the feta, and the entry recomputes from the ingredients rather than
    from the total it was saved with. The same panel edits the recipe itself,
    where the change sticks for next time instead of just for tonight.
    ------------------------------------------------------------------------- */
+/* ------------------------------- cooking ---------------------------------
+   The read view of a recipe: what it is, what it does to your day, what to do
+   with your hands. A mod is a delta the recipe carries — less carbs, more
+   protein, a micronutrient the dish can actually deliver — applied to a copy
+   so choosing one never edits the recipe.
+   ------------------------------------------------------------------------- */
+var cookCtx = null;
+
+function openCook(i){
+  cookCtx = {i:i, mod:-1};
+  renderCook();
+  sheet('sh-cook');
+}
+
+function renderCook(){
+  var r = S.recipes[cookCtx.i]; if (!r) return;
+  var items = applyMod(r, cookCtx.mod);
+  var t = nutritionOf(items) || {kj:0, grams:0, m:{}};
+  var n = Math.max(+r.servings || 1, 0.1);
+  var per = function(v){ return (v || 0) / n; };
+  var tg = r.tags || {};
+
+  el('cook-title').textContent = r.name;
+
+  var meta = [tg.cuisine && tg.cuisine !== 'None' ? tg.cuisine : '', tg.base,
+              tg.time ? tg.time + ' min' : '', n + ' serve' + (n === 1 ? '' : 's')]
+             .filter(Boolean).join(' · ');
+
+  var chips = '<div class="modrow"><button data-mod="-1" aria-pressed="' +
+    (cookCtx.mod < 0 ? 'true' : 'false') + '">As written</button>' +
+    (r.mods || []).map(function(m, k){
+      return '<button data-mod="' + k + '" aria-pressed="' +
+        (cookCtx.mod === k ? 'true' : 'false') + '">' + esc(m.name) + '</button>';
+    }).join('') + '</div>';
+
+  var note = cookCtx.mod >= 0 && r.mods[cookCtx.mod].note
+    ? '<p class="hint" style="margin-top:9px">' + esc(r.mods[cookCtx.mod].note) + '</p>' : '';
+
+  /* Only the micronutrients this serve actually moves the needle on — a list
+     of twenty-three with three that matter is a list nobody reads. */
+  var mic = Object.keys(NRV).map(function(k){
+      var tgt = nrvTarget(k); if (!tgt) return null;
+      var pct = per(t.m ? t.m[k] : 0) / tgt * 100;
+      return pct >= 25 && k !== 'na' ? {k:k, pct:pct} : null;
+    }).filter(Boolean).sort(function(a, b){ return b.pct - a.pct; }).slice(0, 5);
+
+  var rows = items.map(function(it){
+    var f = resolveItem(it), unit = it.liquid ? 'mL' : 'g';
+    return '<div class="row"><div class="row-main"><div class="t">' +
+      esc(it.label || it.name) + '</div>' +
+      (it.label ? '<div class="s">' + esc(it.name) + '</div>' : '') + '</div>' +
+      '<div class="row-kj">' + g(it.grams / n, it.grams / n < 20 ? 1 : 0) + ' ' + unit + '</div></div>';
+  }).join('');
+
+  el('cook-body').innerHTML =
+    '<p class="hint" style="margin:0 0 11px">' + esc(meta) + '</p>' + chips + note +
+    '<div class="readout" style="margin-top:14px"><div class="k">Per serve<em>' +
+      g(per(t.p),0) + ' g protein · ' + g(per(t.c),0) + ' g carbs · ' + g(per(t.f),0) +
+      ' g fat · ' + g(per(t.fib),1) + ' g fibre</em></div>' +
+      '<div class="v num">' + fmtE(per(t.kj), true) + '</div></div>' +
+    (mic.length ? '<div class="chips" style="margin-top:11px">' + mic.map(function(x){
+        return '<span class="chip"><b>' + Math.round(x.pct) + '%</b> ' +
+          esc(NRV[x.k].n.toLowerCase()) + '</span>'; }).join('') + '</div>' : '') +
+    '<div class="sec-h" style="margin:20px 0 8px"><h3>Ingredients</h3>' +
+      '<span class="right">per serve · ' + g(t.grams / n) + ' g</span></div>' +
+    '<div class="pane">' + rows + '</div>' +
+    '<div class="sec-h" style="margin:20px 0 10px"><h3>Method</h3></div>' +
+    '<ol class="steps">' + (r.method || []).map(function(s){
+      return '<li>' + esc(s) + '</li>'; }).join('') + '</ol>' +
+    '<div class="sec-h" style="margin:18px 0 9px"><h3>Log one serve to</h3></div>' +
+    MEALS.map(function(m){
+      return '<button class="btn ghost" data-cooklog="' + m[0] + '" style="margin-bottom:8px">' +
+        m[1] + '</button>'; }).join('');
+}
+
+/* Logging from here writes one serve of whatever is on screen, mod included,
+   and the entry carries the ingredients so it stays editable afterwards. */
+function logCooked(meal){
+  var r = S.recipes[cookCtx.i]; if (!r) return;
+  var items = applyMod(r, cookCtx.mod);
+  var t = nutritionOf(items); if (!t) return;
+  var n = Math.max(+r.servings || 1, 0.1), share = 1 / n;
+  var e = {name:r.name + (cookCtx.mod >= 0 ? ' · ' + r.mods[cookCtx.mod].name.toLowerCase() : ''),
+           grams:+(t.grams * share).toFixed(1), liquid:false, key:'', serve:null, m:{},
+           items: items.map(function(it){
+             return {key:it.key, name:it.name, grams:+(it.grams * share).toFixed(1),
+                     liquid:!!it.liquid};
+           })};
+  ['kj','p','f','sat','c','sug','fib','na','alc'].forEach(function(k){ e[k] = t[k] * share; });
+  MICRO_KEYS.forEach(function(k){ e.m[k] = t.m[k] * share; });
+  day(DAY).meals[meal].push(e);
+  save(); renderAll(); closeSheet();
+  toast('One serve added to ' + mealName(meal).toLowerCase() + '.');
+}
+
 var itemsCtx = null;
 
 function openItems(ctx){
@@ -11245,7 +11409,7 @@ function renderOffResults(q, via){
 /* Bumped on every deploy. When something fails, knowing which build is
    actually loaded is the difference between debugging the bug and debugging
    a stale cache. */
-var APP_VERSION = '2026.08.21-31';
+var APP_VERSION = '2026.08.21-32';
 var SB_URL = 'https://lsrxqviwgqjpuzzcqcpu.supabase.co';
 var SB_KEY = 'sb_publishable_0lk-0UAlfW-tALEgPiqFHg_8vF9Hp63';
 var AUTH_KEY = 'eatandtrain.auth';
@@ -11749,6 +11913,12 @@ function bind(){
         note:'Changes this entry only. The recipe itself keeps its original amounts.'});
       return;
     }
+    var ck = t.closest('[data-cook]');
+    if (ck){ openCook(+ck.dataset.cook); return; }
+    var md = t.closest('[data-mod]');
+    if (md && cookCtx){ cookCtx.mod = +md.dataset.mod; renderCook(); return; }
+    var cl = t.closest('[data-cooklog]');
+    if (cl){ logCooked(cl.dataset.cooklog); return; }
     var re = t.closest('[data-edit-rec]');
     if (re){
       var r = S.recipes[+re.dataset.editRec];
@@ -12452,6 +12622,7 @@ renderCats();
 bind();
 bindOnboard();
 backfillRecipeKeys();
+seedRecipes();
 setUnit(S.profile.unit || 'kj');
 renderAll();
 if (returned && returned.error) toast(returned.error);

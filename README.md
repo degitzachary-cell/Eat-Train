@@ -45,7 +45,8 @@ alone, because a diary is meant to scroll.
   expenditure, 14-day energy, weight trend, composition, weekly averages, and the
   weigh-in form with its history.
 - **Me** — who you are and how the maths is set up: account, markers, composition,
-  resting-rate model, daily activity, coach and goal, and the resulting numbers.
+  resting-rate model, daily activity, coach and goal, and the resulting numbers — always for today, not for whichever
+  day the diary happens to be showing.
 
 **Foods & recipes** is not a tab. You never set out to visit a food library — you hit
 it mid-flow when something is missing, so it lives behind a glyph in the header, and
@@ -363,6 +364,42 @@ makes, and it becomes a single food whose portion is one serving. Everything dow
 works unchanged, micronutrients included: log one serving of a two-serve batch and you
 get exactly half of what went in.
 
+### The starter set
+
+Seven recipes ship with the app, written rather than scraped — the FSANZ mixed dishes
+are survey averages, not something anyone cooks. Pad grapao, caramelised onion pasta
+with paprika chicken, dan dan mian, a protein yoghurt bowl, a chicken breast wrap, a
+chicken garden salad, and eggs and salmon on rye. Each carries a cuisine, a base, a
+time, the meals it suits, its ingredients, and its method.
+
+**Every one is written for two.** Cooking for one means weighing out half of everything
+and the second serve is where lunch tomorrow comes from; the app already halves the
+nutrition per serving either way.
+
+They are seeded once, on first load, and are ordinary recipes afterwards — editable,
+deletable, and not re-added if you throw them away.
+
+Their nutrition is not taken on trust from whoever wrote them. Every ingredient is
+resolved to an AUSNUT food key and the totals are computed from the database, then
+checked against the per-serve figures the recipe claims. All seven land within 15% on
+energy and five within 8%, which is about as close as a hand-written recipe and a
+national food composition table ever agree.
+
+### Variations
+
+Each recipe carries up to five one-tap variations: **less carbs**, **more carbs**,
+**more protein**, **more fibre**, and one micronutrient the dish is well placed to
+deliver — iron, calcium or omega-3. A variation is a set of amount changes and
+additions, not a second recipe: more protein on the pad grapao takes the chicken from
+360 g to 440 g, lifts the sauce by half so it does not taste thin, and adds a fried egg.
+
+Tap a recipe in the food library and it opens the way you would use it: the tags, the
+variation chips, per-serve energy and macros that move as you switch between them, the
+micronutrients it is strong in, the ingredient list at the amounts that variation
+implies, and the method. Log it to a meal from there and the entry records which
+variation you cooked — `Pad grapao · more protein` — carrying that variation's thirteen
+ingredients, while the recipe itself keeps its own twelve untouched.
+
 ## How the energy maths works
 
 **Resting metabolic rate.** Three models, and the app uses the best one your inputs
@@ -472,6 +509,20 @@ FSANZ workbooks and writes them; it takes the AFCD-only rows from the commit tha
 introduced them rather than from the working copy, so re-running it reproduces its own
 output instead of folding it back in. Point the paths at your copies of the workbooks
 and run it.
+
+The starter recipes are generated too, from `tools/recipes.json` — one entry per recipe,
+ingredients as `[search query, grams for one, label]`, plus its variations and the
+per-serve macros it claims. `tools/foodmap.json` pins each search query to a public food
+key, because a name lookup is the wrong thing to depend on for data that ships.
+
+    node tools/build_recipes.mjs   # resolve keys, double to two serves, check against the
+                                   # claimed macros → tools/recipes.built.json
+    node tools/seed_recipes.mjs    # compute per-100 g nutrition incl. micros
+                                   # → tools/seed-recipes.json
+
+The second file's contents are the `SEED_RECIPES` block in `index.html`, verbatim. Both
+scripts drive the page itself through Playwright rather than reimplementing the
+nutrition maths, so the seeded numbers cannot drift from what the app would compute.
 
 ## Sources
 
