@@ -233,9 +233,11 @@ than the bin Otsu stopped at, because on a clean black-on-white row that bin is 
 a threshold of zero puts every pixel on the same side of it.
 
 Rows are read middle-out, thirty-three of them, forwards and reversed so the pack can be
-upside down. The guide box is analysed alone and squashed to 1024 × 256 — a barcode is
+upside down. The guide box is analysed alone and squashed to 1024 × 320 — a barcode is
 the same all the way down, so trading height for width spends the pixels where the
-information is.
+information is. The box covers 90% of the frame's width and 38% of its height, and the
+canvas height tracks the crop: a taller box squashed into the same canvas would smear a
+tilted barcode, which is the one thing enlarging it was not meant to cost.
 
 **What it will and will not believe.** A located EAN-13 is accepted on one row: twelve
 digits each had to match their pattern and then agree with a check digit. Two things are
