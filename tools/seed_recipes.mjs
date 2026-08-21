@@ -23,6 +23,9 @@ const seeds = await p.evaluate(rs => rs.map(r => {
     c:+(t.c*k).toFixed(2), sug:+(t.sug*k).toFixed(2), fib:+(t.fib*k).toFixed(2),
     na:+(t.na*k).toFixed(2), alc:+(t.alc*k).toFixed(2), m:{}};
   MICRO_KEYS.forEach(x => o.m[x] = +(t.m[x]*k).toFixed(4));
+  // Only when set, so a run with neither is byte-identical to one before them.
+  if (r.image) o.image = r.image;
+  if (r.source) o.source = r.source;
   return o;
 }), R);
 fs.writeFileSync(path.join(ROOT,'tools','seed-recipes.json'), JSON.stringify(seeds));

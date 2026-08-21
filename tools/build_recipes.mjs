@@ -16,7 +16,10 @@ const recipes = R.map(r => {
     add:(m.add||[]).map(([q,g,label]) => ({key:MAP[q], grams:+(g*SERVES).toFixed(1), label}))
   }));
   return {name:r.name, servings:SERVES, cuisine:r.cuisine, base:r.base, time:r.time,
-          meal:r.meal, items, method:r.method, mods, check:r.check};
+          meal:r.meal, items, method:r.method, mods, check:r.check,
+          // Carried through so a photograph or a partner kitchen's dish needs
+          // no change to the pipeline, only a field in recipes.json.
+          image:r.image || '', source:r.source || ''};
 });
 
 const b = await chromium.launch({ executablePath:CHROME });

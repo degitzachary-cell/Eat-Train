@@ -368,40 +368,56 @@ get exactly half of what went in.
 
 ### The tab
 
-Recipes get their own tab because choosing what to cook is its own moment. You are not
-mid-log hunting for a food; you are standing in the kitchen with a number left to eat.
-So the tab opens on **what fits that number** rather than on an alphabetical list.
+Recipes get their own tab, and it is a section you browse rather than a library you
+search. You come here to be shown something worth cooking, look at it, and decide — the
+deciding is the whole point, so the tab is pictures and headlines rather than rows and
+numbers. Open one to read the method, log a serve to a meal, and you land in your log
+with it sitting there.
 
-**For today** ranks the library against the day as it actually stands: how much of the
-remaining energy a serve fills, how much of the outstanding protein and fibre it brings,
-and which of the micronutrients you have been short on all week it happens to deliver.
-Each suggestion says why it is there — *31% of what is left · +56 g protein · +9.2 g
-fibre*. Overshooting is priced rather than disqualifying, because a 3,000 kJ dinner with
-400 kJ left is wrong and a 2,000 kJ one is merely a big night. The micronutrient half
-reads the **last seven logged days**, not today: a shortfall you have been carrying all
-week is worth more than one you have had since breakfast.
-
-Whatever is suggested is not listed again underneath. Printing the same recipe twice on
-one screen costs half the screen and says nothing the first row did not.
-
-Once you type, the suggestions go — you have stopped asking that question. Search covers
-the four things people actually reach for:
-
-| You type | You get |
-|---|---|
-| `tahini` | every recipe with tahini in it |
-| `thai` | everything tagged Thai |
-| `noodles` | everything built on noodles |
-| `<400` | everything at or under 400 per serve, in whatever unit is on screen |
-
-Every term has to land somewhere — name, ingredient, cuisine or base — so a second word
-narrows the list rather than widening it. A bare number is never a search for the word,
-so it is read as a ceiling; a `>` makes it a floor. The chips above filter by meal:
-breakfast, lunch, dinner, snacks.
+**For today** is the top of the tab, and it answers the day you are actually having: one
+hero card and two beside it, ranked on how much of the remaining energy a serve fills,
+how much of the outstanding protein and fibre it brings, and which of the micronutrients
+you have been short on all week it happens to deliver. Each card says why it is there —
+*31% of what is left · +56 g protein · +9.2 g fibre*. Overshooting is priced rather than
+disqualifying, because a 3,000 kJ dinner with 400 kJ left is wrong and a 2,000 kJ one is
+merely a big night. The micronutrient half reads the **last seven logged days**, not
+today: a shortfall you have been carrying all week is worth more than one you have had
+since breakfast.
 
 Recipes are still ordinary foods underneath, so they also come up in the normal food
-search when you are logging — filed under a **Recipes** category. That path logs a serve
-as written. The tab is where the variations live.
+search when you are logging, filed under a **Recipes** category. That path logs a serve
+as written; the tab is where the variations and the method live.
+
+**Browse** is everything else, under meal chips — breakfast, lunch, dinner, snacks.
+Reach for a chip and the suggestions get out of the way, because you have just said what
+you are after. Whatever is suggested is not repeated below it either; printing the same
+card twice costs half the screen and says nothing the first one did not. A recipe you
+save yourself is filed under the meal you saved it from, and one with no meal recorded
+at all shows under every chip rather than under none.
+
+### Pictures
+
+Every recipe has a picture slot, and a recipe carries its own image as a field. Until
+there is a photograph in it, the slot draws the dish's **base** — a bowl of rice, a plate
+of pasta, a fried egg — as line art on a wash tilted by the recipe's own name, so a grid
+of them does not tile. That is a picture the file can carry offline, which a URL to
+somebody's CDN is not, and it is a great deal better than a grey rectangle apologising
+for the photograph that is not there.
+
+An image is held the way everything else here is: in the file, as a data URI. It costs
+what it costs — budget for it, because the app is one download and there is nowhere for
+a lazy second request to come from when you are cooking with no signal.
+
+### A partner's shelf
+
+A recipe can carry a **source**. When it does, it wears that name as a badge on its card
+and its dishes group into their own section under Browse rather than being shuffled in
+among your own — a meal prep company's range is a shelf, not a dozen strangers in your
+recipe box. Suggestions ignore the distinction: if a partner's dish is the thing that
+fits tonight, it is the thing that fits tonight.
+
+Nothing ships with a source set. The field, the badge, the grouping and the pipeline that
+carries them are all in place, so a range drops in as data.
 
 ### The starter set
 
@@ -432,12 +448,13 @@ deliver — iron, calcium or omega-3. A variation is a set of amount changes and
 additions, not a second recipe: more protein on the pad grapao takes the chicken from
 360 g to 440 g, lifts the sauce by half so it does not taste thin, and adds a fried egg.
 
-Tap a recipe in the food library and it opens the way you would use it: the tags, the
-variation chips, per-serve energy and macros that move as you switch between them, the
-micronutrients it is strong in, the ingredient list at the amounts that variation
-implies, and the method. Log it to a meal from there and the entry records which
-variation you cooked — `Pad grapao · more protein` — carrying that variation's thirteen
-ingredients, while the recipe itself keeps its own twelve untouched.
+Tap a card and the recipe opens the way you would use it: the tags, the variation chips,
+per-serve energy and macros that move as you switch between them, the micronutrients it
+is strong in, the ingredient list at the amounts that variation implies, and the method.
+Log a serve from there and the entry records which variation you cooked — `Pad grapao ·
+more protein` — carrying that variation's thirteen ingredients, while the recipe itself
+keeps its own twelve untouched. Editing the recipe and deleting it live at the bottom of
+that same view, with the recipe, rather than as icons on the shelf you were browsing.
 
 ## How the energy maths works
 
@@ -552,7 +569,9 @@ and run it.
 The starter recipes are generated too, from `tools/recipes.json` — one entry per recipe,
 ingredients as `[search query, grams for one, label]`, plus its variations and the
 per-serve macros it claims. `tools/foodmap.json` pins each search query to a public food
-key, because a name lookup is the wrong thing to depend on for data that ships.
+key, because a name lookup is the wrong thing to depend on for data that ships. Optional
+`image` and `source` fields ride through both scripts untouched, so a photograph or a
+partner's range needs data rather than code.
 
     node tools/build_recipes.mjs   # resolve keys, double to two serves, check against the
                                    # claimed macros → tools/recipes.built.json
