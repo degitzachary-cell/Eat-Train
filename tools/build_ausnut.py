@@ -182,6 +182,18 @@ cur = re.sub(r'var FOODS = `\n.*?\n`;',
 cur = re.sub(r'var MEASURES = `\n.*?\n`;',
              lambda m: 'var MEASURES = `\n' + '\n'.join(mlines) + '\n`;', cur, count=1, flags=re.S)
 open(page, 'w', encoding='utf-8').write(cur)
+# The hand-written DERIVED block is not touched by this script, but it uses the
+# same column layout — so if the micronutrient list grows, those rows go stale
+# silently. Say so rather than let them be read with the columns shifted.
+want = len(foods[0].split('|'))
+d = re.search(r'var DERIVED = `\n(.*?)\n`;', cur, re.S)
+if d:
+    for line in d.group(1).split('\n'):
+        got = len(line.split('|'))
+        if got != want:
+            print('!! DERIVED row has %d columns, FOODS has %d — regenerate it: %s'
+                  % (got, want, line.split('|')[0]))
+
 print('AUSNUT foods %d · carried from AFCD %d · total %d' % (len(out), len(carried), len(foods)))
 print('liquids %d · foods with official portions %d' % (sum(1 for l in foods if l.split('|')[11] == '1'), len(mlines)))
 print('foods block %.0f KB · measures block %.0f KB · index.html %.0f KB' %

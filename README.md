@@ -143,6 +143,39 @@ It says "Nut, almond" and "Bread, from white flour, sour dough"; you can type
 spacing and punctuation stripped, each fallback ranked below the last. A small synonym
 table covers the rest — yogurt, snags, roo, avo, chook, spuds, fries, cookie.
 
+### Derived foods
+
+A composition table reports the **edible portion** — the part conventionally eaten — and
+publishes the refuse separately. That is why there is no banana with skin, no orange with
+peel and no kiwifruit that has not been peeled first. AUSNUT then only codes what the
+national survey heard reported, and nobody reported an unpeeled one. Between them those
+two rules leave a real gap: FSANZ has exactly two kiwifruit rows, both peeled, both
+lab-analysed, and the skin is where a good share of the fibre is.
+
+So there are two derived foods, kept in their own small block the AUSNUT rebuild does not
+touch:
+
+| | fibre | vitamin E | folate |
+|---|---|---|---|
+| Kiwifruit, green (hayward), peeled *(FSANZ)* | 3.0 g | 1.08 mg | 32 µg |
+| Kiwifruit, green (hayward), **unpeeled** *(derived)* | 4.5 g | 1.43 mg | 43 µg |
+| Kiwifruit, gold, peeled *(FSANZ)* | 1.8 g | 0.98 mg | 39 µg |
+| Kiwifruit, gold, **unpeeled** *(derived)* | 2.7 g | 1.29 mg | 52 µg |
+
+Built from the FSANZ analysed flesh with the published whole-versus-peeled uplift applied
+to the three nutrients the skin actually moves — fibre ×1.50, vitamin E ×1.32, folate
+×1.34. Everything else is left at the flesh value, because the skin is mostly water and
+fibre and the per-100 g difference sits inside the noise. Doing better would need the skin
+fraction by weight, for which there is no Australian figure either, and stacking a second
+guess to correct the first is worse than one stated plainly. The portion is one whole
+fruit at 90 g against FSANZ's 78 g of peeled flesh.
+
+They say **derived** in the search results and again on the screen where you set the
+quantity, because a number that was worked out rather than measured should say so at the
+moment it is logged, not only in the list it was picked from. The build script checks
+their column count against the regenerated data and complains if a new nutrient has left
+them stale.
+
 ### Supermarket products
 
 AUSNUT covers named products where the survey met them, but not the whole branded
@@ -240,7 +273,10 @@ Eight results, then it scrolls. A list that runs off the bottom of the screen re
 endless and buries whatever sits under it; eight is enough to choose between and short
 enough to see the end of.
 
-**Your foods** gets the same treatment: eight rows visible, the rest a scroll away, and
+**Your foods** is editable: tap a row and it opens the same form you added it with,
+filled in, and saving changes that food in place rather than leaving a second copy behind.
+Days you have already logged keep the numbers they were logged with. It gets the same
+treatment as the search list: eight rows visible, the rest a scroll away, and
 the rows themselves compact — the unit is printed once in the heading rather than
 twenty-one times down the list, which is the difference between *117 Cal/100 g · P 6.8 ·
 C 4.5 · F 8* and *117 · P 6.8 · C 4.5 · F 8*. It is not collapsed behind anything: the
@@ -642,8 +678,12 @@ per-serve energy and macros that move as you switch between them, the micronutri
 is strong in, the ingredient list at the amounts that variation implies, and the method.
 Log a serve from there and the entry records which variation you cooked — `Pad grapao ·
 more protein` — carrying that variation's thirteen ingredients, while the recipe itself
-keeps its own twelve untouched. Editing the recipe and deleting it live at the bottom of
-that same view, with the recipe, rather than as icons on the shelf you were browsing.
+keeps its own twelve untouched.
+
+**Edit recipe** at the bottom of that view opens the whole thing on one screen: its name,
+how many it makes, and every ingredient with its weight. Those are the same act — rewriting
+what you cook next time — so they are not spread across three places. Deleting lives there
+too, with the recipe, rather than as an icon on the shelf you were browsing.
 
 ## How the energy maths works
 

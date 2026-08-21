@@ -1070,13 +1070,14 @@ body.dragging{cursor:grabbing}
       </div>
       <div class="chips" id="qty-macros"></div>
     </div>
+    <p class="hint" id="qty-note" hidden></p>
     <button class="btn" id="qty-add">Add to day</button>
   </div>
 </div>
 
 <!-- custom food sheet -->
 <div class="sheet" id="sh-custom" role="dialog" aria-modal="true" aria-label="New food">
-  <div class="sheet-head"><h2>New food</h2><button class="iconbtn sheet-close" aria-label="Close">✕</button></div>
+  <div class="sheet-head"><h2 id="c-title">New food</h2><button class="iconbtn sheet-close" aria-label="Close">✕</button></div>
   <div class="sheet-body">
     <button class="btn" id="c-scan" style="margin-bottom:12px">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16">
@@ -1172,6 +1173,7 @@ body.dragging{cursor:grabbing}
       style="margin-left:auto;font-size:11px;color:var(--ink-3)">per 100 g</span>
       <span class="kj num" id="custom-count" style="margin-left:8px">0</span></div>
     <div id="custom-list" class="cap8"></div>
+    <p class="hint" style="padding:8px 15px 10px;margin:0">Tap one to change it.</p>
   </div>
 </div>
 </div>
@@ -8385,6 +8387,49 @@ var BUILTIN = FOODS.trim().split('\n').map(function(l, i){
   return parseFoodLine(l, 'b', i);
 }).filter(Boolean);
 
+/* ------------------------------- derived ---------------------------------
+   Foods FSANZ does not have because of what a composition table is, not
+   because of what people eat. A table reports the edible portion — the part
+   conventionally eaten — and publishes the refuse separately, which is why
+   there is no banana with skin, no orange with peel, and no kiwifruit that
+   has not been peeled first. AUSNUT then only codes what the national survey
+   heard reported, and nobody reported an unpeeled one.
+
+   These are built from the FSANZ analysed flesh with a published uplift
+   applied to the three nutrients the skin actually moves: fibre ×1.50,
+   vitamin E ×1.32, folate ×1.34. Everything else is left at the flesh value,
+   because the skin is mostly water and fibre and the per-100 g difference
+   sits inside the noise. Doing better would need the skin fraction by weight,
+   for which there is no Australian figure either — and stacking a second
+   guess to correct the first is worse than one stated plainly.
+
+   They are marked derived wherever they appear. Nothing here is analysed, and
+   it must never be mistaken for a row that was.
+   ------------------------------------------------------------------------- */
+var DERIVED = `
+Kiwifruit, green (hayward), unpeeled, raw|16|230|1.2|0.7|0.17|9.1|8.8|4.5|2|0|0|28|0.26|15|31|279|0.1|1.3|0.5|9|85|0|1.43|0|0.05|0.35|43|0.36|0|0|0|0|0.06|0.14|0|0|0|0|D000001
+Kiwifruit, gold, unpeeled, raw|16|244|1.2|0.5|0|11.1|10.9|2.7|3|0|0|18|0.21|14|26|306|0.11|0.4|0.5|8|110|0|1.29|0.02|0.05|0.63|52|0.05|0|0|0|0|0|0|0|0|0|0|D000002
+`;
+/* One whole fruit against FSANZ's 78 g of peeled flesh: skin is around an
+   eighth of a kiwifruit by weight. */
+var DERIVED_MEASURES = `
+D000001|kiwifruit:90
+D000002|kiwifruit:90
+`;
+DERIVED_MEASURES.trim().split('\n').forEach(function(line){
+  var i = line.indexOf('|'); if (i < 0) return;
+  MEASURE_MAP[line.slice(0, i)] = line.slice(i + 1).split(';').map(function(x){
+    var j = x.lastIndexOf(':');
+    return [x.slice(0, j), +x.slice(j + 1)];
+  }).filter(function(x){ return x[1] > 0; });
+});
+var DERIVED_FOODS = DERIVED.trim().split('\n').map(function(l, i){
+  var f = parseFoodLine(l, 'd', i);
+  if (f) f.derived = 'From the FSANZ peeled flesh, with fibre, vitamin E and folate ' +
+    'lifted for the skin. Derived, not analysed.';
+  return f;
+}).filter(Boolean);
+
 /* ------------------------------- state ---------------------------------- */
 var KEY = 'eatandtrain.v1';
 var S, VIEW = 'today', DAY = todayISO(), imported = [];
@@ -8452,7 +8497,7 @@ function dayRO(d){ return S.days[d] || EMPTY_DAY; }
 
 var _foodCache = null;
 function allFoods(){
-  if (!_foodCache) _foodCache = BUILTIN.concat(imported, S.custom);
+  if (!_foodCache) _foodCache = BUILTIN.concat(DERIVED_FOODS, imported, S.custom);
   return _foodCache;
 }
 function invalidateFoods(){ _foodCache = null; _keyCache = null; _nameCache = null; }
@@ -10413,8 +10458,10 @@ function renderFoodView(){
   /* Printed once in the heading rather than on every row. */
   el('custom-unit').textContent = unitName() + ' per 100 g';
   el('custom-list').innerHTML = S.custom.length ? S.custom.map(function(c, i){
-    return '<div class="row tight"><div class="row-main"><div class="t">' + esc(c.name) + '</div>' +
-      '<div class="s">' + fmtE(c.kj) + ' · P ' + g(c.p,1) + ' · C ' + g(c.c,1) + ' · F ' + g(c.f,1) + '</div></div>' +
+    return '<div class="row tight">' +
+      '<button class="row-main" data-edit-custom="' + i + '" style="text-align:left">' +
+      '<div class="t">' + esc(c.name) + '</div>' +
+      '<div class="s">' + fmtE(c.kj) + ' · P ' + g(c.p,1) + ' · C ' + g(c.c,1) + ' · F ' + g(c.f,1) + '</div></button>' +
       '<button class="row-del" data-del-custom="' + i + '" aria-label="Delete ' + esc(c.name) + '">' +
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M5 5l14 14M19 5L5 19"/></svg></button></div>';
   }).join('') : '<div class="empty">Nothing of your own yet</div>';
@@ -11019,7 +11066,7 @@ function renderCook(){
     /* Editing the recipe itself is a different act from cooking it, and belongs
        with the recipe rather than on the shelf you were browsing. */
     '<div class="btnrow" style="margin-top:16px">' +
-      '<button class="btn sm ghost" data-edit-rec="' + cookCtx.i + '" style="flex:1">Edit ingredients</button>' +
+      '<button class="btn sm ghost" data-edit-rec="' + cookCtx.i + '" style="flex:1">Edit recipe</button>' +
       /* A recipe that ships with the app is not yours to lose. Edit it all you
          like — the amounts, the ingredients — but there is no delete on it,
          because one stray tap should not take something out of the app. */
@@ -11079,7 +11126,25 @@ function renderItems(){
       '<path d="M5 5l14 14M19 5L5 19"/></svg></button></div>';
   }).join('');
 
-  el('items-body').innerHTML =
+  /* Editing a recipe is one screen, not three. The name and how many it makes
+     belong with the ingredients, because changing any of them is the same act:
+     rewriting what you cook next time. */
+  var r = itemsCtx.mode === 'recipe' ? S.recipes[itemsCtx.i] : null;
+  /* Removing an ingredient rebuilds this, so a half-typed name has to survive
+     the rebuild rather than snapping back to what it was called. */
+  var nameNow = el('items-name') ? el('items-name').value : null;
+  var servesNow = el('items-serves') ? el('items-serves').value : null;
+  var headFields = r
+    ? '<div class="grid2" style="margin-bottom:4px">' +
+        '<label class="f"><span>Name</span><input type="text" id="items-name" autocomplete="off" value="' +
+          esc(nameNow !== null ? nameNow : r.name) + '"></label>' +
+        '<label class="f"><span>Makes</span><input type="number" id="items-serves" inputmode="decimal" ' +
+          'min="0.5" step="0.5" value="' +
+          esc(servesNow !== null ? servesNow : String(+r.servings || 1)) + '"></label>' +
+      '</div>'
+    : '';
+
+  el('items-body').innerHTML = headFields +
     '<div class="pane" style="margin-bottom:14px">' + (rows || '<div class="empty">Nothing left</div>') + '</div>' +
     (t.missing && t.missing.length
       ? '<p class="hint" style="color:var(--warn);margin-bottom:10px">' + t.missing.length +
@@ -11119,6 +11184,10 @@ function saveItems(){
     toast('Updated just for ' + (DAY === todayISO() ? 'today' : 'this day') + '.');
   } else {
     var r = S.recipes[c.i]; if (!r) return;
+    var nm = el('items-name') ? el('items-name').value.trim() : '';
+    if (nm) r.name = nm;
+    var sv = el('items-serves') ? +el('items-serves').value : 0;
+    if (sv > 0) r.servings = sv;
     r.items = d;
     var t = nutritionOf(d);
     if (t && t.grams){
@@ -11646,7 +11715,8 @@ function resultRow(f){
     '<svg viewBox="0 0 24 24" width="15" height="15" fill="' + (isFav ? 'currentColor' : 'none') +
     '" stroke="currentColor" stroke-width="1.6"><path d="M12 3.6l2.6 5.3 5.9.9-4.3 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8L3.5 9.8l5.9-.9z"/></svg></span>' +
     '<span style="min-width:0"><span class="t">' + esc(f.name) + '</span>' +
-    '<span class="s">' + esc(f.cat) + (f.liquid ? ' · liquid' : '') + '</span></span>' +
+    '<span class="s">' + esc(f.cat) + (f.liquid ? ' · liquid' : '') +
+      (f.derived ? ' · derived' : '') + '</span></span>' +
     '<span class="e">' + fmtE(f.kj) + ' ' + unitName() + '<small>per ' + unit + '</small></span></button>';
 }
 function renderCats(){
@@ -11676,6 +11746,10 @@ function openQty(f){
   qtyFood = f;
   qtyServes = serveOptions(f);
   el('qty-name').textContent = f.name;
+  /* A number that was worked out rather than measured says so where it is
+     about to be logged, not only in the list it was picked from. */
+  el('qty-note').hidden = !f.derived;
+  el('qty-note').textContent = f.derived || '';
   el('qty-serve').innerHTML = qtyServes.map(function(s, i){
     return '<option value="' + i + '">' + esc(s.label) + '</option>';
   }).join('');
@@ -12323,9 +12397,42 @@ function onBarcode(code){
       toast('Barcode ' + code + ' is not in Open Food Facts — type the panel.');
     });
 }
+/* One form, two jobs. Opened empty it adds a food; opened on one of yours it
+   changes that one in place rather than leaving a second copy behind, which is
+   what "edit" meant every other time you tried it here. Values are shown on
+   the per-100 basis they are stored on, in whichever energy unit is on screen.
+   ------------------------------------------------------------------------- */
+var customIdx = null;
+function openCustom(i){
+  customIdx = (typeof i === 'number' && S.custom[i]) ? i : null;
+  var c = customIdx === null ? null : S.custom[customIdx];
+  el('c-title').textContent = c ? 'Edit food' : 'New food';
+  el('c-save').textContent = c ? 'Save changes' : 'Save food';
+  el('c-scan').hidden = !!c;
+  press('c-basis', 'basis', '100');
+  el('c-serve-wrap').hidden = true;
+  el('c-name').value = c ? c.name : '';
+  el('c-code').value = c && c.code ? c.code : '';
+  var kcal = isKcal();
+  function set(id, v){ el(id).value = (v || v === 0) ? g(v, 2) : ''; }
+  set('c-kj', c ? (kcal ? c.kj / KJ_PER_KCAL : c.kj) : '');
+  ['p','f','sat','c','sug','fib','na'].forEach(function(k){
+    set('c-' + k, c ? c[k] : '');
+  });
+  el('c-hint').innerHTML = c
+    ? 'Changing this changes it everywhere it is used from now on. Days you have already ' +
+      'logged keep the numbers they were logged with.'
+    : '';
+  sheet('sh-custom');
+}
+
 /* Drop whatever was found into the New food form so it can be checked and
    corrected against the pack before saving. */
 function fillNewFood(f, code){
+  customIdx = null;
+  el('c-title').textContent = 'New food';
+  el('c-save').textContent = 'Save food';
+  el('c-scan').hidden = false;
   sheet('sh-custom');
   el('c-name').value = f ? f.name : '';
   el('c-code').value = code || '';
@@ -12566,7 +12673,7 @@ function renderOffResults(q, via){
 /* Bumped on every deploy. When something fails, knowing which build is
    actually loaded is the difference between debugging the bug and debugging
    a stale cache. */
-var APP_VERSION = '2026.08.21-41';
+var APP_VERSION = '2026.08.21-42';
 var SB_URL = 'https://lsrxqviwgqjpuzzcqcpu.supabase.co';
 var SB_KEY = 'sb_publishable_0lk-0UAlfW-tALEgPiqFHg_8vF9Hp63';
 var AUTH_KEY = 'eatandtrain.auth';
@@ -13073,6 +13180,8 @@ function bind(){
     if (suppressClick){ ev.stopPropagation(); ev.preventDefault(); return; }
     var t = ev.target;
 
+    var ec = t.closest('[data-edit-custom]');
+    if (ec){ openCustom(+ec.dataset.editCustom); return; }
     var inf = t.closest('[data-info]');
     if (inf){ toggleInfo(inf.dataset.info, inf); return; }
     var ib = t.closest('[data-items]');
@@ -13094,7 +13203,7 @@ function bind(){
     if (re){
       var r = S.recipes[+re.dataset.editRec];
       if (r) openItems({mode:'recipe', i:+re.dataset.editRec, items:r.items,
-        title:r.name, cta:'Save recipe',
+        title:'Edit recipe', cta:'Save recipe',
         note:'Changes the recipe for next time. Days you have already logged keep what you ate.'});
       return;
     }
@@ -13149,7 +13258,7 @@ function bind(){
       return;
     }
     var nf = t.closest('[data-newfood]');
-    if (nf){ sheet('sh-custom'); return; }
+    if (nf){ openCustom(null); return; }
     var os = t.closest('[data-offsearch]');
     if (os){ offSearch(el('q').value.trim()); return; }
     var op = t.closest('[data-off]');
@@ -13255,7 +13364,7 @@ function bind(){
   });
   el('btn-browse').addEventListener('click', function(){ openSearch('snack'); });
   el('scan-torch').addEventListener('click', toggleTorch);
-  el('btn-newfood').addEventListener('click', function(){ sheet('sh-custom'); });
+  el('btn-newfood').addEventListener('click', function(){ openCustom(null); });
   el('btn-data').addEventListener('click', function(){ renderDataSheet(); sheet('sh-data'); });
   el('btn-foods').addEventListener('click', function(){ renderFoodView(); sheet('sh-foods'); });
   el('csv-in').addEventListener('change', function(ev){
@@ -13297,15 +13406,24 @@ function bind(){
     function v(id){ return Math.max(+el(id).value || 0, 0) * k; }
     var kjIn = v('c-kj') * (isKcal() ? KJ_PER_KCAL : 1);
     invalidateFoods();
-    S.custom.push({id:'c' + S.custom.length, name:name, cat:'Your foods', liquid:false,
+    var food = {name:name, cat:'Your foods', liquid:false,
       code:(el('c-code').value || '').replace(/\D/g, '') || null,
       kj:kjIn, p:v('c-p'), f:v('c-f'), sat:v('c-sat'), c:v('c-c'),
-      sug:v('c-sug'), fib:v('c-fib'), na:v('c-na'), alc:0});
+      sug:v('c-sug'), fib:v('c-fib'), na:v('c-na'), alc:0};
+    var editing = customIdx !== null && S.custom[customIdx];
+    if (editing){
+      food.id = S.custom[customIdx].id;
+      S.custom[customIdx] = food;
+    } else {
+      food.id = 'c' + S.custom.length;
+      S.custom.push(food);
+    }
+    customIdx = null;
     save();
     ['c-name','c-code','c-kj','c-p','c-f','c-sat','c-c','c-sug','c-fib','c-na'].forEach(function(i){ el(i).value = ''; });
     el('c-hint').innerHTML = '';
     renderFoodView(); renderCats(); closeSheet();
-    toast('“' + name + '” saved.');
+    toast('“' + name + '” ' + (editing ? 'updated.' : 'saved.'));
   });
 
   /* running */
