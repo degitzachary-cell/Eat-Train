@@ -405,6 +405,28 @@ worth switching to as soon as it is available.
 It then launches full screen and runs with no network. Fonts come from Google Fonts
 when online and fall back cleanly when not.
 
+### Editing what you cooked
+
+A recipe's nutrition is **derived from its ingredients, never stored**. The totals
+recorded at save time survive only as a fallback for an ingredient that can no longer be
+found. That is what lets an edit take effect everywhere at once, and it is why a recipe
+written before the AUSNUT rebuild does not quietly keep reporting the old database's
+numbers — or carry hard zeros for omega-3, linoleic and alpha-linolenic acid, which had
+no keys when it was saved.
+
+Ingredients are held by **public food key** first and by name only as a fallback, since
+names move between releases. Recipes saved before keys existed get them backfilled once,
+on load.
+
+A logged recipe is one row in the diary, and that row **remembers what went into it**.
+Tap the list icon on it to open the ingredients: change a weight, drop something,
+and the entry recomputes — for that day only. The recipe keeps its own amounts. Editing
+the recipe from the food library does the opposite: it changes what you cook next time
+and leaves every day you have already logged exactly as you ate it.
+
+Ingredients resolve against foods only, never against recipes. A recipe built from a meal
+that already contained a recipe is flattened into its parts.
+
 ## Sync
 
 Data lives on this device first and always. Sign in from the Me tab and it is

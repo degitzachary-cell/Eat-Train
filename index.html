@@ -958,6 +958,13 @@ body.dragging{cursor:grabbing}
   <div class="sheet-body" id="move-body"></div>
 </div>
 
+<!-- ingredients of one logged recipe, or of the recipe itself -->
+<div class="sheet" id="sh-items" role="dialog" aria-modal="true" aria-label="Edit ingredients">
+  <div class="sheet-head"><h2 id="items-title">Ingredients</h2>
+    <button class="iconbtn sheet-close" aria-label="Close">&#10005;</button></div>
+  <div class="sheet-body" id="items-body"></div>
+</div>
+
 <!-- food library -->
 <div class="sheet" id="sh-foods" role="dialog" aria-modal="true" aria-label="Foods and recipes">
   <div class="sheet-head"><h2>Foods &amp; recipes</h2><button class="iconbtn sheet-close" aria-label="Close">&#10005;</button></div>
@@ -8263,7 +8270,36 @@ function allFoods(){
   if (!_foodCache) _foodCache = BUILTIN.concat(imported, S.custom);
   return _foodCache;
 }
-function invalidateFoods(){ _foodCache = null; }
+function invalidateFoods(){ _foodCache = null; _keyCache = null; _nameCache = null; }
+
+/* Foods by their public food key. Names move — AUSNUT renamed a great deal of
+   what it inherited — so anything meant to survive the next data release is
+   held by key and falls back to the name only when there is no key. */
+var _keyCache = null, _nameCache = null;
+function foodIndex(){
+  if (!_keyCache){
+    _keyCache = {}; _nameCache = {};
+    allFoods().forEach(function(f){
+      if (f.key) _keyCache[f.key] = f;
+      _nameCache[f.name] = f;
+    });
+  }
+}
+function foodByKey(k){ if (!k) return null; foodIndex(); return _keyCache[k] || null; }
+
+/* Ingredients resolve against foods only, never against recipes. foodByName()
+   searches recipes too, and a recipe's nutrition is now derived from its
+   ingredients — so letting an ingredient reach it means recipeAsFood calls
+   nutritionOf calls foodByName calls allRecipes calls recipeAsFood, forever.
+   It only bites when an ingredient misses on its key, which is precisely the
+   case this whole change exists to handle. */
+function resolveItem(it){
+  if (!it) return null;
+  var f = foodByKey(it.key);
+  if (f) return f;
+  foodIndex();
+  return _nameCache[it.name] || null;
+}
 
 /* ------------------------------ helpers --------------------------------- */
 function todayISO(){
@@ -9048,6 +9084,10 @@ function renderMeals(){
         '<div class="s">' + portionLabel(x) +
         ' · P ' + g(x.p,1) + ' · C ' + g(x.c,1) + ' · F ' + g(x.f,1) + '</div></div>' +
         '<div class="row-kj">' + fmtE(x.kj) + '</div>' +
+        (x.items && x.items.length
+          ? '<button class="row-move" data-items="' + key + ':' + i + '" aria-label="Ingredients of ' +
+            esc(x.name) + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+            'stroke-width="1.9" width="14" height="14"><path d="M4 6h16M4 12h16M4 18h10"/></svg></button>' : '') +
         '<button class="row-move" data-move="' + key + ':' + i + '" aria-label="Move ' + esc(x.name) + ' to another meal">' +
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" width="14" height="14">' +
         '<path d="M8 6L4 10l4 4M4 10h16M16 18l4-4-4-4M20 14H4"/></svg></button>' +
@@ -9730,6 +9770,9 @@ function renderFoodView(){
       fmtE(r.kj * r.serveG / 100) + ' ' + unitName() + ' each · ' +
       esc(r.items.map(function(x){ return x.name.split(',')[0]; }).slice(0,3).join(', ')) +
       (r.items.length > 3 ? ' +' + (r.items.length - 3) : '') + '</div></div>' +
+      '<button class="row-move" data-edit-rec="' + i + '" aria-label="Edit ' + esc(r.name) + '">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" width="14" height="14">' +
+      '<path d="M4 6h16M4 12h16M4 18h10"/></svg></button>' +
       '<button class="row-del" data-del-rec="' + i + '" aria-label="Delete ' + esc(r.name) + '">' +
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M5 5l14 14M19 5L5 19"/></svg></button></div>';
   }).join('') : '<div class="empty">Log a meal, then tap the save icon on it</div>';
@@ -10144,6 +10187,110 @@ function bindDrag(){
 }
 
 /* Tap alternative — dragging is not the only way, and not everyone can. */
+/* ---------------------------- ingredients --------------------------------
+   A recipe logs as one row, and this is the row opened up. Change a weight,
+   drop the feta, and the entry recomputes from the ingredients rather than
+   from the total it was saved with. The same panel edits the recipe itself,
+   where the change sticks for next time instead of just for tonight.
+   ------------------------------------------------------------------------- */
+var itemsCtx = null;
+
+function openItems(ctx){
+  itemsCtx = ctx;
+  itemsCtx.draft = (ctx.items || []).map(function(it){
+    return {key:it.key || '', name:it.name, grams:+it.grams || 0, liquid:!!it.liquid};
+  });
+  el('items-title').textContent = ctx.title;
+  renderItems();
+  sheet('sh-items');
+}
+
+function renderItems(){
+  var d = itemsCtx.draft, t = nutritionOf(d) || {kj:0, grams:0, missing:[]};
+  var rows = d.map(function(it, i){
+    var f = resolveItem(it), unit = it.liquid ? 'mL' : 'g';
+    var kj = f ? f.kj * (it.grams / 100) : 0;
+    return '<div class="row" style="align-items:center">' +
+      '<div class="row-main"><div class="t">' + esc(it.name) + '</div>' +
+      '<div class="s">' + (f ? fmtE(kj) + ' ' + unitName() : 'not in the database any more') + '</div></div>' +
+      '<input type="number" inputmode="decimal" min="0" step="1" data-item="' + i + '" value="' +
+        g(it.grams, it.grams < 20 ? 1 : 0) + '" style="width:82px;text-align:right;padding:7px 8px">' +
+      '<span class="s" style="width:20px;color:var(--ink-3)">' + unit + '</span>' +
+      '<button class="row-del" data-item-del="' + i + '" aria-label="Remove ' + esc(it.name) + '">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">' +
+      '<path d="M5 5l14 14M19 5L5 19"/></svg></button></div>';
+  }).join('');
+
+  el('items-body').innerHTML =
+    '<div class="pane" style="margin-bottom:14px">' + (rows || '<div class="empty">Nothing left</div>') + '</div>' +
+    (t.missing && t.missing.length
+      ? '<p class="hint" style="color:var(--warn);margin-bottom:10px">' + t.missing.length +
+        ' ingredient' + (t.missing.length === 1 ? '' : 's') + ' could not be found in the food ' +
+        'database, so ' + (t.missing.length === 1 ? 'it is' : 'they are') + ' counted as nothing. ' +
+        'Remove ' + (t.missing.length === 1 ? 'it' : 'them') + ' or add the food back.</p>' : '') +
+    '<div class="readout"><div class="k">Total<em id="items-note">&mdash;</em></div>' +
+      '<div class="v num" id="items-kj">&mdash;</div></div>' +
+    '<button class="btn" id="items-save" style="margin-top:13px">' + itemsCtx.cta + '</button>' +
+    '<p class="hint">' + itemsCtx.note + '</p>';
+
+  el('items-kj').textContent = fmtE(t.kj, true);
+  el('items-note').textContent = g(t.grams) + ' g · P ' + g(t.p||0,1) +
+    ' · C ' + g(t.c||0,1) + ' · F ' + g(t.f||0,1);
+}
+
+/* Recompute an entry from its ingredients. The portion label goes: it is no
+   longer one serving of anything once a weight has been changed. */
+function applyItems(e, items){
+  var t = nutritionOf(items);
+  e.items = items;
+  e.grams = items.reduce(function(a, x){ return a + (+x.grams || 0); }, 0);
+  e.serve = null;
+  if (!t) return;
+  e.kj = t.kj; e.p = t.p; e.f = t.f; e.sat = t.sat; e.c = t.c;
+  e.sug = t.sug; e.fib = t.fib; e.na = t.na; e.alc = t.alc;
+  e.m = {}; MICRO_KEYS.forEach(function(k){ e.m[k] = t.m[k]; });
+}
+
+function saveItems(){
+  var c = itemsCtx, d = c.draft.filter(function(it){ return (+it.grams || 0) > 0; });
+  if (c.mode === 'entry'){
+    var e = (day(DAY).meals[c.meal] || [])[c.idx];
+    if (!e) return;
+    applyItems(e, d);
+    save(); renderAll();
+    toast('Updated just for ' + (DAY === todayISO() ? 'today' : 'this day') + '.');
+  } else {
+    var r = S.recipes[c.i]; if (!r) return;
+    r.items = d;
+    var t = nutritionOf(d);
+    if (t && t.grams){
+      /* Keep the recorded totals in step so the fallback stays honest. */
+      var k = 100 / t.grams;
+      r.totalG = t.grams; r.serveG = t.grams / Math.max(+r.servings || 1, 0.1);
+      r.kj = t.kj*k; r.p = t.p*k; r.f = t.f*k; r.sat = t.sat*k; r.c = t.c*k;
+      r.sug = t.sug*k; r.fib = t.fib*k; r.na = t.na*k; r.alc = t.alc*k;
+      r.m = {}; MICRO_KEYS.forEach(function(x){ r.m[x] = t.m[x] * k; });
+    }
+    invalidateFoods(); save(); renderAll(); renderFoodView(); renderCats();
+    toast('Recipe updated. Days you already logged are untouched.');
+  }
+  closeSheet();
+}
+
+/* Recipes saved before ingredients carried keys. Resolve what can be resolved,
+   once, so the next database release does not orphan them. */
+function backfillRecipeKeys(){
+  var changed = 0;
+  (S.recipes || []).forEach(function(r){
+    (r.items || []).forEach(function(it){
+      if (it.key) return;
+      var f = resolveItem({key:'', name:it.name});
+      if (f && f.key){ it.key = f.key; changed++; }
+    });
+  });
+  if (changed) save();
+}
+
 function openMove(meal, idx){
   var item = day(DAY).meals[meal][idx];
   if (!item) return;
@@ -10198,18 +10345,53 @@ function recipeFromEntries(name, servings, entries){
   /* Stored per 100 g like every other food, with a portion of one serving. */
   var k = tot.grams > 0 ? 100 / tot.grams : 0;
   var r = {name:name, servings:n, totalG:tot.grams, serveG:serveG,
-           items:entries.map(function(e){ return {name:e.name, grams:e.grams}; }),
+           /* Keys as well as names, so the ingredients still resolve after the
+              next data release renames half of them. */
+           /* Flattened: an entry that was itself a recipe contributes its
+              ingredients, not its name. A recipe naming another recipe would
+              never resolve, since ingredients only look at foods. */
+           items:entries.reduce(function(acc, e){
+             if (e.items && e.items.length){
+               e.items.forEach(function(it){
+                 acc.push({key:it.key || '', name:it.name, grams:it.grams,
+                           liquid:!!it.liquid});
+               });
+             } else {
+               var f = e.key ? null : resolveItem({key:'', name:e.name});
+               acc.push({key: e.key || (f && f.key) || '', name:e.name,
+                         grams:e.grams, liquid:!!e.liquid});
+             }
+             return acc;
+           }, []),
            kj:tot.kj*k, p:tot.p*k, f:tot.f*k, sat:tot.sat*k, c:tot.c*k,
            sug:tot.sug*k, fib:tot.fib*k, na:tot.na*k, alc:tot.alc*k, m:{}};
   MICRO_KEYS.forEach(function(key){ r.m[key] = tot.m[key] * k; });
   return r;
 }
+/* The stored totals are a fallback now, not the source. Deriving from the
+   ingredients means an edit takes effect everywhere at once, and means a
+   recipe saved before a database change stops quietly reporting the old
+   numbers — recipes written before the AUSNUT rebuild carry hard zeros for
+   omega-3, linoleic and alpha-linolenic, because those keys did not exist. */
+function recipeTotals(r){
+  var t = nutritionOf(r.items);
+  if (!t || !t.grams) return {totalG:r.totalG, serveG:r.serveG, per100:r, stale:true};
+  var k = 100 / t.grams;
+  var per = {kj:t.kj*k, p:t.p*k, f:t.f*k, sat:t.sat*k, c:t.c*k, sug:t.sug*k,
+             fib:t.fib*k, na:t.na*k, alc:t.alc*k, m:{}};
+  MICRO_KEYS.forEach(function(x){ per.m[x] = t.m[x] * k; });
+  var n = Math.max(+r.servings || 1, 0.1);
+  return {totalG:t.grams, serveG:t.grams / n, per100:per, missing:t.missing};
+}
+
 function recipeAsFood(r, i){
+  var t = recipeTotals(r), p = t.per100;
   return {id:'r' + i, name:r.name, cat:'Recipes', liquid:false, recipe:true,
-    serves:[{label:'serving (' + g(r.serveG,0) + ' g)', g:r.serveG},
-            {label:'half serving', g:r.serveG / 2},
-            {label:'whole batch (' + g(r.totalG,0) + ' g)', g:r.totalG}],
-    kj:r.kj, p:r.p, f:r.f, sat:r.sat, c:r.c, sug:r.sug, fib:r.fib, na:r.na, alc:r.alc, m:r.m};
+    items:r.items, totalG:t.totalG,
+    serves:[{label:'serving (' + g(t.serveG,0) + ' g)', g:t.serveG},
+            {label:'half serving', g:t.serveG / 2},
+            {label:'whole batch (' + g(t.totalG,0) + ' g)', g:t.totalG}],
+    kj:p.kj, p:p.p, f:p.f, sat:p.sat, c:p.c, sug:p.sug, fib:p.fib, na:p.na, alc:p.alc, m:p.m};
 }
 function allRecipes(){ return (S.recipes || []).map(recipeAsFood); }
 
@@ -10456,13 +10638,45 @@ function qtyEntry(){
   var amt = +el('qty-amt').value || 0;
   var grams = amt * s.g;
   var k = grams / 100;
-  var e = {name:f.name, grams:grams, liquid:!!f.liquid,
+  var e = {name:f.name, grams:grams, liquid:!!f.liquid, key:f.key || '',
     serve: s.raw ? null : {label:s.label.replace(/\s*\(.*\)$/, ''), n:amt},
     kj:f.kj*k, p:f.p*k, f:f.f*k, sat:f.sat*k, c:f.c*k,
     sug:f.sug*k, fib:f.fib*k, na:f.na*k, alc:f.alc*k, m:{}};
   if (f.m) for (var j = 0; j < MICRO_KEYS.length; j++)
     e.m[MICRO_KEYS[j]] = (f.m[MICRO_KEYS[j]] || 0) * k;
+  /* A recipe logs as one row, but the row remembers what went into it, scaled
+     to the amount actually taken. That is what makes it editable afterwards
+     instead of an opaque total. */
+  if (f.recipe && f.items && f.totalG > 0){
+    var share = grams / f.totalG;
+    e.items = f.items.map(function(it){
+      return {key:it.key || '', name:it.name, grams:+(it.grams * share).toFixed(1),
+              liquid:!!it.liquid};
+    });
+  }
   return e;
+}
+
+/* Add up a list of ingredients through the food table. Nothing is cached and
+   nothing is stored: a recipe recomputed today picks up whatever the database
+   knows today, including nutrients that did not exist when it was saved.
+   Returns null if not one ingredient resolves, so the caller can fall back to
+   whatever total was recorded at the time. */
+function nutritionOf(items){
+  var t = {kj:0, p:0, f:0, sat:0, c:0, sug:0, fib:0, na:0, alc:0, grams:0, m:{}, missing:[]};
+  MICRO_KEYS.forEach(function(k){ t.m[k] = 0; });
+  var hit = 0;
+  (items || []).forEach(function(it){
+    t.grams += +it.grams || 0;
+    var f = resolveItem(it);
+    if (!f){ t.missing.push(it.name); return; }
+    hit++;
+    var k = (+it.grams || 0) / 100;
+    t.kj += f.kj*k; t.p += f.p*k; t.f += f.f*k; t.sat += f.sat*k; t.c += f.c*k;
+    t.sug += f.sug*k; t.fib += f.fib*k; t.na += f.na*k; t.alc += f.alc*k;
+    if (f.m) MICRO_KEYS.forEach(function(x){ t.m[x] += (f.m[x] || 0) * k; });
+  });
+  return hit ? t : null;
 }
 
 function updateQty(){
@@ -11013,7 +11227,7 @@ function renderOffResults(q, via){
 /* Bumped on every deploy. When something fails, knowing which build is
    actually loaded is the difference between debugging the bug and debugging
    a stale cache. */
-var APP_VERSION = '2026.08.20-29';
+var APP_VERSION = '2026.08.21-30';
 var SB_URL = 'https://lsrxqviwgqjpuzzcqcpu.supabase.co';
 var SB_KEY = 'sb_publishable_0lk-0UAlfW-tALEgPiqFHg_8vF9Hp63';
 var AUTH_KEY = 'eatandtrain.auth';
@@ -11493,11 +11707,41 @@ function bind(){
   el('u-kj').addEventListener('click', function(){ setUnit('kj'); });
   el('u-kcal').addEventListener('click', function(){ setUnit('kcal'); });
 
+  document.addEventListener('input', function(ev){
+    var f = ev.target.closest('[data-item]');
+    if (!f || !itemsCtx) return;
+    itemsCtx.draft[+f.dataset.item].grams = +f.value || 0;
+    var t = nutritionOf(itemsCtx.draft) || {kj:0, grams:0};
+    el('items-kj').textContent = fmtE(t.kj, true);
+    el('items-note').textContent = g(t.grams) + ' g · P ' + g(t.p||0,1) +
+      ' · C ' + g(t.c||0,1) + ' · F ' + g(t.f||0,1);
+  });
+
   /* delegated: everything that lives in re-rendered HTML */
   document.addEventListener('click', function(ev){
     if (suppressClick){ ev.stopPropagation(); ev.preventDefault(); return; }
     var t = ev.target;
 
+    var ib = t.closest('[data-items]');
+    if (ib){
+      var ip = ib.dataset.items.split(':');
+      var ent = dayRO(DAY).meals[ip[0]][+ip[1]];
+      if (ent) openItems({mode:'entry', meal:ip[0], idx:+ip[1], items:ent.items,
+        title:ent.name.split(',')[0], cta:'Save this day',
+        note:'Changes this entry only. The recipe itself keeps its original amounts.'});
+      return;
+    }
+    var re = t.closest('[data-edit-rec]');
+    if (re){
+      var r = S.recipes[+re.dataset.editRec];
+      if (r) openItems({mode:'recipe', i:+re.dataset.editRec, items:r.items,
+        title:r.name, cta:'Save recipe',
+        note:'Changes the recipe for next time. Days you have already logged keep what you ate.'});
+      return;
+    }
+    if (t.closest('#items-save')){ saveItems(); return; }
+    var idel = t.closest('[data-item-del]');
+    if (idel){ itemsCtx.draft.splice(+idel.dataset.itemDel, 1); renderItems(); return; }
     var mv = t.closest('[data-move]');
     if (mv){ var mp = mv.dataset.move.split(':'); openMove(mp[0], +mp[1]); return; }
     var mt = t.closest('[data-moveto]');
@@ -12189,6 +12433,7 @@ var returned = claimReturnedSession();   // before anything decides to show the 
 renderCats();
 bind();
 bindOnboard();
+backfillRecipeKeys();
 setUnit(S.profile.unit || 'kj');
 renderAll();
 if (returned && returned.error) toast(returned.error);
