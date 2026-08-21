@@ -273,6 +273,13 @@ Eight results, then it scrolls. A list that runs off the bottom of the screen re
 endless and buries whatever sits under it; eight is enough to choose between and short
 enough to see the end of.
 
+A custom food can **borrow its micronutrients from a FSANZ food**. The label gives you
+the macros — that is what a label is for — and FSANZ analysed the generic version of
+almost anything branded. What is stored is the reference, not the numbers, so the next
+data release improves it without anyone re-entering anything, and it is labelled
+*borrowed* wherever it appears. A panel read beats a borrowed profile; a borrowed profile
+beats nothing.
+
 **Your foods** is editable: tap a row and it opens the same form you added it with,
 filled in, and saving changes that food in place rather than leaving a second copy behind.
 Days you have already logged keep the numbers they were logged with. It gets the same
@@ -286,6 +293,40 @@ list is a list, it is just not an endless one.
 "…"* and *Not there? Scan or add it*. They are the way out of a list that does not have
 what you want, so having to scroll to the bottom of that list to find them was exactly
 backwards. They sit outside the scroller and are on screen whatever the search did.
+
+### Reading the panel
+
+A barcode is decoded on the device, fifteen times a second. Words are not: no browser
+exposes text recognition, and the WASM engines that do are megabytes and poor on a curved
+glossy pack in a kitchen. So the panel goes to a model — through the same Supabase
+function this account already uses, on an explicit tap, with the photo never leaving on
+its own.
+
+**The camera never stops while you line it up.** The barcode decoder keeps running the
+whole time, and a barcode crossing the frame still wins, because a database hit beats a
+photograph. *Read the panel instead* is for when there is no barcode or it is not in
+Open Food Facts.
+
+**Four frames, and the sharpest one is sent.** A hand shakes and a phone hunts for focus;
+one crisp frame beats four soft ones — the same reasoning as the barcode decoder reading
+thirty-three rows and believing the one that resolves. Sharpness is the mean absolute
+difference between neighbouring pixels, measured on a 160×120 copy: a blurred edge is a
+ramp, and a ramp has small differences.
+
+**The answer arrives a field at a time.** The model replies in JSON Lines — one complete
+object per line, one line per row of the panel — and the response is streamed, so each
+line lands in its field as it completes and the field flashes to say so. Partial numbers
+cannot be written, because a line is only acted on once it is terminated. It also shows
+you which rows it never managed, which a single blob arriving at the end does not.
+
+Energy is normalised to kJ, sodium to mg, *Less than 1g* to 0. Per 100 g is preferred and
+a panel with only a per-serve column is converted using the serve size it printed. And
+critically: **whatever the pack declares beyond the eight mandatory rows is kept as the
+product's own** — a dairy product claiming calcium gives a real calcium figure, which is
+the number neither Open Food Facts nor the form could get before.
+
+The function is JWT-gated, so this needs you signed in; it runs on your account, not a
+shared key.
 
 ### Live lookup
 
@@ -480,6 +521,14 @@ Two honesty notes:
 - FSANZ populates every nutrient for every food, so a low total is a real shortfall
   rather than a gap in the data. It still only counts what you logged, and knows
   nothing about supplements.
+- **A food with no micronutrient profile is recorded as unknown, not as zero.** That
+  distinction was missing and it mattered: a food typed off a pack has no vitamins or
+  minerals attached, and the entry it produced carried an empty object rather than none —
+  which sailed past the check that counts items with no data, so the day reported no
+  calcium instead of saying it did not know. Now the pane says *"1 item carries no
+  micronutrient data"* and means it. There are three ways to give a food one: the panel
+  reader picks up whatever the pack declares, an Open Food Facts lookup keeps whatever a
+  contributor entered, and anything else can **borrow** from an analysed food.
 - Several Upper Levels were written for a supplement form, not for food: magnesium's
   applies to supplements, niacin's to nicotinic acid, B6's to supplemental pyridoxine,
   vitamin E's to alpha-tocopherol. Those are shown for reference but never flagged as

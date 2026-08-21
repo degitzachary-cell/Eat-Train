@@ -535,6 +535,17 @@ select{background-image:linear-gradient(45deg,transparent 50%,var(--ink-3) 50%),
 /* A list you scan rather than read: the name carries it, and the numbers
    underneath are a check rather than the point. Same eight-and-scroll rule as
    the search results, so a long one never runs off the bottom of the sheet. */
+/* A field that has just been filled by the panel reader says so for a moment.
+   Watching them arrive is most of the point; it also shows which ones never
+   did. */
+@keyframes readin{from{background:var(--accent-soft); border-color:var(--accent)}
+  to{background:var(--input); border-color:var(--line-strong)}}
+input.justread{animation:readin 1.4s ease-out}
+.spin{display:inline-block; width:9px; height:9px; border:1.5px solid var(--accent);
+  border-right-color:transparent; border-radius:50%; animation:spinr .7s linear infinite;
+  vertical-align:-1px}
+@keyframes spinr{to{transform:rotate(360deg)}}
+
 .row.tight{padding:5px 15px}
 .row.tight .t{font-size:12.5px}
 .row.tight .s{font-size:10.5px; margin-top:0}
@@ -1103,6 +1114,13 @@ body.dragging{cursor:grabbing}
     </div>
     <p class="hint" id="c-hint2">Straight off the Nutrition Information Panel. If the panel only lists a serve,
       switch to <strong>Per serve</strong> and enter the serve size — the rest is worked out for you.</p>
+    <!-- A panel carries the eight numbers the law requires. Everything else a
+         food contains has to come from somewhere, and FSANZ analysed the
+         generic version of almost anything branded. -->
+    <p class="hint" id="c-panel-note" hidden></p>
+    <div class="sec-h" style="margin:16px 0 8px"><h3>Vitamins &amp; minerals</h3>
+      <span class="right" id="c-mic-state">none</span></div>
+    <div id="c-mic-row"></div>
     <p class="hint" id="c-hint"></p>
     <button class="btn" id="c-save" style="margin-top:10px">Save food</button>
   </div>
@@ -1200,6 +1218,16 @@ body.dragging{cursor:grabbing}
       </button>
     </div>
     <p class="hint" id="scan-note" style="margin-top:10px">Starting the camera…</p>
+    <!-- The barcode decoder never stops while this is on screen: a barcode
+         crossing the frame still wins, because a database hit beats a
+         photograph. This is for when there is no barcode, or it is not in
+         there. -->
+    <button class="btn ghost" id="scan-panel" style="margin-top:10px">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" width="16" height="16">
+        <rect x="4" y="3" width="16" height="18" rx="2"/><path d="M7.5 8h9M7.5 12h9M7.5 16h5"/></svg>
+      Read the panel instead</button>
+    <p class="hint">Fill the frame with the Nutrition Information Panel and hold still. It is sent
+      once, on this tap, through your own account.</p>
     <label class="f" style="margin-top:10px"><span>Or type it</span>
       <input type="text" id="scan-manual" inputmode="numeric" placeholder="9300601000012"></label>
     <button class="btn ghost" id="scan-go">Look up this number</button>
@@ -8496,8 +8524,52 @@ var EMPTY_DAY = {meals:{breakfast:[],lunch:[],dinner:[],snack:[]}, workouts:[], 
 function dayRO(d){ return S.days[d] || EMPTY_DAY; }
 
 var _foodCache = null;
+/* Whether a food carries a micronutrient profile at all, and what it is.
+   Foods from FSANZ always do. One you typed off a pack does not, unless you
+   borrowed one — the panel carries the eight numbers the law requires and
+   nothing else. A product looked up online has whatever the contributor
+   entered, which is usually those same eight.
+
+   A partial profile counts as known: a food really can contain no iron, and
+   refusing to count the calcium we do have because the iron is missing would
+   trade one silence for another. */
+function microsOf(f){
+  if (!f) return null;
+  if (f.m && !f.mUnknown){
+    for (var k in f.m) if (f.m[k]) return f.m;
+    return null;                                 /* present but all zero */
+  }
+  return null;
+}
+function hasMicros(f){ return !!microsOf(f); }
+
+/* A food you typed off a pack can borrow its micronutrients from a food that
+   was analysed. The label gives you the macros — that is what a label is for —
+   and FSANZ has the vitamins and minerals of the generic version of nearly
+   anything branded. What is stored is the reference, not the numbers, so the
+   next data release improves it without anybody re-entering anything.
+   Resolved against the analysed foods only, never against another borrower. */
+var _micIndex = null;
+function analysedByKey(key){
+  if (!_micIndex){
+    _micIndex = {};
+    BUILTIN.concat(DERIVED_FOODS).forEach(function(f){ if (f.key) _micIndex[f.key] = f; });
+  }
+  return _micIndex[key] || null;
+}
+function borrowMicros(c){
+  if (c && c.m && microsOf(c)) return c;          /* its own panel wins */
+  if (!c || !c.microFrom || !c.microFrom.key) return c;
+  var src = analysedByKey(c.microFrom.key);
+  if (!src || !src.m) return c;
+  var o = {}; for (var k in c) o[k] = c[k];
+  o.m = src.m;                       /* both per 100 g, so no scaling */
+  o.borrowed = src.name;
+  return o;
+}
 function allFoods(){
-  if (!_foodCache) _foodCache = BUILTIN.concat(DERIVED_FOODS, imported, S.custom);
+  if (!_foodCache) _foodCache = BUILTIN.concat(DERIVED_FOODS, imported,
+                                               (S.custom || []).map(borrowMicros));
   return _foodCache;
 }
 function invalidateFoods(){ _foodCache = null; _keyCache = null; _nameCache = null; }
@@ -9278,8 +9350,10 @@ function renderMicros(){
       : 'All ' + keys.length + ' between RDI and upper limit') +
     '. Targets read from your sex and age (' + (S.profile.sex === 'f' ? 'woman' : 'man') + ', ' +
     (+S.profile.age || 30) + ').' +
-    (mt.noMicro ? ' <strong>' + mt.noMicro + ' older item' + (mt.noMicro === 1 ? '' : 's') +
-      ' carry no micronutrient data.</strong>' : '') +
+    /* Not "older" — a food typed off a pack today has none either, and saying
+       so is the whole point of the distinction between zero and unknown. */
+    (mt.noMicro ? ' <strong>' + mt.noMicro + ' item' + (mt.noMicro === 1 ? ' carries' : 's carry') +
+      ' no micronutrient data.</strong>' : '') +
     ' Tap for all of them.';
 }
 
@@ -11726,9 +11800,11 @@ function renderCats(){
   el('cats').innerHTML = '<button data-cat="" aria-pressed="true">All</button>' +
     ks.map(function(k){ return '<button data-cat="' + esc(k) + '" aria-pressed="false">' + esc(k) + '</button>'; }).join('');
 }
-function openSearch(meal){
+var pickFood = null;
+function openSearch(meal, pick){
+  pickFood = pick || null;
   searchTarget = meal || 'snack';
-  el('sh-search-title').textContent = 'Add to ' +
+  el('sh-search-title').textContent = pickFood ? 'Borrow micronutrients from' : 'Add to ' +
     (MEALS.filter(function(m){ return m[0] === searchTarget; })[0] || ['','food'])[1].toLowerCase();
   el('q').value = ''; activeCat = '';
   Array.prototype.forEach.call(el('cats').children, function(b){
@@ -11792,9 +11868,18 @@ function qtyEntry(){
   var e = {name:f.name, grams:grams, liquid:!!f.liquid, key:f.key || '',
     serve: s.raw ? null : {label:s.label.replace(/\s*\(.*\)$/, ''), n:amt},
     kj:f.kj*k, p:f.p*k, f:f.f*k, sat:f.sat*k, c:f.c*k,
-    sug:f.sug*k, fib:f.fib*k, na:f.na*k, alc:f.alc*k, m:{}};
-  if (f.m) for (var j = 0; j < MICRO_KEYS.length; j++)
-    e.m[MICRO_KEYS[j]] = (f.m[MICRO_KEYS[j]] || 0) * k;
+    sug:f.sug*k, fib:f.fib*k, na:f.na*k, alc:f.alc*k};
+  /* A food with no micronutrient profile gets no m, rather than an m full of
+     zeros. The difference matters: zero is a measurement and this is not one.
+     An empty object here would sail past the check in dayTotals that counts
+     items carrying no data, and the day would quietly report no calcium
+     instead of saying it does not know. */
+  var mm = microsOf(f);
+  if (mm){
+    e.m = {};
+    for (var j = 0; j < MICRO_KEYS.length; j++)
+      e.m[MICRO_KEYS[j]] = (mm[MICRO_KEYS[j]] || 0) * k;
+  }
   /* A recipe logs as one row, but the row remembers what went into it, scaled
      to the amount actually taken. That is what makes it editable afterwards
      instead of an opaque total. */
@@ -12402,7 +12487,45 @@ function onBarcode(code){
    what "edit" meant every other time you tried it here. Values are shown on
    the per-100 basis they are stored on, in whichever energy unit is on screen.
    ------------------------------------------------------------------------- */
-var customIdx = null;
+var customIdx = null, customMicro = null, customOwnMicro = null;
+
+/* Shown as a choice rather than as twenty-seven more boxes, because nobody is
+   typing twenty-seven boxes off a tub of yoghurt and the honest answer is
+   sitting in the database already. */
+function renderCustomMicro(){
+  var st = el('c-mic-state'), row = el('c-mic-row');
+  if (!st) return;
+  /* Read off the pack beats borrowed from a similar food, which beats nothing. */
+  if (customOwnMicro){
+    var have = Object.keys(customOwnMicro).filter(function(k){ return customOwnMicro[k] > 0; });
+    st.textContent = 'off the panel';
+    row.innerHTML = '<div class="chips">' + have.map(function(k){
+      var r = NRV[k] || EXTRA_MICROS[k];
+      return '<span class="chip"><b>' + g(customOwnMicro[k], 2) + ' ' +
+        (r ? r.u : (MICRO_UNIT[k] || '')) + '</b> ' +
+        esc(r ? r.n.toLowerCase() : k) + '</span>';
+    }).join('') + '</div>' +
+    '<p class="hint">Declared on the pack, so these are the product\'s own — not borrowed and ' +
+    'not estimated.</p>';
+    return;
+  }
+  var src = customMicro && customMicro.key ? analysedByKey(customMicro.key) : null;
+  st.textContent = src ? 'borrowed' : 'none';
+  row.innerHTML = src
+    ? '<div class="row tight"><div class="row-main">' +
+        '<div class="t">' + esc(src.name) + '</div>' +
+        '<div class="s">' + g(src.m.ca) + ' mg calcium · ' + g(src.m.fe,1) + ' mg iron · per 100 g</div>' +
+      '</div><button class="row-del" id="c-mic-clear" aria-label="Stop borrowing">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">' +
+      '<path d="M5 5l14 14M19 5L5 19"/></svg></button></div>' +
+      '<p class="hint">Borrowed, not measured. The macros above are yours off the panel; these come ' +
+      'from the analysed food and improve when the database does.</p>'
+    : '<button class="btn sm ghost" id="c-mic-pick">Borrow from a food</button>' +
+      '<p class="hint">A panel only declares a vitamin or mineral when the pack makes a claim about ' +
+      'it, so most of them have none. Without this the app records that it does not know, rather ' +
+      'than recording a zero.</p>';
+}
+
 function openCustom(i){
   customIdx = (typeof i === 'number' && S.custom[i]) ? i : null;
   var c = customIdx === null ? null : S.custom[customIdx];
@@ -12423,6 +12546,10 @@ function openCustom(i){
     ? 'Changing this changes it everywhere it is used from now on. Days you have already ' +
       'logged keep the numbers they were logged with.'
     : '';
+  customMicro = c && c.microFrom ? c.microFrom : null;
+  customOwnMicro = c && c.m && Object.keys(c.m).length ? c.m : null;
+  panelStatus('', false);
+  renderCustomMicro();
   sheet('sh-custom');
 }
 
@@ -12451,6 +12578,222 @@ function fillNewFood(f, code){
       'saved here for next time.';
 }
 
+/* ----------------------------- reading a panel ----------------------------
+   A barcode is decoded here, on the device, fifteen times a second. Words are
+   not: no browser exposes text recognition, and the WASM engines that do it
+   are megabytes and poor on a curved glossy pack in a kitchen. So the panel
+   goes to a model, through the same Supabase function this account already
+   uses, and comes back a field at a time.
+
+   Two things make it feel like the scanner rather than like a form submission.
+   The camera keeps running the whole time — the barcode decoder is still
+   working while you line up the panel, and a barcode crossing the frame still
+   wins, because a database hit beats a photograph. And the answer streams: one
+   JSON object per line, each line completing a field, so the form fills in
+   front of you rather than arriving all at once at the end.
+   ------------------------------------------------------------------------- */
+var PANEL_MODEL = 'claude-opus-5';
+
+var PANEL_SYSTEM =
+  'You read Australian and New Zealand Nutrition Information Panels from a photograph.\n\n' +
+  'Reply with JSON Lines: one complete JSON object per line, nothing else. No prose, no ' +
+  'markdown, no code fences, no wrapping array. Emit each line as soon as you are sure of ' +
+  'it and order them as they appear on the panel.\n\n' +
+  'Line shapes:\n' +
+  '  {"f":"name","v":"<product name, including the brand>"}\n' +
+  '  {"f":"serve_g","v":<grams or millilitres in one serving>}\n' +
+  '  {"f":"serves","v":<servings per package>}\n' +
+  '  {"f":"<nutrient>","p100":<per 100 g>,"serve":<per serve>}\n\n' +
+  'Nutrient ids, and the unit each value must be given in:\n' +
+  '  kj kJ · protein g · fat g · sat g · carbs g · sugars g · fibre g · sodium mg\n' +
+  '  ca mg · fe mg · mg mg · ph mg · k mg · zn mg · se ug · i ug\n' +
+  '  va ug · vc mg · vd ug · ve mg · b1 mg · b2 mg · b3 mg · fol ug · b6 mg · b12 ug\n' +
+  '  chol mg · caf mg · tfa mg\n\n' +
+  'Rules. Energy is kJ — if the panel gives only calories, multiply by 4.184. Sodium is mg. ' +
+  '"Less than 1g" is 0. Omit any row the panel does not print rather than guessing it, and ' +
+  'omit "serve" if the panel has no per-serve column. Report only what you can actually read; ' +
+  'if a digit is unclear, leave that line out. Finish with {"f":"done"}.';
+
+/* Four frames over half a second, and the sharpest one is sent. A hand shakes,
+   a phone hunts for focus, and one crisp frame beats four soft ones — the same
+   reason the barcode decoder reads thirty-three rows and believes the one that
+   resolves. Sharpness is the mean absolute difference between neighbouring
+   pixels: a blurred edge is a ramp, and a ramp has small differences. */
+function frameSharpness(ctx, w, h){
+  var d;
+  try { d = ctx.getImageData(0, 0, w, h).data; } catch(e){ return 0; }
+  var sum = 0, n = 0;
+  for (var y = 2; y < h - 2; y += 3){
+    var row = y * w * 4;
+    for (var x = 2; x < w - 6; x += 3){
+      var i = row + x * 4;
+      sum += Math.abs(d[i] - d[i + 12]);
+      n++;
+    }
+  }
+  return n ? sum / n : 0;
+}
+
+function captureSharpest(video, shots){
+  shots = shots || 4;
+  var full = document.createElement('canvas');
+  var small = document.createElement('canvas');
+  var sctx = small.getContext('2d', {willReadFrequently:true});
+  small.width = 160; small.height = 120;
+  var best = null, bestScore = -1, taken = 0;
+  return new Promise(function(resolve){
+    (function grab(){
+      var vw = video.videoWidth || 1280, vh = video.videoHeight || 720;
+      /* 1280 across is plenty to read six-point type and keeps the upload to
+         a couple of hundred kilobytes. */
+      var scale = Math.min(1, 1280 / vw);
+      full.width = Math.round(vw * scale); full.height = Math.round(vh * scale);
+      full.getContext('2d').drawImage(video, 0, 0, full.width, full.height);
+      sctx.drawImage(video, 0, 0, small.width, small.height);
+      var score = frameSharpness(sctx, small.width, small.height);
+      if (score > bestScore){ bestScore = score; best = full.toDataURL('image/jpeg', 0.78); }
+      if (++taken >= shots) return resolve({data:best, score:bestScore});
+      setTimeout(grab, 130);
+    })();
+  });
+}
+
+/* The fields a line can land in, and how to write it. */
+var PANEL_MACRO = {kj:'c-kj', protein:'c-p', fat:'c-f', sat:'c-sat',
+                   carbs:'c-c', sugars:'c-sug', fibre:'c-fib', sodium:'c-na'};
+
+var panelCtx = null;
+function panelSet(id, val){
+  var e = el(id); if (!e) return;
+  e.value = g(val, 2);
+  /* A field that has just been filled says so for a moment, so you can watch
+     it happen and see which ones it never managed. */
+  e.classList.add('justread');
+  setTimeout(function(){ e.classList.remove('justread'); }, 1400);
+}
+
+function panelLine(obj){
+  if (!obj || !obj.f) return;
+  var c = panelCtx;
+  if (obj.f === 'done'){ c.done = true; return; }
+  if (obj.f === 'name'){
+    if (obj.v && !el('c-name').value){
+      el('c-name').value = String(obj.v).slice(0, 90);
+      el('c-name').classList.add('justread');
+      setTimeout(function(){ el('c-name').classList.remove('justread'); }, 1400);
+      c.got++;
+    }
+    return;
+  }
+  if (obj.f === 'serve_g'){
+    var sg = +obj.v;
+    if (sg > 0){ c.serveG = sg; el('c-serveg').value = g(sg, 1); c.got++; }
+    return;
+  }
+  if (obj.f === 'serves') return;                 /* read, not used yet */
+
+  /* Per 100 g is what this app stores, so that is preferred; a panel with only
+     a per-serve column gets converted using the serve size it printed. */
+  var per100 = obj.p100;
+  if (per100 == null && obj.serve != null && c.serveG > 0) per100 = obj.serve * 100 / c.serveG;
+  if (per100 == null) return;
+  per100 = +per100;
+  if (!isFinite(per100) || per100 < 0) return;
+
+  if (PANEL_MACRO[obj.f]){
+    panelSet(PANEL_MACRO[obj.f], obj.f === 'kj' && isKcal() ? per100 / KJ_PER_KCAL : per100);
+    c.got++;
+    return;
+  }
+  if (MICRO_KEYS.indexOf(obj.f) >= 0){
+    c.micros = c.micros || {};
+    c.micros[obj.f] = per100;
+    c.got++;
+    renderPanelMicros();
+  }
+}
+
+/* Whatever the panel declared beyond the eight the law requires. This is the
+   only route by which a branded product gets a real calcium figure rather than
+   a borrowed one. */
+function renderPanelMicros(){
+  var m = panelCtx && panelCtx.micros;
+  customMicro = null;
+  customOwnMicro = m || null;
+  renderCustomMicro();
+}
+
+function panelStatus(msg, busy){
+  var e = el('c-panel-note'); if (!e) return;
+  e.hidden = !msg;
+  e.innerHTML = (busy ? '<span class="spin"></span> ' : '') + esc(msg || '');
+}
+
+function readPanel(dataUrl){
+  panelCtx = {got:0, serveG:0, micros:null, done:false};
+  customOwnMicro = null;
+  panelStatus('Reading the panel…', true);
+  var b64 = dataUrl.split(',')[1] || '';
+
+  return sbEnsureToken().then(function(){
+    return fetch(SB_URL + '/functions/v1/claude-proxy', {
+      method:'POST', headers:sbHeaders(true),
+      body: JSON.stringify({
+        model: PANEL_MODEL, max_tokens: 2000, stream: true,
+        systemPrompt: PANEL_SYSTEM,
+        userMsg: [
+          {type:'image', source:{type:'base64', media_type:'image/jpeg', data:b64}},
+          {type:'text', text:'Read this Nutrition Information Panel.'}
+        ]
+      })
+    });
+  }).then(function(res){
+    if (!res.ok || !res.body) return res.text().then(function(t){ throw new Error(t.slice(0, 200)); });
+    var reader = res.body.getReader(), dec = new TextDecoder(), buf = '', text = '';
+    /* Two buffers: the SSE frames arriving from the function, and the model's
+       own output accumulating inside them. A line of that output is only acted
+       on once it is terminated, which is what makes a partial number
+       impossible to write into a field. */
+    function pump(){
+      return reader.read().then(function(r){
+        if (r.done) return;
+        buf += dec.decode(r.value, {stream:true});
+        var frames = buf.split('\n\n');
+        buf = frames.pop();
+        frames.forEach(function(frame){
+          frame.split('\n').forEach(function(line){
+            if (line.indexOf('data:') !== 0) return;
+            var ev;
+            try { ev = JSON.parse(line.slice(5).trim()); } catch(e){ return; }
+            if (ev.type === 'content_block_delta' && ev.delta && ev.delta.text) text += ev.delta.text;
+            if (ev.type === 'error') throw new Error((ev.error && ev.error.message) || 'stream error');
+          });
+        });
+        var parts = text.split('\n');
+        text = parts.pop();
+        parts.forEach(function(l){
+          l = l.trim(); if (!l || l.charAt(0) !== '{') return;
+          try { panelLine(JSON.parse(l)); } catch(e){}
+        });
+        panelStatus(panelCtx.got ? panelCtx.got + ' field' + (panelCtx.got === 1 ? '' : 's') +
+          ' read…' : 'Reading the panel…', true);
+        return pump();
+      });
+    }
+    return pump();
+  }).then(function(){
+    var n = panelCtx.got;
+    panelStatus(n
+      ? n + ' field' + (n === 1 ? '' : 's') + ' read off the panel. Check them against the pack ' +
+        'before saving — a photograph is not a database.'
+      : 'Nothing readable in that shot. Try again with the panel filling the frame.', false);
+  }).catch(function(err){
+    panelStatus(/Not signed in/.test(String(err))
+      ? 'Reading a panel needs you signed in — it goes through your own account.'
+      : 'That did not come back. Type the panel instead.', false);
+  });
+}
+
 /* ------------------------ Open Food Facts lookup --------------------------
    Strictly opt-in, and only ever on an explicit tap. The request carries the
    search text and nothing else — no account, no identifier, no history. What
@@ -12468,6 +12811,49 @@ function offNum(v){
   var n = parseFloat(v);
   return isFinite(n) && n > 0 ? n : 0;
 }
+/* Their micronutrient keys, and what each one is called here. Whatever a
+   contributor typed off the pack is worth having: Australian labels only
+   declare a vitamin or mineral when a claim is made about it, so this is
+   usually empty — but on a dairy product claiming calcium, or a cereal
+   claiming iron, it is exactly the number we could not get anywhere else.
+   Throwing it away, which is what this did before, was free data in the bin. */
+var OFF_MICROS = {
+  'calcium':'ca', 'iron':'fe', 'magnesium':'mg', 'phosphorus':'ph',
+  'potassium':'k', 'zinc':'zn', 'selenium':'se', 'iodine':'i',
+  'vitamin-a':'va', 'vitamin-c':'vc', 'vitamin-d':'vd', 'vitamin-e':'ve',
+  'vitamin-b1':'b1', 'vitamin-b2':'b2', 'vitamin-pp':'b3', 'vitamin-b9':'fol',
+  'vitamin-b6':'b6', 'vitamin-b12':'b12', 'cholesterol':'chol', 'caffeine':'caf',
+  'trans-fat':'tfa'
+};
+/* What this app holds each one in. Their _100g figures are canonically in
+   grams, but the unit is declared alongside and contributors do get it wrong,
+   so the declared unit wins where there is one. */
+var MICRO_UNIT = {ca:'mg', fe:'mg', mg:'mg', ph:'mg', k:'mg', zn:'mg', se:'ug',
+                  i:'ug', va:'ug', vc:'mg', vd:'ug', ve:'mg', b1:'mg', b2:'mg',
+                  b3:'mg', fol:'ug', b6:'mg', b12:'ug', chol:'mg', caf:'mg', tfa:'mg'};
+var UNIT_TO_G = {g:1, mg:0.001, 'µg':0.000001, ug:0.000001, mcg:0.000001};
+function offMicros(n){
+  var out = null;
+  Object.keys(OFF_MICROS).forEach(function(src){
+    var v = n[src + '_100g'];
+    if (v == null || v === '') return;
+    var num = parseFloat(v);
+    if (!isFinite(num) || num <= 0) return;
+    var key = OFF_MICROS[src];
+    var declared = String(n[src + '_unit'] || 'g').toLowerCase();
+    var grams = num * (UNIT_TO_G[declared] !== undefined ? UNIT_TO_G[declared] : 1);
+    var want = UNIT_TO_G[MICRO_UNIT[key]];
+    var val = grams / want;
+    /* A wrong unit turns 120 mg of calcium into 120 g of it. Nothing edible
+       carries a gram of any of these per 100 g, so a value that absurd is a
+       contributor's mistake and is dropped rather than logged. */
+    if (grams > 5) return;
+    if (!out){ out = {}; MICRO_KEYS.forEach(function(k){ out[k] = 0; }); }
+    out[key] = val;
+  });
+  return out;
+}
+
 /* Their nutriment keys mirror the CSV export, including sodium in grams. */
 function offToFood(p, i){
   var n = p.nutriments || {};
@@ -12490,9 +12876,11 @@ function offToFood(p, i){
   var f = {id:'off' + i, name:name, cat:'Packaged', liquid:false, src:'off', code:p.code || '',
     kj:kj, p:offNum(n['proteins_100g']), f:offNum(n['fat_100g']),
     sat:offNum(n['saturated-fat_100g']), c:offNum(n['carbohydrates_100g']),
-    sug:offNum(n['sugars_100g']), fib:offNum(n['fiber_100g']), na:na, alc:offNum(n['alcohol_100g']),
-    m:{}};
-  MICRO_KEYS.forEach(function(k){ f.m[k] = 0; });
+    sug:offNum(n['sugars_100g']), fib:offNum(n['fiber_100g']), na:na, alc:offNum(n['alcohol_100g'])};
+  /* Only if they actually sent some. No m at all is the honest record of a
+     product whose panel declared none, and it is what makes the app say so. */
+  var mic = offMicros(n);
+  if (mic) f.m = mic;
   if (!f.kj && !f.p && !f.f && !f.c) return null;
   return f;
 }
@@ -12673,7 +13061,7 @@ function renderOffResults(q, via){
 /* Bumped on every deploy. When something fails, knowing which build is
    actually loaded is the difference between debugging the bug and debugging
    a stale cache. */
-var APP_VERSION = '2026.08.21-42';
+var APP_VERSION = '2026.08.21-43';
 var SB_URL = 'https://lsrxqviwgqjpuzzcqcpu.supabase.co';
 var SB_KEY = 'sb_publishable_0lk-0UAlfW-tALEgPiqFHg_8vF9Hp63';
 var AUTH_KEY = 'eatandtrain.auth';
@@ -13273,7 +13661,12 @@ function bind(){
       return;
     }
     var res = t.closest('[data-food]');
-    if (res){ var f = foodByName(res.dataset.food); if (f) openQty(f); return; }
+    if (res){
+      var f = foodByName(res.dataset.food);
+      if (f && pickFood){ var cb = pickFood; pickFood = null; cb(f); return; }
+      if (f) openQty(f);
+      return;
+    }
 
     var cat = t.closest('[data-cat]');
     if (cat){
@@ -13363,6 +13756,43 @@ function bind(){
     switchView('today'); setSub('today', 'log');
   });
   el('btn-browse').addEventListener('click', function(){ openSearch('snack'); });
+  el('c-mic-row').addEventListener('click', function(ev){
+    if (ev.target.closest('#c-mic-clear')){ customMicro = null; renderCustomMicro(); return; }
+    if (!ev.target.closest('#c-mic-pick')) return;
+    /* The New food sheet is left standing behind this one and reopened with
+       everything still in it, because a half-typed panel must not be the price
+       of going to look something up. */
+    var draft = {};
+    ['c-name','c-code','c-kj','c-p','c-f','c-sat','c-c','c-sug','c-fib','c-na']
+      .forEach(function(id){ draft[id] = el(id).value; });
+    var basis = el('c-basis').querySelector('[aria-pressed="true"]').dataset.basis;
+    var serveg = el('c-serveg').value;
+    openSearch('snack', function(f){
+      customMicro = f.key ? {key:f.key, name:f.name} : null;
+      if (!f.key) toast('That one has no key to borrow from.');
+      sheet('sh-custom');
+      Object.keys(draft).forEach(function(id){ el(id).value = draft[id]; });
+      press('c-basis', 'basis', basis);
+      el('c-serve-wrap').hidden = basis !== 'serve';
+      el('c-serveg').value = serveg;
+      renderCustomMicro();
+    });
+  });
+  el('scan-panel').addEventListener('click', function(){
+    var video = el('scan-video');
+    if (!scan || video.readyState < 2){ toast('Let the camera start first.'); return; }
+    if (!auth || !auth.access_token){
+      toast('Reading a panel needs you signed in.');
+      return;
+    }
+    el('scan-note').textContent = 'Hold still…';
+    captureSharpest(video).then(function(shot){
+      stopScan();
+      openCustom(null);
+      if (!shot.data){ panelStatus('The camera gave nothing back.', false); return; }
+      readPanel(shot.data);
+    });
+  });
   el('scan-torch').addEventListener('click', toggleTorch);
   el('btn-newfood').addEventListener('click', function(){ openCustom(null); });
   el('btn-data').addEventListener('click', function(){ renderDataSheet(); sheet('sh-data'); });
@@ -13409,7 +13839,12 @@ function bind(){
     var food = {name:name, cat:'Your foods', liquid:false,
       code:(el('c-code').value || '').replace(/\D/g, '') || null,
       kj:kjIn, p:v('c-p'), f:v('c-f'), sat:v('c-sat'), c:v('c-c'),
-      sug:v('c-sug'), fib:v('c-fib'), na:v('c-na'), alc:0};
+      sug:v('c-sug'), fib:v('c-fib'), na:v('c-na'), alc:0,
+      microFrom: customOwnMicro ? null : (customMicro || null)};
+    if (customOwnMicro){
+      food.m = {};
+      MICRO_KEYS.forEach(function(x){ food.m[x] = +customOwnMicro[x] || 0; });
+    }
     var editing = customIdx !== null && S.custom[customIdx];
     if (editing){
       food.id = S.custom[customIdx].id;
@@ -13418,7 +13853,7 @@ function bind(){
       food.id = 'c' + S.custom.length;
       S.custom.push(food);
     }
-    customIdx = null;
+    customIdx = null; customMicro = null; customOwnMicro = null;
     save();
     ['c-name','c-code','c-kj','c-p','c-f','c-sat','c-c','c-sug','c-fib','c-na'].forEach(function(i){ el(i).value = ''; });
     el('c-hint').innerHTML = '';
