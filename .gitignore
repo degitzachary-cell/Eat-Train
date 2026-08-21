@@ -1,3 +1,5 @@
 .DS_Store
 node_modules/
+# Test screenshots, but not the app icons, which ship.
 *.png
+!icon-*.png

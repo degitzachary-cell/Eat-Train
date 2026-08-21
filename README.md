@@ -4,6 +4,20 @@ Every kilojoule, honestly kept. A calorie and training tracker in a single HTML 
 **Australian Food Composition Database, Release 3** (FSANZ). No build step, no server,
 no account — open `index.html` and it works, including with no signal.
 
+## On a phone
+
+Open it in Safari or Chrome and use **Add to Home Screen**. It installs as a standalone
+app — its own icon, no browser chrome, the dark status bar — because `manifest.webmanifest`
+and the PNG icons sit next to `index.html`.
+
+Those icons have to be real files. iOS ignores an SVG `apple-touch-icon`, and ignores a
+`data:` URI in one too, and quietly falls back to a screenshot of the page instead. The
+SVG favicon in the head still does the browser tab, where it stays sharp at any size.
+
+The mark is redrawn rather than scaled for the icon: a 1.5px ring on a 96-unit canvas is
+under two device pixels at 180px. Same forms, heavier strokes, and pulled in to 72% so it
+survives both iOS's corner rounding and Android's maskable crop.
+
 ## Look
 
 Forest green and champagne, set in Hanken Grotesk with Newsreader for numbers and

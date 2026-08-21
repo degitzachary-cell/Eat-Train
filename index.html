@@ -10,7 +10,14 @@
 <meta name="apple-mobile-web-app-title" content="TrueCount">
 <meta name="mobile-web-app-capable" content="yes">
 <link rel="icon" href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96"><rect width="96" height="96" rx="20" fill="%230F1D16"/><circle cx="48" cy="48" r="40" fill="none" stroke="%232C4234" stroke-width="1.5"/><circle cx="48" cy="48" r="40" fill="none" stroke="%23C8A96A" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="188.5 251.3" transform="rotate(-90 48 48)"/><g stroke="%23EDE8DC" stroke-width="4" stroke-linecap="round"><line x1="34" y1="34" x2="34" y2="62"/><line x1="43" y1="34" x2="43" y2="62"/><line x1="52" y1="34" x2="52" y2="62"/><line x1="61" y1="34" x2="61" y2="62"/></g><line x1="28" y1="57" x2="67" y2="39" stroke="%23C8A96A" stroke-width="4.5" stroke-linecap="round"/></svg>'>
-<link rel="apple-touch-icon" href='data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96"><rect width="96" height="96" rx="20" fill="%230F1D16"/><circle cx="48" cy="48" r="40" fill="none" stroke="%232C4234" stroke-width="1.5"/><circle cx="48" cy="48" r="40" fill="none" stroke="%23C8A96A" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="188.5 251.3" transform="rotate(-90 48 48)"/><g stroke="%23EDE8DC" stroke-width="4" stroke-linecap="round"><line x1="34" y1="34" x2="34" y2="62"/><line x1="43" y1="34" x2="43" y2="62"/><line x1="52" y1="34" x2="52" y2="62"/><line x1="61" y1="34" x2="61" y2="62"/></g><line x1="28" y1="57" x2="67" y2="39" stroke="%23C8A96A" stroke-width="4.5" stroke-linecap="round"/></svg>'>
+<!-- Home-screen icons. iOS ignores an SVG apple-touch-icon and a data: URI
+     both, and falls back to a screenshot of the page, so these are real PNG
+     files served alongside index.html. The SVG favicon above still does the
+     browser tab, where it is sharp at any size. -->
+<link rel="apple-touch-icon" sizes="180x180" href="icon-180.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700;800&family=Newsreader:ital,opsz,wght@0,6..72,400..700;1,6..72,400..600&display=swap">
@@ -11006,7 +11013,7 @@ function renderOffResults(q, via){
 /* Bumped on every deploy. When something fails, knowing which build is
    actually loaded is the difference between debugging the bug and debugging
    a stale cache. */
-var APP_VERSION = '2026.08.20-28';
+var APP_VERSION = '2026.08.20-29';
 var SB_URL = 'https://lsrxqviwgqjpuzzcqcpu.supabase.co';
 var SB_KEY = 'sb_publishable_0lk-0UAlfW-tALEgPiqFHg_8vF9Hp63';
 var AUTH_KEY = 'eatandtrain.auth';
