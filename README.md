@@ -162,18 +162,74 @@ instead if you prefer, and an unknown barcode is kept with whatever you type so 
 product is there next time.
 
 `BarcodeDetector` is native in Chrome and Edge and used where it exists. It is absent
-from every browser on iOS — they are all WebKit underneath — so relying on it would
-mean a scanner that silently does nothing on an iPhone. The fallback decodes EAN-13 and
-UPC-A from the camera frame directly: threshold each row at the midpoint of its own
-darkest and lightest pixels, find the guard patterns, sample the centre of all 95
-modules, decode the left six by L/G parity to recover the thirteenth digit, and verify
-the checksum. Only the guide box is analysed, blown up, so a barcode filling it lands on
-enough pixels per module.
+from every browser on iOS — they are all WebKit underneath — so relying on it would mean
+a scanner that silently does nothing on an iPhone. Everything below is the fallback that
+runs there, and it keeps the app free of a WebAssembly dependency it could not load
+offline anyway.
 
-That keeps the app free of a WebAssembly dependency it could not load offline anyway.
-It is tested against generated codes at several scales, upside down, with noise, and
-against random bars to confirm it does not invent a result. It will not match a
-dedicated scanning library on a creased or curved pack.
+**It reads run lengths, not a fixed grid.** The first version took the leftmost and
+rightmost dark pixel in a row, assumed everything between them was ninety-five modules of
+barcode and sampled the middle of each one. That is only true of a photograph of nothing
+but a barcode. A printed word, the edge of the pack, a shadow, the human-readable digits
+under the bars or the next product on the shelf moved one of those two endpoints, and
+every module after it was read off the wrong place. It also had to be told the scale, so
+a barcode that did not fill the box failed.
+
+Each digit is four alternating runs totalling seven modules, so a digit can be recognised
+by the *ratios* between its four widths. Those are the same whether the barcode fills the
+box or a third of it, and they survive the blur that turns a crisp edge into a ramp.
+Nothing outside the guard patterns has to be barcode at all: the decoder looks for a
+start guard anywhere in the row and walks on from there.
+
+Three readings are tried, in order of how much they assume:
+
+1. **Run widths from a found guard** — the main path, and the one that copes with
+   clutter in the box.
+2. **A grid laid from that same guard**, at a spread of scales and a pixel either side.
+   On a soft picture a one-module bar blurred over four pixels has no edges left to
+   measure: its width is gone, but its position is not.
+3. **A grid laid between the row's dark extremes** — the old method, kept as a last
+   resort. Every row gets both better readings before any row gets this one, so a guessed
+   span cannot beat a properly located barcode further down the frame.
+
+**Thresholding is Otsu's, per row.** A row crossing a barcode has two clear peaks, ink
+and paper, and Otsu finds the split between them — which copes with a torch on one side
+of the pack where a fixed threshold, or the midpoint between the darkest and lightest
+pixel, does not. The threshold taken is the midpoint between the two class means rather
+than the bin Otsu stopped at, because on a clean black-on-white row that bin is zero and
+a threshold of zero puts every pixel on the same side of it.
+
+Rows are read middle-out, thirty-three of them, forwards and reversed so the pack can be
+upside down. The guide box is analysed alone and squashed to 1024 × 256 — a barcode is
+the same all the way down, so trading height for width spends the pixels where the
+information is.
+
+**What it will and will not believe.** A located EAN-13 is accepted on one row: twelve
+digits each had to match their pattern and then agree with a check digit. Two things are
+not accepted that easily and must turn up on a second row first — a guessed span, because
+the span was a guess, and any EAN-8, because seven digits and a one-in-ten check is thin
+evidence. EAN-8 additionally has to show both quiet zones, which a field of evenly spaced
+stripes does not have. On top of all that the live scanner requires two consecutive frames
+to agree before it acts.
+
+It is tested against generated codes at several scales, upside down, tilted, out of focus,
+under glare, on a grey pack, with sensor noise, with the printed digits and the pack edge
+and a neighbouring barcode in the box, with the quiet zone clipped, and as EAN-8 — 22 of
+23 cases, against 16 for the version it replaces. The one it still fails is a four-pixel
+blur on a six-pixel module, which is a picture with no barcode left in it; the same blur
+on a barcode held closer reads fine.
+
+Against 500 frames of deliberately barcode-like random stripes it returns a code about
+once. That floor is not removable: a random pattern that satisfies every digit table and
+the check digit *is* a valid barcode as far as any decoder can tell. Real scenes do not
+look like that, and the two-frame rule covers the rest.
+
+**Camera.** It asks for 1920 × 1080 and continuous focus, because more pixels across the
+barcode is the single biggest thing that makes a scan work and phones default to a focus
+that never settles on something this close. Where the camera reports a torch, a button
+appears over the preview — a dim pantry is the other half of why scanning fails. Frames
+are read fifteen times a second; a frame takes longer than that to change meaningfully,
+and the spare time keeps the preview smooth.
 
 Scanning needs camera permission and a secure origin, so it works from GitHub Pages and
 not from a local file opened with `file://`.
@@ -407,6 +463,17 @@ for the photograph that is not there.
 An image is held the way everything else here is: in the file, as a data URI. It costs
 what it costs — budget for it, because the app is one download and there is nowhere for
 a lazy second request to come from when you are cooking with no signal.
+
+### What ships is not yours to lose
+
+The seven recipes are part of the app. They are checked on every load and on every sync
+pull, and anything missing goes back — matched on a key each carries rather than on its
+name, so renaming one or rewriting its ingredients keeps your version. There is no delete
+on them, because one stray tap should not take something out of the app. Edit them all
+you like; your changes are kept and synced.
+
+An install that predates the key adopts it rather than gaining a second copy of a recipe
+already in the list.
 
 ### A partner's shelf
 

@@ -280,7 +280,12 @@ nav.tabs::after{content:''; position:absolute; left:0; right:0; top:100%;
   color:inherit; font:inherit}
 .sec:first-child{border-top:none}
 button.sec{cursor:pointer}
-.sec[hidden]{display:none}   /* .sec sets display, which would otherwise win */
+/* An author rule that sets display beats the browser's own [hidden] rule, so
+   any class with a display of its own quietly ignores the attribute. That has
+   now caught .sec and the torch button; state it once rather than remember to
+   add a third exception. */
+[hidden]{display:none!important}
+.sec[hidden]{display:none}
 button.sec:hover{background:var(--surface-2)}
 .sec-h{display:flex; align-items:baseline; gap:8px; margin-bottom:8px}
 .sec-h h3{font-size:10px; letter-spacing:.18em; text-transform:uppercase;
@@ -1112,9 +1117,19 @@ body.dragging{cursor:grabbing}
     <div style="position:relative;border-radius:var(--r);overflow:hidden;background:#000;aspect-ratio:4/3">
       <video id="scan-video" playsinline muted autoplay
              style="width:100%;height:100%;object-fit:cover"></video>
-      <div style="position:absolute;left:8%;right:8%;top:38%;height:24%;
+      <!-- Matches the crop the decoder actually reads: left 8%, width 84%,
+           top 33%, height 30%. A guide that lies about what is being looked
+           at is worse than no guide. -->
+      <div style="position:absolute;left:8%;right:8%;top:33%;height:30%;
                   border:2px solid var(--accent);border-radius:8px;
                   box-shadow:0 0 0 100vmax rgba(0,0,0,.35)"></div>
+      <button class="iconbtn" id="scan-torch" hidden aria-pressed="false" aria-label="Torch"
+              style="position:absolute;right:10px;bottom:10px;background:var(--bg)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" width="17" height="17">
+          <path d="M12 3v2M5.6 5.6l1.4 1.4M18.4 5.6L17 7M3 12h2M19 12h2"/>
+          <circle cx="12" cy="13" r="3.4"/><path d="M10.4 19h3.2M10.8 21.4h2.4"/>
+        </svg>
+      </button>
     </div>
     <p class="hint" id="scan-note" style="margin-top:10px">Starting the camera…</p>
     <label class="f" style="margin-top:10px"><span>Or type it</span>
@@ -10278,13 +10293,37 @@ function bindDrag(){
    ------------------------------------------------------------------------- */
 var SEED_RECIPES = JSON.parse(`[{"name":"Pad grapao","servings":2,"items":[{"key":"F002806","name":"Chicken, thigh, lean, raw","grams":300,"liquid":false,"label":"Chicken thigh, hand chopped to a rough mince"},{"key":"F007661","name":"Rice, white, cooked","grams":300,"liquid":false,"label":"Jasmine rice, cooked (55 g dry)"},{"key":"F006191","name":"Oil, vegetable","grams":28,"liquid":true,"label":"Neutral oil, 1 tbsp"},{"key":"F004193","name":"Garlic, peeled, raw","grams":24,"liquid":false,"label":"Garlic, 3–4 cloves, roughly chopped"},{"key":"F002899","name":"Chilli (chili), raw","grams":16,"liquid":false,"label":"Bird's eye chilli, 2–4, chopped"},{"key":"F000431","name":"Bean, green, raw","grams":80,"liquid":false,"label":"Green beans, 2 cm lengths"},{"key":"F008065","name":"Sauce, soy, commercial","grams":32,"liquid":false,"label":"Light soy sauce, 1 tbsp"},{"key":"F008026","name":"Sauce, oyster, commercial","grams":24,"liquid":false,"label":"Oyster sauce, 2 tsp"},{"key":"F008065","name":"Sauce, soy, commercial","grams":10,"liquid":false,"label":"Dark soy sauce, 1 tsp"},{"key":"F008976","name":"Sugar, white, granulated or lump","grams":8,"liquid":false,"label":"Palm or caster sugar, 1 tsp"},{"key":"F009527","name":"Water, tap","grams":60,"liquid":true,"label":"Water"},{"key":"F000396","name":"Basil, green, fresh, raw","grams":30,"liquid":false,"label":"Holy basil leaves, picked"}],"method":["Have the rice cooked and hot before you start. The stir fry takes four minutes and won't wait for you.","Mix the light soy, oyster, dark soy, sugar and water in a small bowl. Set it next to the pan.","Pound or chop the garlic and chilli together into a coarse paste. A mortar is better than a knife here, it releases more.","Get a wok or heavy frying pan very hot. Add the oil, then the garlic and chilli. Ten seconds, no more — fragrant, not browned.","Add the chicken. Spread it out and leave it 45 seconds to catch some colour, then break it up and stir fry until just cooked through, about 2 minutes.","Add the beans and the sauce mix. It will hiss and reduce. Toss for 60 to 90 seconds until it clings to the meat and there's only a spoonful of liquid left.","Kill the heat, throw in the basil and fold it through until it wilts. Basil goes bitter if you cook it.","Rice in the bowl, chicken over the top."],"tags":{"cuisine":"Thai","base":"rice","time":15,"meal":["lunch","dinner"]},"mods":[{"name":"Less carbs","note":"Rice down, cauliflower rice fried in the same pan first.","set":[{"key":"F007661","grams":150}],"add":[{"key":"F002378","name":"Cauliflower, raw","grams":240,"liquid":false,"label":"Cauliflower rice"}]},{"name":"More carbs","note":"More rice for a session day, and a little more sauce so it isn't dry.","set":[{"key":"F007661","grams":480},{"key":"F008065","grams":40}],"add":[]},{"name":"More protein","note":"More chicken plus a fried egg. Sauce up by half or it tastes thin.","set":[{"key":"F002806","grams":440},{"key":"F008065","grams":48},{"key":"F008026","grams":36},{"key":"F009527","grams":90}],"add":[{"key":"F003729","name":"Egg, chicken, whole, raw","grams":110,"liquid":false,"label":"Egg, fried"}]},{"name":"More fibre","note":"Double the beans and add snake bean or broccolini.","set":[{"key":"F000431","grams":160}],"add":[{"key":"F001905","name":"Broccoli, fresh or frozen, raw","grams":160,"liquid":false,"label":"Broccolini, cut short"}]},{"name":"More iron","note":"A big handful of spinach folded through at the very end, with the basil. The chilli and the lime you squeeze over help you absorb it.","set":[],"add":[{"key":"F008749","name":"Spinach, baby, fresh, raw","grams":200,"liquid":false,"label":"Baby spinach, folded through with the basil"}]}],"totalG":912,"serveG":456,"kj":530.2,"p":8.13,"f":4,"sat":0.6,"c":13.62,"sug":1.75,"fib":1.23,"na":379.47,"alc":0.06,"m":{"ca":16.9759,"fe":0.5979,"mg":17.1162,"ph":82.4013,"k":190.6075,"zn":0.7843,"se":8.0671,"i":1.7004,"va":33.6996,"vc":3.7675,"vd":0.4309,"ve":1.11,"b1":0.0647,"b2":0.0602,"b3":3.0755,"fol":21.3969,"b6":0.129,"b12":0.1316,"chol":28.9474,"caf":0,"n3":3.0017,"la":1.0458,"ala":0.2703}},{"name":"Caramelised onion pasta with paprika chicken","servings":2,"items":[{"key":"F002806","name":"Chicken, thigh, lean, raw","grams":360,"liquid":false,"label":"Chicken thigh, skinless boneless"},{"key":"F006316","name":"Paprika, dried, ground","grams":8,"liquid":false,"label":"Smoked paprika, 2 tsp"},{"key":"F004193","name":"Garlic, peeled, raw","grams":2,"liquid":false,"label":"Garlic powder, ½ tsp"},{"key":"F007878","name":"Salt, table, iodised","grams":6,"liquid":false,"label":"Fine salt, for chicken and onions"},{"key":"F006618","name":"Pepper, black or white, ground","grams":1,"liquid":false,"label":"Black pepper"},{"key":"F006177","name":"Oil, olive","grams":36,"liquid":true,"label":"Olive oil, for the chicken and the onions"},{"key":"F006225","name":"Onion, mature, brown skinned, peeled, raw","grams":400,"liquid":false,"label":"Brown onion, sliced 3 mm"},{"key":"F009499","name":"Vinegar, balsamic","grams":10,"liquid":false,"label":"Balsamic vinegar, 1 tsp"},{"key":"F006458","name":"Pasta, white, plain, dry, uncooked","grams":160,"liquid":false,"label":"Rigatoni or penne, dried"},{"key":"F002478","name":"Cheese, parmesan, dried, finely grated","grams":40,"liquid":false,"label":"Parmesan, finely grated"},{"key":"F003251","name":"Cream, dairy, not further defined","grams":30,"liquid":false,"label":"Thickened cream, 1 tbsp"},{"key":"F006321","name":"Parsley, fresh, raw","grams":10,"liquid":false,"label":"Flat leaf parsley, chopped"}],"method":["Rub the chicken with the paprika, garlic powder, salt and pepper. Leave it on the bench while you do the onions.","Heat half the oil in a wide pan over medium low. Add the onions and a pinch of salt. Stir to coat, then let them go 20 to 25 minutes, stirring every few minutes. If they catch, add a tablespoon of water and scrape the base. Collapsed and jammy, deep brown, not black.","Add the balsamic, stir 30 seconds until it disappears, then tip the onions into a bowl and wipe the pan.","Salt a pot of water and put the pasta on. Set a timer for one minute under the packet time.","Heat the rest of the oil over medium high. Chicken in, 5 to 6 minutes on the first side without moving it, 4 to 5 on the second, to 74°C. Rest 5 minutes.","Lift the pasta straight into the pan with the onions, 80 ml of pasta water and the cream. Medium heat, tossing hard for a minute.","Off the heat, add the parmesan in two goes, tossing between each. Glossy and coating. More pasta water if it looks tight.","Slice the chicken across the grain, lay it over the pasta, parsley on top."],"tags":{"cuisine":"Italian","base":"pasta","time":40,"meal":["dinner"]},"mods":[{"name":"Less carbs","note":"Half the pasta, courgette ribbons tossed in at the end.","set":[{"key":"F006458","grams":80}],"add":[{"key":"F009775","name":"Zucchini, green skin, raw","grams":300,"liquid":false,"label":"Courgette, in ribbons"}]},{"name":"More carbs","note":"A bigger bowl for a hard day.","set":[{"key":"F006458","grams":240}],"add":[]},{"name":"More protein","note":"More chicken, and ricotta through the sauce in place of cream.","set":[{"key":"F002806","grams":500},{"key":"F003251","grams":0}],"add":[{"key":"F002488","name":"Cheese, ricotta","grams":80,"liquid":false,"label":"Ricotta, stirred through off the heat"}]},{"name":"More fibre","note":"Wholemeal pasta and a handful of peas.","set":[],"add":[{"key":"F006536","name":"Pea, green, raw","grams":160,"liquid":false,"label":"Peas, in with the pasta for the last minute"}]},{"name":"More calcium","note":"More parmesan, and ricotta through the sauce as well as the cream.","set":[{"key":"F002478","grams":70}],"add":[{"key":"F002488","name":"Cheese, ricotta","grams":100,"liquid":false,"label":"Ricotta, stirred through off the heat"}]}],"totalG":1063,"serveG":531.5,"kj":664.54,"p":10.62,"f":6.77,"sat":2.31,"c":12.92,"sug":2.49,"fib":1.73,"na":292.75,"alc":0,"m":{"ca":55.4741,"fe":0.6629,"mg":20.9793,"ph":135.1251,"k":230.1571,"zn":0.9357,"se":9.8656,"i":28.1656,"va":65.1778,"vc":4.3556,"vd":0.4615,"ve":1.4599,"b1":0.0668,"b2":0.0852,"b3":3.8985,"fol":26.6839,"b6":0.1328,"b12":0.2126,"chol":36.1618,"caf":0,"n3":7.4324,"la":0.5867,"ala":0.0603}},{"name":"Dan dan mian","servings":2,"items":[{"key":"F009076","name":"Tahini","grams":44,"liquid":false,"label":"Chinese sesame paste, or tahini, 1½ tbsp"},{"key":"F008065","name":"Sauce, soy, commercial","grams":32,"liquid":false,"label":"Light soy sauce, 1 tbsp"},{"key":"F006187","name":"Oil, sesame","grams":20,"liquid":true,"label":"Chilli oil, with the sediment, 2 tsp"},{"key":"F009499","name":"Vinegar, balsamic","grams":10,"liquid":false,"label":"Chinkiang black vinegar, 1 tsp"},{"key":"F008976","name":"Sugar, white, granulated or lump","grams":4,"liquid":false,"label":"Caster sugar, ½ tsp"},{"key":"F006618","name":"Pepper, black or white, ground","grams":3,"liquid":false,"label":"Sichuan peppercorns, toasted and ground"},{"key":"F004193","name":"Garlic, peeled, raw","grams":10,"liquid":false,"label":"Garlic, grated"},{"key":"F008936","name":"Stock, liquid, all flavours, prepared","grams":80,"liquid":true,"label":"Chicken stock, or hot noodle water"},{"key":"F007057","name":"Pork, mince, raw","grams":240,"liquid":false,"label":"Pork mince"},{"key":"F006191","name":"Oil, vegetable","grams":10,"liquid":true,"label":"Neutral oil, 1 tsp"},{"key":"F009588","name":"Wine, white","grams":10,"liquid":true,"label":"Shaoxing wine, 1 tsp"},{"key":"F008065","name":"Sauce, soy, commercial","grams":10,"liquid":false,"label":"Dark soy sauce, 1 tsp"},{"key":"F001996","name":"Cabbage, Chinese (wombok), raw","grams":40,"liquid":false,"label":"Sui mi ya cai, rinsed and squeezed dry"},{"key":"F006458","name":"Pasta, white, plain, dry, uncooked","grams":140,"liquid":false,"label":"Wheat noodles, dried"},{"key":"F001301","name":"Bok choy or pak choy, raw","grams":160,"liquid":false,"label":"Bok choy or gai lan, halved"},{"key":"F006250","name":"Onion, spring, raw","grams":20,"liquid":false,"label":"Spring onion, sliced thin"},{"key":"F006110","name":"Nut, peanut, roasted, unsalted","grams":20,"liquid":false,"label":"Roasted peanuts, crushed"}],"method":["Toast the Sichuan peppercorns in a dry pan for 60 seconds until you can smell them, then grind. Do this first, it makes the dish.","Whisk all the sauce ingredients together in the bowl you're going to eat from. It'll look split at first — keep going and it emulsifies to the texture of thin cream. A splash more stock if it's claggy.","Heat the oil in a wok over high. Pork in, press it flat and leave it 2 minutes to crust, then break it up and keep frying until properly browned and a bit crisp, 4 to 5 minutes. Don't rush this; soft mince makes a sad bowl.","Add the Shaoxing and dark soy, let it sizzle away, then the ya cai. One more minute. Off the heat.","Boil the noodles to packet time. Greens in for the last 60 seconds. Reserve 50 ml of the water before draining.","Noodles straight into the sauce bowl, greens on the side, pork over the top, then spring onion and peanuts.","Toss it all together yourself before the first mouthful. It's meant to be mixed, not layered."],"tags":{"cuisine":"Chinese","base":"noodles","time":20,"meal":["lunch","dinner"]},"mods":[{"name":"Less carbs","note":"Half the noodles, shredded wombok for the bulk.","set":[{"key":"F006458","grams":70}],"add":[{"key":"F001996","name":"Cabbage, Chinese (wombok), raw","grams":240,"liquid":false,"label":"Wombok, shredded"}]},{"name":"More carbs","note":"A full nest and a half for a session day.","set":[{"key":"F006458","grams":220}],"add":[]},{"name":"More protein","note":"More pork and a soft boiled egg. Sauce up by a third.","set":[{"key":"F007057","grams":360},{"key":"F009076","grams":60},{"key":"F008065","grams":42},{"key":"F008936","grams":110}],"add":[{"key":"F003729","name":"Egg, chicken, whole, raw","grams":130,"liquid":false,"label":"Egg, soft boiled"}]},{"name":"More fibre","note":"Double the greens.","set":[{"key":"F001301","grams":320}],"add":[]},{"name":"More calcium","note":"Sesame paste is the quiet source here. More of it, more greens, and sesame seeds over the top.","set":[{"key":"F009076","grams":64},{"key":"F001301","grams":280}],"add":[{"key":"F008214","name":"Seed, sesame, unsalted","grams":16,"liquid":false,"label":"Toasted sesame seeds, over the top"}]}],"totalG":853,"serveG":426.5,"kj":828.98,"p":10.64,"f":10.92,"sat":2.23,"c":12.98,"sug":1.18,"fib":2.22,"na":343.31,"alc":0.18,"m":{"ca":44.0621,"fe":1.1378,"mg":37.8933,"ph":139.5873,"k":230.2028,"zn":1.1925,"se":7.4653,"i":3.3937,"va":22.8839,"vc":6.8816,"vd":0.6415,"ve":0.3711,"b1":0.3033,"b2":0.1041,"b3":5.0893,"fol":29.83,"b6":0.2501,"b12":0.1407,"chol":15.1934,"caf":0,"n3":11.3779,"la":3.1511,"ala":0.1385}},{"name":"Protein yoghurt bowl","servings":2,"items":[{"key":"F009690","name":"Yoghurt, natural, reduced fat (~2%)","grams":200,"liquid":false,"label":"Greek yoghurt, natural, 0–2% fat"},{"key":"F007493","name":"Protein powder, whey based, >70% protein","grams":60,"liquid":false,"label":"Vanilla protein powder"},{"key":"F007502","name":"Psyllium, husk, dry, uncooked","grams":20,"liquid":false,"label":"Psyllium husk"},{"key":"F005637","name":"Milk, cow, fluid, skim (~0.1% fat)","grams":160,"liquid":true,"label":"Milk, or water"},{"key":"F001290","name":"Blueberry, raw","grams":160,"liquid":false,"label":"Blueberries"},{"key":"F005839","name":"Muesli, commercial, untoasted or natural, dried fruit & nuts","grams":60,"liquid":false,"label":"Granola"}],"method":["Put the yoghurt in a bowl. Add the protein powder and about two thirds of the milk. Stir until there are no dry pockets. Thick but still moving.","Add the psyllium and the rest of the milk. Stir fast — it starts gelling within seconds.","Leave it 5 minutes. The psyllium pulls in the rest of the liquid and the texture goes from gritty to smooth and pudding-like. Beat in another splash if it's stiffer than you like.","Blueberries and granola on top. Granola last, and eat it soon after or it softens.","Drink a glass of water with this. 10 g of psyllium needs it."],"tags":{"cuisine":"None","base":"yoghurt","time":5,"meal":["breakfast","snack"]},"mods":[{"name":"Less carbs","note":"Less granola and fruit, flaked almonds for the crunch.","set":[{"key":"F005839","grams":30},{"key":"F001290","grams":100}],"add":[{"key":"F006081","name":"Nut, almond, raw/natural, unsalted","grams":20,"liquid":false,"label":"Flaked almonds"}]},{"name":"More carbs","note":"Oats stirred in and more fruit — an overnight version, made the night before.","set":[{"key":"F001290","grams":240},{"key":"F005637","grams":240}],"add":[{"key":"F006143","name":"Oats, rolled, uncooked","grams":60,"liquid":false,"label":"Rolled oats, stirred in at step 2"}]},{"name":"More protein","note":"Double the yoghurt and a little more powder.","set":[{"key":"F009690","grams":400},{"key":"F007493","grams":80},{"key":"F005637","grams":220}],"add":[]},{"name":"More fibre","note":"Chia as well as psyllium, and the liquid to carry it. Don't go past 20 g of husk and seed in one sitting unless you're used to it.","set":[{"key":"F005637","grams":280}],"add":[{"key":"F008209","name":"Seed, chia, dried","grams":20,"liquid":false,"label":"Chia seeds, at step 2"}]},{"name":"More omega-3","note":"Chia and walnuts. Both are ALA rather than the long chain sort — useful, but not a substitute for oily fish.","set":[],"add":[{"key":"F008209","name":"Seed, chia, dried","grams":24,"liquid":false,"label":"Chia seeds, at step 2"},{"key":"F006131","name":"Oat beverage, added Ca","grams":40,"liquid":false,"label":"Walnuts, roughly broken"}]}],"totalG":660,"serveG":330,"kj":480.39,"p":11.42,"f":1.43,"sat":0.58,"c":11.59,"sug":7,"fib":4.47,"na":48.58,"alc":0,"m":{"ca":133.0303,"fe":1.163,"mg":26.5455,"ph":122.5152,"k":237.5758,"zn":0.5218,"se":8.0455,"i":39.4788,"va":8.697,"vc":0.4848,"vd":0.0976,"ve":0.1761,"b1":0.0593,"b2":0.1263,"b3":1.9455,"fol":23.2424,"b6":0.0412,"b12":0.7727,"chol":8.3939,"caf":0,"n3":0,"la":0.277,"ala":0.0133}},{"name":"Chicken breast wrap","servings":2,"items":[{"key":"F002594","name":"Chicken, breast, lean, raw","grams":300,"liquid":false,"label":"Chicken breast"},{"key":"F006177","name":"Oil, olive","grams":10,"liquid":true,"label":"Olive oil, 1 tsp"},{"key":"F003327","name":"Cumin (cummin) seed, dried, ground","grams":2,"liquid":false,"label":"Ground cumin, ½ tsp"},{"key":"F006316","name":"Paprika, dried, ground","grams":2,"liquid":false,"label":"Smoked paprika, ½ tsp"},{"key":"F006281","name":"Oregano, dried","grams":1,"liquid":false,"label":"Dried oregano, ½ tsp"},{"key":"F007878","name":"Salt, table, iodised","grams":4,"liquid":false,"label":"Fine salt"},{"key":"F006618","name":"Pepper, black or white, ground","grams":1,"liquid":false,"label":"Black pepper"},{"key":"F001411","name":"Bread, flat wrap or tortilla, wholemeal, commercial","grams":120,"liquid":false,"label":"Wholemeal tortilla, 1 large"},{"key":"F005191","name":"Lettuce, cos, raw","grams":80,"liquid":false,"label":"Cos lettuce, shredded"},{"key":"F009193","name":"Tomato, common, raw","grams":80,"liquid":false,"label":"Tomato, sliced"},{"key":"F003320","name":"Cucumber, common, unpeeled, raw","grams":60,"liquid":false,"label":"Cucumber, sliced thin"},{"key":"F009800","name":"Onion, mature, red skinned, peeled, raw","grams":40,"liquid":false,"label":"Red onion, sliced thin"},{"key":"F002452","name":"Cheese, fetta (feta)","grams":40,"liquid":false,"label":"Feta, crumbled"},{"key":"F009690","name":"Yoghurt, natural, reduced fat (~2%)","grams":80,"liquid":false,"label":"Greek yoghurt, for the dressing"},{"key":"F004726","name":"Juice, lemon","grams":10,"liquid":true,"label":"Lemon juice, 1 tsp"}],"method":["Butterfly the breast, or lay it under baking paper and flatten the thick end until it's an even 1.5 cm. Even thickness is the whole trick with breast.","Rub with the oil, then the cumin, paprika, oregano, salt and pepper.","Medium high pan, dry. Chicken in, 4 minutes, turn, 3 to 4 minutes more, to 72°C. Rest 5 minutes, then slice on an angle.","Mix the yoghurt, lemon juice and a pinch of garlic powder and salt for the dressing.","Warm the tortilla 20 seconds a side in the same pan. It stops it cracking when you roll.","Spread the dressing down the middle third, leaving 3 cm clear at each end. Lettuce, cucumber, tomato, onion, then the chicken, then the feta.","Fold the bottom up over the filling, fold both sides in, and roll away from you, keeping it tight.","Wrap the bottom half in baking paper and cut on the diagonal."],"tags":{"cuisine":"None","base":"bread","time":15,"meal":["lunch"]},"mods":[{"name":"Less carbs","note":"Cos leaves as cups instead of the tortilla.","set":[{"key":"F001411","grams":0}],"add":[{"key":"F005191","name":"Lettuce, cos, raw","grams":120,"liquid":false,"label":"Cos leaves, as cups"}]},{"name":"More protein","note":"More chicken, more dressing, more feta. You may need a second tortilla to get it closed.","set":[{"key":"F002594","grams":440},{"key":"F009690","grams":120},{"key":"F002452","grams":60}],"add":[]},{"name":"More fibre","note":"Swap in a high fibre wrap and pile in more salad.","set":[{"key":"F005191","grams":140},{"key":"F003320","grams":120},{"key":"F009193","grams":140}],"add":[]},{"name":"More calcium","note":"More feta and a bigger dressing.","set":[{"key":"F002452","grams":70},{"key":"F009690","grams":140}],"add":[]}],"totalG":830,"serveG":415,"kj":466.99,"p":11.13,"f":3.39,"sat":1.17,"c":8.05,"sug":1.64,"fib":1.6,"na":319.88,"alc":0,"m":{"ca":51.0675,"fe":0.8804,"mg":27.0398,"ph":147.5229,"k":270.2494,"zn":0.5779,"se":8.3566,"i":32.5719,"va":27.1012,"vc":3.4819,"vd":0.3398,"ve":0.5971,"b1":0.1355,"b2":0.0679,"b3":6.1951,"fol":55.0386,"b6":0.2394,"b12":0.1422,"chol":28.8675,"caf":0,"n3":4.9157,"la":0.4629,"ala":0.0456}},{"name":"Chicken garden salad","servings":2,"items":[{"key":"F002594","name":"Chicken, breast, lean, raw","grams":320,"liquid":false,"label":"Chicken breast"},{"key":"F006177","name":"Oil, olive","grams":34,"liquid":true,"label":"Olive oil, for cooking and for the dressing"},{"key":"F007878","name":"Salt, table, iodised","grams":5,"liquid":false,"label":"Fine salt"},{"key":"F006618","name":"Pepper, black or white, ground","grams":2,"liquid":false,"label":"Black pepper"},{"key":"F005191","name":"Lettuce, cos, raw","grams":200,"liquid":false,"label":"Cos or mixed leaves"},{"key":"F009190","name":"Tomato, cherry or grape, raw","grams":200,"liquid":false,"label":"Cherry tomatoes, halved"},{"key":"F003320","name":"Cucumber, common, unpeeled, raw","grams":160,"liquid":false,"label":"Cucumber, half moons"},{"key":"F002247","name":"Capsicum, red, raw","grams":80,"liquid":false,"label":"Red capsicum, sliced"},{"key":"F009800","name":"Onion, mature, red skinned, peeled, raw","grams":60,"liquid":false,"label":"Red onion, paper thin"},{"key":"F002276","name":"Carrot, raw","grams":100,"liquid":false,"label":"Carrot, coarsely grated"},{"key":"F008212","name":"Seed, pumpkin, hulled & dried, unsalted","grams":30,"liquid":false,"label":"Pumpkin seeds, toasted"},{"key":"F004726","name":"Juice, lemon","grams":18,"liquid":true,"label":"Lemon juice, 2 tsp"},{"key":"F005973","name":"Mustard, cream style","grams":6,"liquid":false,"label":"Dijon mustard, ½ tsp"},{"key":"F004380","name":"Honey","grams":6,"liquid":false,"label":"Honey, ½ tsp"}],"method":["Flatten the breast to an even thickness, rub with 5 g of the oil, salt and pepper. Medium high pan, 4 minutes, turn, 3 to 4 minutes, to 72°C. Rest 5 minutes, then slice.","Soak the sliced onion in cold water for 10 minutes while you do everything else, then drain. It takes the harsh edge off.","Shake or whisk the rest of the oil with the lemon, mustard and honey until the mustard thickens it slightly.","Toast the pumpkin seeds in a dry pan for 2 minutes, until they start popping. Tip them straight out or they'll keep cooking.","Leaves, tomato, cucumber, capsicum, carrot and drained onion in a big bowl. Dress and toss with your hands, gently, until every leaf has a shine.","Plate it, chicken over the top, seeds scattered last."],"tags":{"cuisine":"None","base":"salad","time":20,"meal":["lunch","dinner"]},"mods":[{"name":"Less carbs","note":"Drop the carrot and the honey, add avocado. It is already low carb.","set":[{"key":"F002276","grams":0},{"key":"F004380","grams":0}],"add":[{"key":"F000162","name":"Avocado, raw","grams":120,"liquid":false,"label":"Avocado"}]},{"name":"More carbs","note":"Freekeh or quinoa and roast pumpkin turn it into a proper dinner.","set":[],"add":[{"key":"F007596","name":"Quinoa, cooked","grams":200,"liquid":false,"label":"Cooked freekeh or quinoa"},{"key":"F011005","name":"Pumpkin, kent/jap, peeled, fresh, baked, no added fat","grams":120,"liquid":false,"label":"Roast pumpkin"}]},{"name":"More protein","note":"More chicken, a boiled egg and feta.","set":[{"key":"F002594","grams":480}],"add":[{"key":"F003729","name":"Egg, chicken, whole, raw","grams":130,"liquid":false,"label":"Egg, boiled"},{"key":"F002452","name":"Cheese, fetta (feta)","grams":60,"liquid":false,"label":"Feta"}]},{"name":"More fibre","note":"Chickpeas through the leaves.","set":[],"add":[{"key":"F002880","name":"Chickpea, canned, drained","grams":160,"liquid":false,"label":"Chickpeas, drained"}]},{"name":"More iron","note":"Spinach through the leaves and chickpeas on top. The lemon and capsicum are already doing the vitamin C work that makes plant iron count.","set":[],"add":[{"key":"F008749","name":"Spinach, baby, fresh, raw","grams":120,"liquid":false,"label":"Baby spinach, through the leaves"},{"key":"F002880","name":"Chickpea, canned, drained","grams":160,"liquid":false,"label":"Chickpeas, drained"}]}],"totalG":1221,"serveG":610.5,"kj":327.12,"p":7.3,"f":3.97,"sat":0.65,"c":2.65,"sug":2.53,"fib":1.38,"na":185.53,"alc":0,"m":{"ca":15.2662,"fe":0.593,"mg":30.0336,"ph":110.3579,"k":268.5586,"zn":0.4277,"se":5.4874,"i":18.7723,"va":156.8665,"vc":23.4611,"vd":0.2464,"ve":1.1581,"b1":0.0521,"b2":0.032,"b3":4.1886,"fol":18.2735,"b6":0.1664,"b12":0.0262,"chol":17.8215,"caf":0,"n3":3.5643,"la":0.7827,"ala":0.0214}},{"name":"Eggs and salmon on rye","servings":2,"items":[{"key":"F003729","name":"Egg, chicken, whole, raw","grams":220,"liquid":false,"label":"Eggs, 2 large"},{"key":"F007864","name":"Salmon, smoked, sliced","grams":100,"liquid":false,"label":"Smoked salmon"},{"key":"F001440","name":"Bread, rye, light, commercial","grams":120,"liquid":false,"label":"Light rye bread, 2 slices"},{"key":"F009193","name":"Tomato, common, raw","grams":160,"liquid":false,"label":"Tomato, sliced 5 mm"},{"key":"F001973","name":"Butter, plain, salted","grams":10,"liquid":false,"label":"Butter, for the pan"},{"key":"F002435","name":"Cheese, cottage","grams":60,"liquid":false,"label":"Cottage cheese, or cream cheese"},{"key":"F003509","name":"Dill, fresh, raw","grams":6,"liquid":false,"label":"Fresh dill, torn"},{"key":"F002907","name":"Chives, fresh, raw","grams":10,"liquid":false,"label":"Chives, sliced"},{"key":"F002220","name":"Capers, pickled, canned, drained","grams":10,"liquid":false,"label":"Capers, drained"},{"key":"F004726","name":"Juice, lemon","grams":20,"liquid":true,"label":"Lemon, for squeezing"}],"method":["Beat the eggs with a little salt until the whites and yolks are one colour, no more than that.","Slice the tomato, lay it on the plate, and season it now. Tomato needs salt to taste of anything.","Toast the rye.","Melt the butter in a non stick pan over low heat — not medium. Eggs in, and stir slowly with a spatula, pushing the set curds into the centre. Two to three minutes. Take it off while it still looks slightly underdone; it keeps cooking on the plate.","Spread the cottage cheese on the toast, tomato over it, then the eggs.","Drape the salmon over the top, then the capers, dill and chives. Squeeze the lemon over and finish with pepper."],"tags":{"cuisine":"None","base":"eggs","time":10,"meal":["breakfast"]},"mods":[{"name":"Less carbs","note":"One slice of rye, the rest on wilted spinach.","set":[{"key":"F001440","grams":60}],"add":[{"key":"F008760","name":"Spinach, fresh, boiled, microwaved or steamed, drained","grams":160,"liquid":false,"label":"Spinach, wilted"}]},{"name":"More carbs","note":"A third slice and a little honey on the side for a session morning.","set":[{"key":"F001440","grams":180}],"add":[]},{"name":"More protein","note":"One whole egg plus liquid egg white, more salmon and cottage cheese.","set":[{"key":"F003729","grams":110},{"key":"F007864","grams":160},{"key":"F002435","grams":120}],"add":[{"key":"F003706","name":"Egg, chicken, white (albumen) only, raw","grams":240,"liquid":false,"label":"Liquid egg white"}]},{"name":"More fibre","note":"Wholegrain rye and avocado under the eggs.","set":[],"add":[{"key":"F000162","name":"Avocado, raw","grams":100,"liquid":false,"label":"Avocado, smashed"}]},{"name":"More omega-3","note":"More salmon. This is the long chain sort, which is the one that is hard to get anywhere else.","set":[{"key":"F007864","grams":200}],"add":[]}],"totalG":716,"serveG":358,"kj":564.73,"p":10.45,"f":6.08,"sat":2.13,"c":8.7,"sug":1.28,"fib":1.31,"na":328.19,"alc":0,"m":{"ca":38.0866,"fe":1.0454,"mg":18.7095,"ph":135.3771,"k":193.8966,"zn":0.636,"se":12.4399,"i":30.2383,"va":77.1648,"vc":5.176,"vd":2.3749,"ve":0.7596,"b1":0.1241,"b2":0.1878,"b3":3.8986,"fol":95.1397,"b6":0.0956,"b12":0.6816,"chol":161.8017,"caf":0,"n3":140.3373,"la":0.6307,"ala":0.1069}}]`);
 
+/* The recipes that ship are part of the app, not something you added, so this
+   runs on every load rather than once: anything missing comes back. They are
+   matched on the key each carries rather than on its name, so renaming one or
+   rewriting its ingredients keeps your version — the check is whether the
+   recipe is there at all, not whether it is untouched. */
 function seedRecipes(){
-  if (S.ui.seeded) return;
-  S.ui.seeded = 1;
   var have = {};
-  (S.recipes || []).forEach(function(r){ have[r.name] = 1; });
-  SEED_RECIPES.forEach(function(r){ if (!have[r.name]) S.recipes.push(JSON.parse(JSON.stringify(r))); });
-  invalidateFoods(); save();
+  (S.recipes || []).forEach(function(r){ if (r.bi) have[r.bi] = 1; });
+  var dirty = false;
+  SEED_RECIPES.forEach(function(r){
+    if (have[r.name]) return;
+    var copy = JSON.parse(JSON.stringify(r));
+    copy.bi = r.name;
+    S.recipes.push(copy);
+    dirty = true;
+  });
+  /* Written before the key existed: adopt them rather than shipping a second
+     copy of a recipe already sitting in the list under the same name. */
+  if (!S.ui.seeded){
+    S.ui.seeded = 1; dirty = true;
+    var byName = {};
+    SEED_RECIPES.forEach(function(r){ byName[r.name] = 1; });
+    S.recipes.forEach(function(r){ if (!r.bi && byName[r.name]) r.bi = r.name; });
+    var seen = {};
+    S.recipes = S.recipes.filter(function(r){
+      if (!r.bi) return true;
+      if (seen[r.bi]) return false;
+      seen[r.bi] = 1; return true;
+    });
+  }
+  if (dirty){ invalidateFoods(); save(); }
 }
 
 /* A mod is applied to a copy, never to the recipe. set matches the first
@@ -10388,8 +10427,14 @@ function renderCook(){
        with the recipe rather than on the shelf you were browsing. */
     '<div class="btnrow" style="margin-top:16px">' +
       '<button class="btn sm ghost" data-edit-rec="' + cookCtx.i + '" style="flex:1">Edit ingredients</button>' +
-      '<button class="btn sm danger" data-del-rec="' + cookCtx.i + '" style="flex:none">Delete</button>' +
-    '</div>';
+      /* A recipe that ships with the app is not yours to lose. Edit it all you
+         like — the amounts, the ingredients — but there is no delete on it,
+         because one stray tap should not take something out of the app. */
+      (r.bi ? '' : '<button class="btn sm danger" data-del-rec="' + cookCtx.i +
+        '" style="flex:none">Delete</button>') +
+    '</div>' +
+    (r.bi ? '<p class="hint" style="margin-top:9px">This one ships with the app. ' +
+      'Your changes to it are kept and synced; it cannot be deleted.</p>' : '');
 }
 
 /* Logging from here writes one serve of whatever is on screen, mod included,
@@ -11239,95 +11284,320 @@ function importCSV(text){
 }
 
 /* ------------------------------ barcodes ----------------------------------
-   BarcodeDetector is native in Chrome and Edge but absent from every browser
-   on iOS, which are all WebKit underneath — so relying on it alone would mean
-   a scanner that silently does nothing on an iPhone. The fallback below
-   decodes EAN-13 and UPC-A from the camera frame directly, which keeps the app
-   free of a WASM dependency it could not load offline anyway.
+   BarcodeDetector is native in Chrome and Edge and used wherever it exists.
+   It is absent from every browser on iOS — they are all WebKit underneath —
+   so relying on it alone would mean a scanner that silently does nothing on
+   an iPhone. The fallback below decodes EAN-13, EAN-8 and UPC-A from the
+   camera frame directly, which keeps the app free of a WebAssembly dependency
+   it could not load offline anyway.
 
-   EAN-13 is 95 modules: guard 101, six digits of seven, centre guard 01010,
-   six more, guard 101. The left six are encoded L or G, and the pattern of
-   which is which spells out the thirteenth digit.
+   It works on run lengths rather than on a fixed grid. The first version
+   found the leftmost and rightmost dark pixel in the row, assumed everything
+   between them was ninety-five modules of barcode and sampled the middle of
+   each one. That is only true of a photograph of nothing but a barcode: a
+   printed word, the edge of the pack or a shadow anywhere in the guide box
+   moved one of those two endpoints and every module after it was read off the
+   wrong place. It also had to be told the scale, so a barcode that did not
+   fill the box failed.
+
+   Measuring runs instead removes both problems. Each digit is four
+   alternating runs totalling seven modules, so a digit is recognised by the
+   ratios between its four widths — which are the same whether the barcode
+   fills the box or a third of it, and which survive the blur that turns a
+   crisp edge into a ramp. Nothing outside the guard patterns has to be
+   barcode at all: the decoder looks for a start guard anywhere in the row and
+   walks on from there.
    ------------------------------------------------------------------------- */
+/* Each digit as the widths of its four alternating elements. Read
+   space-bar-space-bar on the left half and bar-space-bar-space on the right,
+   which is why one table serves both — an R code is an L code in the other
+   colour. A G code is an L code backwards. */
+var EAN_PAT = [[3,2,1,1],[2,2,2,1],[2,1,2,2],[1,4,1,1],[1,1,3,2],
+               [1,2,3,1],[1,1,1,4],[1,3,1,2],[1,2,1,3],[3,1,1,2]];
+/* Which of the left six are L and which are G spells out the thirteenth
+   digit, the one that is never printed as bars. */
+var EAN_PARITY = ['000000','001011','001101','001110','010011',
+                  '011001','011100','010101','010110','011010'];
+/* The same digits as bit patterns, which is what the grid path below reads. */
 var EAN_L = ['0001101','0011001','0010011','0111101','0100011',
              '0110001','0101111','0111011','0110111','0001011'];
 var EAN_G = ['0100111','0110011','0011011','0100001','0011101',
              '0111001','0000101','0010001','0001001','0010111'];
 var EAN_R = ['1110010','1100110','1101100','1000010','1011100',
              '1001110','1010000','1000100','1001000','1110100'];
-var EAN_PARITY = ['000000','001011','001101','001110','010011',
-                  '011001','011100','010101','010110','011010'];
+
+var EAN_VAR = 0.48;        // mean width error a match may carry, in modules
+var EAN_VAR_ONE = 0.7;     // and the most any single element may be out by
 
 function eanChecksum(d){
   var s = 0;
   for (var i = 0; i < 12; i++) s += (+d[i]) * (i % 2 === 0 ? 1 : 3);
   return (10 - (s % 10)) % 10;
 }
-/* One row of pixels -> bits, using the midpoint between the darkest and
-   lightest samples on that row rather than a fixed threshold, so it copes
-   with a phone torch on one side of the pack. */
-function rowToBits(data, w, y){
-  var lo = 255, hi = 0, g = new Array(w);
-  for (var x = 0; x < w; x++){
-    var i = (y * w + x) * 4;
-    var v = (data[i] * 299 + data[i+1] * 587 + data[i+2] * 114) / 1000;
-    g[x] = v; if (v < lo) lo = v; if (v > hi) hi = v;
-  }
-  if (hi - lo < 40) return null;                 // no contrast, not a barcode
-  var t = (lo + hi) / 2, bits = new Array(w);
-  for (var x2 = 0; x2 < w; x2++) bits[x2] = g[x2] < t ? 1 : 0;
-  return bits;
+function ean8Checksum(d){
+  var s = 0;
+  for (var i = 0; i < 7; i++) s += (+d[i]) * (i % 2 === 0 ? 3 : 1);
+  return (10 - (s % 10)) % 10;
 }
-function decodeEanRow(bits){
-  var w = bits.length;
-  var first = -1, last = -1;
-  for (var i = 0; i < w; i++) if (bits[i]){ first = i; break; }
-  for (var j = w - 1; j >= 0; j--) if (bits[j]){ last = j; break; }
-  if (first < 0 || last - first < 60) return null;
-  var span = last - first + 1, mod = span / 95;
-  if (mod < 0.8) return null;
-  /* Sample the centre of each module rather than its edge. */
-  var m = new Array(95);
-  for (var k = 0; k < 95; k++){
-    var px = Math.round(first + (k + 0.5) * mod);
-    m[k] = bits[Math.max(0, Math.min(px, w - 1))];
-  }
-  var s = m.join('');
-  if (s.slice(0,3) !== '101' || s.slice(45,50) !== '01010' || s.slice(92,95) !== '101') return null;
 
-  var parity = '', digits = '';
-  for (var d = 0; d < 6; d++){
+/* How far a group of runs is from a pattern, once both are scaled to the same
+   total. Returns a large number rather than a match if any single element is
+   badly out, so a plausible average cannot hide one wild width. */
+function eanVar(runs, off, n, want){
+  var total = 0, units = 0, i;
+  for (i = 0; i < n; i++) total += runs[off + i];
+  for (i = 0; i < n; i++) units += want[i];
+  if (total < units) return 1e9;                 // fewer pixels than modules
+  var unit = total / units, worst = unit * EAN_VAR_ONE, v = 0;
+  for (i = 0; i < n; i++){
+    var d = Math.abs(runs[off + i] - want[i] * unit);
+    if (d > worst) return 1e9;
+    v += d;
+  }
+  return v / total;
+}
+/* 0-9 for an L or R code, 10-19 for a G code, -1 for nothing recognisable. */
+function eanDigit(runs, off, left){
+  var best = -1, bestV = EAN_VAR, d, v;
+  for (d = 0; d < 10; d++){
+    v = eanVar(runs, off, 4, EAN_PAT[d]);
+    if (v < bestV){ bestV = v; best = d; }
+  }
+  if (left) for (d = 0; d < 10; d++){
+    v = eanVar(runs, off, 4, EAN_PAT[d].slice().reverse());
+    if (v < bestV){ bestV = v; best = d + 10; }
+  }
+  return best;
+}
+
+function tryEan13(runs, p){
+  var n = runs.length;
+  if (p + 56 > n) return null;
+  var parity = '', digits = '', d, v;
+  for (d = 0; d < 6; d++, p += 4){
+    v = eanDigit(runs, p, true); if (v < 0) return null;
+    parity += v >= 10 ? '1' : '0';
+    digits += (v >= 10 ? v - 10 : v);
+  }
+  if (eanVar(runs, p, 5, [1,1,1,1,1]) > EAN_VAR) return null;
+  p += 5;
+  for (d = 0; d < 6; d++, p += 4){
+    v = eanDigit(runs, p, false); if (v < 0) return null;
+    digits += v;
+  }
+  if (eanVar(runs, p, 3, [1,1,1]) > EAN_VAR) return null;
+  var lead = EAN_PARITY.indexOf(parity);
+  if (lead < 0) return null;
+  var code = String(lead) + digits;
+  return +code[12] === eanChecksum(code) ? code : null;
+}
+/* EAN-8 is the small-pack code — gum, a 200 mL popper. All four left digits
+   are L, so a G anywhere means this is not one.
+
+   It also has to show its quiet zones, both of them, which EAN-13 does not.
+   Seven information digits and a one-in-ten check digit is thin evidence: a
+   field of evenly spaced stripes satisfies it by luck about once in every few
+   hundred frames, and every row of such a field satisfies it identically, so
+   corroboration from a second row does not help. Blank margins are the
+   structure that a stripe field does not have. */
+function tryEan8(runs, p, unit, quiet){
+  var n = runs.length;
+  if (p + 40 > n) return null;
+  if (!(quiet >= unit * 5)) return null;
+  var digits = '', d, v;
+  for (d = 0; d < 4; d++, p += 4){
+    v = eanDigit(runs, p, true); if (v < 0 || v >= 10) return null;
+    digits += v;
+  }
+  if (eanVar(runs, p, 5, [1,1,1,1,1]) > EAN_VAR) return null;
+  p += 5;
+  for (d = 0; d < 4; d++, p += 4){
+    v = eanDigit(runs, p, false); if (v < 0) return null;
+    digits += v;
+  }
+  if (eanVar(runs, p, 3, [1,1,1]) > EAN_VAR) return null;
+  if (p + 3 >= n || runs[p+3] < unit * 5) return null;
+  return +digits[7] === ean8Checksum(digits) ? digits : null;
+}
+
+/* Ninety-five modules read straight off a grid, the way the first decoder
+   worked — but laid from a start guard that was actually found, rather than
+   from the darkest pixel in the row, which is the part that made it fragile.
+   It earns its place on a soft picture: a one-module bar blurred over four
+   pixels has no edges left to measure, so its width is gone, but its position
+   is not. The two methods fail at different things, so trying both reads
+   pictures neither manages alone. */
+function gridToCode(s){
+  if (s.slice(0,3) !== '101' || s.slice(45,50) !== '01010' || s.slice(92,95) !== '101') return null;
+  var parity = '', digits = '', d, li, gi, ri;
+  for (d = 0; d < 6; d++){
     var chunk = s.slice(3 + d * 7, 10 + d * 7);
-    var li = EAN_L.indexOf(chunk), gi = EAN_G.indexOf(chunk);
+    li = EAN_L.indexOf(chunk); gi = EAN_G.indexOf(chunk);
     if (li >= 0){ parity += '0'; digits += li; }
     else if (gi >= 0){ parity += '1'; digits += gi; }
     else return null;
   }
-  for (var e = 0; e < 6; e++){
-    var ch = s.slice(50 + e * 7, 57 + e * 7);
-    var ri = EAN_R.indexOf(ch);
+  for (d = 0; d < 6; d++){
+    ri = EAN_R.indexOf(s.slice(50 + d * 7, 57 + d * 7));
     if (ri < 0) return null;
     digits += ri;
   }
   var lead = EAN_PARITY.indexOf(parity);
   if (lead < 0) return null;
   var code = String(lead) + digits;
-  if (+code[12] !== eanChecksum(code)) return null;
-  return code;
+  return +code[12] === eanChecksum(code) ? code : null;
 }
-/* Try a spread of rows: a barcode only has to cross one of them cleanly. */
+/* Three modules is a short baseline for a width that then has to hold over
+   ninety-five of them, so the grid is tried at a spread of scales either side
+   of the guard's estimate and the checksum decides which was right. */
+var GRID_TRIM = [1, 0.995, 1.005, 0.99, 1.01, 0.98, 1.02];
+/* And a pixel either side of where the barcode is thought to start. A
+   threshold that lands a shade high or low moves the first edge by a pixel,
+   which is nothing at the start and half a module by the far end. */
+var GRID_SHIFT = [0, -1, 1];
+function tryGrid(bits, x0, unit){
+  var w = bits.length;
+  for (var t = 0; t < GRID_TRIM.length; t++){
+    var u = unit * GRID_TRIM[t];
+    for (var sh = 0; sh < GRID_SHIFT.length; sh++){
+      var from = x0 + GRID_SHIFT[sh], m = '', bad = false;
+      for (var k = 0; k < 95; k++){
+        var px = Math.round(from + (k + 0.5) * u);
+        if (px < 0 || px >= w){ bad = true; break; }
+        m += bits[px];
+      }
+      if (bad) continue;
+      var code = gridToCode(m);
+      if (code) return code;
+    }
+  }
+  return null;
+}
+
+/* Look for a start guard on every dark run in the row and try to read a
+   barcode out of what follows it. */
+function decodeRuns(runs, startBlack, bits, loose){
+  var n = runs.length, x0 = 0, i;
+  for (i = 0; i < (startBlack ? 0 : 1); i++) x0 += runs[i];
+  for (i = startBlack ? 0 : 1; i + 3 < n; x0 += runs[i] + runs[i+1], i += 2){
+    if (eanVar(runs, i, 3, [1,1,1]) > EAN_VAR) continue;
+    var unit = (runs[i] + runs[i+1] + runs[i+2]) / 3;
+    if (unit < 0.8) continue;                    // narrower than a pixel
+    /* A quiet zone should be seven modules and the guide box routinely clips
+       it, so two is the most that can be insisted on — and nothing at all can
+       be insisted on for the run at the edge of the crop, which is where a
+       barcode that fills the box puts it. */
+    if (i > 1 && runs[i-1] < unit * 2) continue;
+    var code = tryEan13(runs, i + 3) ||
+               tryEan8(runs, i + 3, unit, i > 0 ? runs[i-1] : 0);
+    if (code) return code;
+    if (bits){ code = tryGrid(bits, x0, unit); if (code) return code; }
+  }
+  /* Nothing in the row looked like a guard. On a soft picture the guard's
+     three one-module bars are the first thing to melt, so the last resort is
+     the oldest trick there is: take the row's dark extremes for the two ends
+     of a barcode and lay the grid between them. That is what made the first
+     decoder fragile, which is why it runs only after every better reading of
+     every row has already failed — and it still has to satisfy the checksum. */
+  if (loose && bits){
+    var w = bits.length, first = -1, last = -1, x;
+    for (x = 0; x < w; x++) if (bits[x]){ first = x; break; }
+    for (x = w - 1; x >= 0; x--) if (bits[x]){ last = x; break; }
+    if (first >= 0 && last - first >= 60){
+      var late = tryGrid(bits, first, (last - first + 1) / 95);
+      if (late) return late;
+    }
+  }
+  return null;
+}
+
+/* Otsu's threshold, per row. A row crossing a barcode has two clear peaks —
+   ink and paper — and the split between them is what Otsu finds, which is why
+   it copes with a torch on one side of the pack where a fixed threshold, or
+   the midpoint between the darkest and lightest pixel, does not. */
+var rowBuf = null;
+function rowRuns(data, w, y){
+  /* Reused between rows and frames: at fifteen looks a second over thirty-odd
+     rows, allocating these fresh each time is the most expensive thing here. */
+  if (!rowBuf || rowBuf.w !== w) rowBuf = {w:w, g:new Uint8Array(w),
+    b:new Uint8Array(w), hist:new Uint32Array(256)};
+  var g = rowBuf.g, bits = rowBuf.b, hist = rowBuf.hist;
+  hist.fill(0);
+  var lo = 255, hi = 0, base = y * w * 4, x;
+  for (x = 0; x < w; x++){
+    var i = base + x * 4;
+    var v = (data[i] * 299 + data[i+1] * 587 + data[i+2] * 114) / 1000 | 0;
+    g[x] = v; hist[v]++;
+    if (v < lo) lo = v;
+    if (v > hi) hi = v;
+  }
+  if (hi - lo < 26) return null;                 // no contrast, not a barcode
+  var sum = 0, sumB = 0, wB = 0, best = -1, thr = (lo + hi) / 2;
+  for (i = 0; i < 256; i++) sum += i * hist[i];
+  for (i = 0; i < 256; i++){
+    wB += hist[i]; if (!wB) continue;
+    var wF = w - wB; if (!wF) break;
+    sumB += i * hist[i];
+    var mB = sumB / wB, mF = (sum - sumB) / wF, diff = mB - mF;
+    var between = wB * wF * diff * diff;
+    /* The threshold is the midpoint between the two class means, not the bin
+       Otsu stopped at. On a clean black-on-white row that bin is zero, and a
+       threshold of zero puts every pixel on the same side of it. */
+    if (between > best){ best = between; thr = (mB + mF) / 2; }
+  }
+  var runs = [], black = g[0] < thr, startBlack = black, run = 0;
+  for (x = 0; x < w; x++){
+    var isB = g[x] < thr;
+    bits[x] = isB ? 1 : 0;
+    if (isB === black) run++;
+    else { runs.push(run); run = 1; black = isB; }
+  }
+  runs.push(run);
+  /* Enough structure to be worth reading. Blur merges runs, so this has to
+     stay well under the sixty-one a clean EAN-13 row produces. */
+  return runs.length < 15 ? null : {r:runs, black:startBlack, bits:bits};
+}
+
+/* Rows middle-out: the barcode is usually centred in the guide box, so the
+   row most likely to cross it cleanly is tried first. */
+var revBuf = null;
+/* Two passes over the rows, not one: every row gets the careful reading
+   before any row gets the desperate one, so a guessed span on the first row
+   cannot beat a properly located barcode on the third. */
 function decodeFrame(ctx, w, h){
   var img;
   try { img = ctx.getImageData(0, 0, w, h); } catch(e){ return null; }
-  var rows = 24;
-  for (var r = 1; r < rows; r++){
-    var y = Math.round(h * r / rows);
-    var bits = rowToBits(img.data, w, y);
-    if (!bits) continue;
-    var code = decodeEanRow(bits);
+  return scanRows(img.data, w, h, false) || scanRows(img.data, w, h, true);
+}
+function scanRows(d, w, h, loose){
+  var rows = 33, mid = (rows - 1) / 2, seen = '';
+  /* A located EAN-13 is believed on the strength of one row: twelve digits
+     had to match their patterns and then agree with a check digit. Two things
+     are not believed that easily and have to turn up on a second row first.
+     A guessed span, because the span was a guess. And any EAN-8, because it
+     carries seven digits and a one-in-ten check, which a field of evenly
+     spaced stripes will satisfy by luck often enough to matter. */
+  function take(code){
+    if (!code) return null;
+    if (!loose && code.length > 8) return code;
+    if (seen === code) return code;
+    seen = code;
+    return null;
+  }
+  for (var k = 0; k < rows; k++){
+    var step = Math.ceil(k / 2) * (k % 2 ? 1 : -1);
+    var y = Math.round(h * (mid + step + 0.5) / rows);
+    if (y < 0 || y >= h) continue;
+    var r = rowRuns(d, w, y);
+    if (!r) continue;
+    var code = take(decodeRuns(r.r, r.black, r.bits, loose));
     if (code) return code;
-    bits.reverse();                              // pack held upside down
-    code = decodeEanRow(bits);
+    /* Held upside down. Reversing the run lengths is the whole of it — the
+       colour of the first run only flips when there is an even number. */
+    if (!revBuf || revBuf.length !== w) revBuf = new Uint8Array(w);
+    for (var q = 0; q < w; q++) revBuf[q] = r.bits[w - 1 - q];
+    code = take(decodeRuns(r.r.slice().reverse(),
+                           r.r.length % 2 ? r.black : !r.black, revBuf, loose));
     if (code) return code;
   }
   return null;
@@ -11339,6 +11609,14 @@ function stopScan(){
   if (scan.raf) cancelAnimationFrame(scan.raf);
   if (scan.stream) scan.stream.getTracks().forEach(function(t){ t.stop(); });
   scan = null;
+  var tb = el('scan-torch'); if (tb) tb.hidden = true;
+}
+function toggleTorch(){
+  if (!scan || !scan.track) return;
+  scan.torch = !scan.torch;
+  scan.track.applyConstraints({advanced:[{torch:scan.torch}]}).then(function(){
+    el('scan-torch').setAttribute('aria-pressed', scan.torch ? 'true' : 'false');
+  }).catch(function(){ el('scan-torch').hidden = true; });
 }
 function startScan(){
   var video = el('scan-video'), note = el('scan-note');
@@ -11347,39 +11625,65 @@ function startScan(){
     return;
   }
   note.textContent = 'Point it at the barcode. Fill the width of the box.';
-  navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},
-      width:{ideal:1280}, height:{ideal:720}}, audio:false})
+  navigator.mediaDevices.getUserMedia({audio:false, video:{
+      facingMode:{ideal:'environment'},
+      /* More pixels across the barcode is the single biggest thing that makes
+         a scan work, so ask for a lot and take what the camera gives. */
+      width:{ideal:1920}, height:{ideal:1080}, frameRate:{ideal:30},
+      advanced:[{focusMode:'continuous'}]}})
     .then(function(stream){
-      scan = {stream:stream, raf:null, native:null, busy:false};
+      scan = {stream:stream, raf:null, native:null, busy:false, last:'', at:0,
+              track:stream.getVideoTracks()[0], torch:false};
       video.srcObject = stream;
       video.play();
+      /* Phones default to a focus that never settles on something this close.
+         Where the track will take the hint, take it; where it will not, the
+         constraint is ignored rather than fatal. */
+      var caps = scan.track && scan.track.getCapabilities ? scan.track.getCapabilities() : {};
+      if (caps.focusMode && caps.focusMode.indexOf('continuous') >= 0){
+        scan.track.applyConstraints({advanced:[{focusMode:'continuous'}]}).catch(function(){});
+      }
+      if (caps.torch){
+        var tb = el('scan-torch');
+        if (tb){ tb.hidden = false; tb.setAttribute('aria-pressed', 'false'); }
+      }
       if (typeof BarcodeDetector !== 'undefined'){
         try {
           scan.native = new BarcodeDetector({formats:['ean_13','ean_8','upc_a','upc_e']});
-          note.textContent = 'Point it at the barcode.';
         } catch(e){ scan.native = null; }
       }
       var cv = document.createElement('canvas'), ctx = cv.getContext('2d', {willReadFrequently:true});
+      /* Analyse only the guide box, and squash it: a barcode is the same all
+         the way down, so trading height for width spends the pixels where the
+         information is. 1024 across is around ten per module on a code that
+         fills the box. */
+      cv.width = 1024; cv.height = 256;
       function tick(){
         if (!scan) return;
-        if (video.readyState >= 2 && !scan.busy){
+        var now = Date.now();
+        /* Fifteen looks a second. A frame takes longer than that to change
+           meaningfully, and the spare time keeps the preview smooth. */
+        if (video.readyState >= 2 && !scan.busy && now - scan.at > 60){
+          scan.at = now;
           var vw = video.videoWidth || 1280, vh = video.videoHeight || 720;
-          /* Analyse only the guide box, blown up. A barcode filling that box
-             then lands on plenty of pixels per module, which is what the
-             fallback decoder needs and what the frame at large did not give. */
-          var sx = vw * 0.08, sw = vw * 0.84, sy = vh * 0.34, sh = vh * 0.32;
-          var w = 900, hh = Math.max(Math.round(sh / sw * w), 60);
-          cv.width = w; cv.height = hh;
-          ctx.drawImage(video, sx, sy, sw, sh, 0, 0, w, hh);
+          var sx = vw * 0.08, sw = vw * 0.84, sy = vh * 0.33, sh = vh * 0.30;
+          ctx.drawImage(video, sx, sy, sw, sh, 0, 0, cv.width, cv.height);
           if (scan.native){
             scan.busy = true;
             scan.native.detect(cv).then(function(res){
+              if (!scan) return;
               scan.busy = false;
               if (res && res.length) onBarcode(res[0].rawValue);
-            }).catch(function(){ scan.busy = false; scan.native = null; });
+            }).catch(function(){ if (scan){ scan.busy = false; scan.native = null; } });
           } else {
-            var code = decodeFrame(ctx, w, hh);
-            if (code) onBarcode(code);
+            var code = decodeFrame(ctx, cv.width, cv.height);
+            /* Two frames have to agree. A single misread that happens to pass
+               its checksum is rare; two identical ones are not something a
+               misread does. */
+            if (code){
+              if (scan.last === code) onBarcode(code);
+              else { scan.last = code; note.textContent = 'Hold still…'; }
+            }
           }
         }
         if (scan) scan.raf = requestAnimationFrame(tick);
@@ -11397,7 +11701,10 @@ function onBarcode(code){
   if (!/^\d{8,14}$/.test(code)) return;
   stopScan();
   el('scan-note').textContent = 'Found ' + code + ' — looking it up…';
+  /* v3 is the current product read; v2 is deprecated but still answers, and
+     is worth one try before giving up on a code that scanned cleanly. */
   offFetch(OFF_BASE + '/api/v3/product/' + encodeURIComponent(code))
+    .catch(function(){ return offFetch(OFF_BASE + '/api/v2/product/' + encodeURIComponent(code) + '.json'); })
     .then(function(j){
       var p = (j && j.product) || null;
       var f = p ? offToFood(p, 0) : null;
@@ -11655,7 +11962,7 @@ function renderOffResults(q, via){
 /* Bumped on every deploy. When something fails, knowing which build is
    actually loaded is the difference between debugging the bug and debugging
    a stale cache. */
-var APP_VERSION = '2026.08.21-34';
+var APP_VERSION = '2026.08.21-35';
 var SB_URL = 'https://lsrxqviwgqjpuzzcqcpu.supabase.co';
 var SB_KEY = 'sb_publishable_0lk-0UAlfW-tALEgPiqFHg_8vF9Hp63';
 var AUTH_KEY = 'eatandtrain.auth';
@@ -11942,7 +12249,13 @@ function syncNow(){
       if (d.fav) S.fav = d.fav;
       if (d.recent) S.recent = d.recent;
       if (d.runLast) S.runLast = d.runLast;
-      if (d.recipes) S.recipes = d.recipes;
+      if (d.recipes){
+        S.recipes = d.recipes;
+        /* A pull can arrive without the recipes that ship with the app — from
+           a device that predates them, or one they were deleted on before
+           they were protected. They go back in. */
+        seedRecipes();
+      }
       if (d.coach) S.coach = d.coach;
       S.profileU = tsOf(rProf[0].updated_at);
       /* A profile stored before the flag existed still describes a real body,
@@ -12209,7 +12522,10 @@ function bind(){
     if (t.closest('#wt-more')){ wtAll = true; renderTrends(); return; }
     if (t.closest('#wt-less')){ wtAll = false; renderTrends(); return; }
     var dr = t.closest('[data-del-rec]');
-    if (dr){ S.recipes.splice(+dr.dataset.delRec, 1); save();
+    if (dr){
+      var drr = S.recipes[+dr.dataset.delRec];
+      if (drr && drr.bi){ toast('That one ships with the app.'); return; }
+      S.recipes.splice(+dr.dataset.delRec, 1); save();
              if (openSheet === 'sh-cook') closeSheet();
              renderRecipesView(); renderFoodView(); renderCats(); return; }
 
@@ -12329,6 +12645,7 @@ function bind(){
     switchView('today'); setSub('today', 'log');
   });
   el('btn-browse').addEventListener('click', function(){ openSearch('snack'); });
+  el('scan-torch').addEventListener('click', toggleTorch);
   el('btn-newfood').addEventListener('click', function(){ sheet('sh-custom'); });
   el('btn-data').addEventListener('click', function(){ renderDataSheet(); sheet('sh-data'); });
   el('btn-foods').addEventListener('click', function(){ renderFoodView(); sheet('sh-foods'); });
