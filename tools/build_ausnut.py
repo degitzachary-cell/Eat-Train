@@ -68,10 +68,18 @@ for r in rows(MEASURES, 'AUSNUT 2023', 4):
 # columns, by header index in the workbook
 C = dict(kj=4, prot=7, fat=8, carb=9, sug=12, fs=14, fib=15, alc=16,
          ca=18, i=19, fe=20, mg=21, ph=22, k=23, se=24, na=25, zn=26,
-         va=30, b1=31, b2=32, b3=34, b6=35, fol=39, b12=40, vc=41, vd=46,
-         ve=48, sat=49, la=51, ala=52, n3=57, caf=59, chol=60)
+         ret=27, va=30, b1=31, b2=32, b3=34, b6=35, fac=37, fol=39, b12=40,
+         vc=41, vd=46, ve=48, sat=49, la=51, ala=52, n3=57, tfa=58,
+         caf=59, chol=60)
+# New keys go on the end. The AFCD-only rows carried below are padded to
+# whatever this list has grown to, and appending is what keeps the ones they
+# already carry lined up with the right columns.
 MICROS = ['ca','fe','mg','ph','k','zn','se','i','va','vc','vd','ve',
-          'b1','b2','b3','fol','b6','b12','chol','caf','n3','la','ala']
+          'b1','b2','b3','fol','b6','b12','chol','caf','n3','la','ala',
+          # Free sugars and trans fat carry guideline ceilings expressed as a
+          # share of energy; preformed retinol and folic acid are the forms the
+          # vitamin A and folate Upper Levels are actually written against.
+          'fs','tfa','ret','fac']
 
 def cell(v, k=1.0):
     """Value from the workbook, converted to the per-100-mL basis if the food
@@ -144,8 +152,10 @@ for line in old:
     if len(p) < 32: continue
     nm = p[0].strip().lower()
     if nm in seen or afcd_key.get(nm) in det: continue
-    # old rows carry 20 micros; pad the three new ones with 0 and no key
-    carried.append('|'.join(p[:32] + ['0', '0', '0', afcd_key.get(nm, '')]))
+    # Those rows carry 20 micros. Everything added since is zero for them,
+    # which is the only honest value: AFCD Release 3 does not report it.
+    pad = ['0'] * (len(MICROS) - 20)
+    carried.append('|'.join(p[:32] + pad + [afcd_key.get(nm, '')]))
 
 foods = out + carried
 mlines = []

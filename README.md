@@ -362,11 +362,30 @@ dragging is never the only way to do it.
 
 ## Vitamins and minerals
 
-Eighteen nutrients tracked against the **Nutrient Reference Values for Australia and
-New Zealand** (NHMRC), read from your sex and age: calcium, iron, magnesium,
-phosphorus, potassium, zinc, selenium, iodine, sodium, vitamins A, C, D, E, thiamin,
-riboflavin, niacin, folate, B6 and B12. Cholesterol and caffeine are tracked without
-targets, since Australia sets none.
+Twenty-two nutrients tracked against the **Nutrient Reference Values for Australia and
+New Zealand** (NHMRC), read from your sex and age: calcium, iron, magnesium, phosphorus,
+potassium, zinc, selenium, iodine, sodium, vitamins A, C, D, E, thiamin, riboflavin,
+niacin, folate, B6 and B12, plus long-chain omega-3, linoleic and alpha-linolenic acid.
+Cholesterol and caffeine are tracked without targets, since Australia sets none.
+
+**Free sugars** and **trans fat** sit with the macros rather than in this list, because
+the guidelines write them as a share of energy the way saturated fat is written: under
+10% for free sugars (Australian Dietary Guidelines, and the WHO's figure), under 1% for
+trans fat (NHMRC). Both move with the day's target. Free sugars rather than total sugars,
+because the sugar in an apple and the sugar in a soft drink are the same molecule and a
+different problem, and the guideline is written about one of them.
+
+### Why not more of them
+
+Because AUSNUT does not have more. It carries **exactly nine minerals**, all nine of
+which are here. There is no copper, manganese, chromium, molybdenum or fluoride in it,
+and no vitamin K, biotin, pantothenic acid or choline either — nutrients that have
+Australian reference values but no Australian food data behind them. Adding them would
+mean importing USDA FoodData Central and matching American foods to Australian ones,
+which trades the thing this app is built on for a longer list. Its "other components"
+section is three items — caffeine, cholesterol and tryptophan — and the only one not
+tracked is tryptophan, which is useful as a niacin precursor that FSANZ has already
+folded into the niacin equivalents figure used here.
 
 Each nutrient is read against two numbers at once. The bar runs from zero to the
 **Upper Level**, with a tick marking the **RDI**, so short of target, in range, and
@@ -380,10 +399,17 @@ Two honesty notes:
   rather than a gap in the data. It still only counts what you logged, and knows
   nothing about supplements.
 - Several Upper Levels were written for a supplement form, not for food: magnesium's
-  applies to supplements, niacin's to nicotinic acid, folate's to folic acid, vitamin
-  A's to preformed retinol, B6's to supplemental pyridoxine, vitamin E's to
-  alpha-tocopherol. Those are shown for reference but never flagged as exceeded,
-  because passing them on diet alone does not mean what the number suggests.
+  applies to supplements, niacin's to nicotinic acid, B6's to supplemental pyridoxine,
+  vitamin E's to alpha-tocopherol. Those are shown for reference but never flagged as
+  exceeded, because passing them on diet alone does not mean what the number suggests.
+- **Vitamin A and folate used to be in that list and no longer are.** Their limits are
+  written against preformed retinol and folic acid, and AUSNUT reports both of those on
+  their own — 1,779 foods carry retinol, 470 carry folic acid. So the RDI is still read
+  against retinol equivalents and dietary folate equivalents, which is what the RDI is
+  for, while the limit is checked against the form the limit was actually set for. Eat
+  250 g of lamb's liver and the app now says so: 78,500 µg of preformed retinol against
+  a 3,000 µg ceiling. It also says how much of the day's total is that form, so the flag
+  is never arbitrary.
 
 ## Coach
 
@@ -621,8 +647,20 @@ the `<script>`:
 
 ```
 name | food group | kJ | protein | fat | saturated | carbs | sugars | fibre |
-sodium mg | alcohol g | liquid | 23 micronutrients | public food key
+sodium mg | alcohol g | liquid | 27 micronutrients | public food key
 ```
+
+New nutrients are appended to that list rather than inserted, so the columns already
+there stay lined up and the AFCD-only rows can be padded with zeros — the only honest
+value, since AFCD Release 3 does not report them.
+
+An entry logged before a nutrient existed carries no value for it, and a missing key
+reads as a zero rather than as a gap. It does not have to: every entry keeps the food key
+it was logged from, and an entry logged from a recipe keeps its ingredients, so the
+missing keys are filled from the rebuilt database on the next load. Only absent keys are
+written — amounts, portions and every nutrient already recorded are left alone. A food
+typed in by hand, with no key and no ingredients, is left as it is, because there is
+nothing honest to fill it from.
 
 The public food key on the end joins each food to `MEASURES`, the portions block that
 follows it. Activities and their MET values sit below both in `ACTIVITIES`.
