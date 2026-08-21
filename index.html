@@ -8551,14 +8551,23 @@ function analysedByKey(key){
   }
   return _micIndex[key] || null;
 }
+/* Panels are not uniform: one declares calcium and nothing else, the next
+   declares nothing at all, a third lists five vitamins. So the two sources are
+   merged rather than ranked — whatever the pack actually printed wins for that
+   nutrient, and the analysed match fills the gaps it left. */
 function borrowMicros(c){
-  if (c && c.m && microsOf(c)) return c;          /* its own panel wins */
   if (!c || !c.microFrom || !c.microFrom.key) return c;
   var src = analysedByKey(c.microFrom.key);
   if (!src || !src.m) return c;
   var o = {}; for (var k in c) o[k] = c[k];
-  o.m = src.m;                       /* both per 100 g, so no scaling */
-  o.borrowed = src.name;
+  var own = c.m || {}, m = {}, took = 0;
+  for (var j = 0; j < MICRO_KEYS.length; j++){
+    var key = MICRO_KEYS[j];
+    if (own[key] > 0){ m[key] = own[key]; }        /* read off the pack */
+    else if (src.m[key]){ m[key] = src.m[key]; took++; }   /* both per 100 g */
+  }
+  o.m = m;
+  if (took) o.borrowed = src.name;
   return o;
 }
 function allFoods(){
@@ -12505,15 +12514,29 @@ function onBarcode(code){
    what "edit" meant every other time you tried it here. Values are shown on
    the per-100 basis they are stored on, in whichever energy unit is on screen.
    ------------------------------------------------------------------------- */
-var customIdx = null, customMicro = null, customOwnMicro = null;
+var customIdx = null, customMicro = null, customOwnMicro = null, customOwnExtra = null;
 
 /* Shown as a choice rather than as twenty-seven more boxes, because nobody is
    typing twenty-seven boxes off a tub of yoghurt and the honest answer is
    sitting in the database already. */
+/* Rows the panel printed that this app has no column for. Kept verbatim —
+   label, number and unit as the pack wrote them — because the alternative is
+   reading a line off the panel and then throwing it away. */
+function extraChips(){
+  var x = customOwnExtra;
+  if (!x || !x.length) return '';
+  return '<div class="chips" style="margin-top:8px">' + x.map(function(e){
+    return '<span class="chip"><b>' + g(e.v, 2) + (e.u ? ' ' + esc(e.u) : '') + '</b> ' +
+      esc(e.label.toLowerCase()) + '</span>';
+  }).join('') + '</div>' +
+  '<p class="hint">Also printed on the pack. Saved with the food and shown here, but not counted ' +
+  'against a daily target — the database has no figure for these to compare against.</p>';
+}
+
 function renderCustomMicro(){
   var st = el('c-mic-state'), row = el('c-mic-row');
   if (!st) return;
-  /* Read off the pack beats borrowed from a similar food, which beats nothing. */
+  /* What the pack printed, then whatever a match can fill in behind it. */
   if (customOwnMicro){
     var have = Object.keys(customOwnMicro).filter(function(k){ return customOwnMicro[k] > 0; });
     st.textContent = 'off the panel';
@@ -12524,24 +12547,37 @@ function renderCustomMicro(){
         esc(r ? r.n.toLowerCase() : k) + '</span>';
     }).join('') + '</div>' +
     '<p class="hint">Declared on the pack, so these are the product\'s own — not borrowed and ' +
-    'not estimated.</p>';
+    'not estimated.</p>' + extraChips() + borrowSection(have.length);
     return;
   }
+  if (customOwnExtra && customOwnExtra.length){
+    st.textContent = 'off the panel';
+    row.innerHTML = extraChips() + borrowSection(customOwnExtra.length);
+    return;
+  }
+  row.innerHTML = borrowSection(0);
+}
+
+/* Borrowing is not an either/or with the panel. A pack that declares calcium
+   and nothing else has told the truth about calcium and said nothing about the
+   other twenty-six; the match fills those and the panel keeps calcium. */
+function borrowSection(declared){
+  var st = el('c-mic-state');
   var src = customMicro && customMicro.key ? analysedByKey(customMicro.key) : null;
-  st.textContent = src ? 'borrowed' : 'none';
-  row.innerHTML = src
+  if (!declared) st.textContent = src ? 'borrowed' : 'none';
+  else if (src) st.textContent = 'off the panel + borrowed';
+  return src
     ? '<div class="row tight"><div class="row-main">' +
         '<div class="t">' + esc(src.name) + '</div>' +
         '<div class="s">' + g(src.m.ca) + ' mg calcium · ' + g(src.m.fe,1) + ' mg iron · per 100 g</div>' +
       '</div><button class="row-del" id="c-mic-clear" aria-label="Stop borrowing">' +
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">' +
       '<path d="M5 5l14 14M19 5L5 19"/></svg></button></div>' +
-      '<p class="hint">Borrowed, not measured. The macros above are yours off the panel; these come ' +
-      'from the analysed food and improve when the database does.</p>'
-    : '<button class="btn sm ghost" id="c-mic-pick">Borrow from a food</button>' +
-      '<p class="hint">A panel only declares a vitamin or mineral when the pack makes a claim about ' +
-      'it, so most of them have none. Without this the app records that it does not know, rather ' +
-      'than recording a zero.</p>';
+      '<p class="hint">Borrowed, not measured. Fills every nutrient the pack did not print; ' +
+      'anything it did print stays as printed.</p>'
+    : '<button class="btn sm ghost" id="c-mic-pick">Borrow the rest from a food</button>' +
+      '<p class="hint">Panels vary — some declare calcium, most declare nothing. This fills the ' +
+      'gaps from the analysed food, so the app records what it does not know rather than a zero.</p>';
 }
 
 function openCustom(i){
@@ -12566,6 +12602,7 @@ function openCustom(i){
     : '';
   customMicro = c && c.microFrom ? c.microFrom : null;
   customOwnMicro = c && c.m && Object.keys(c.m).length ? c.m : null;
+  customOwnExtra = (c && c.x && c.x.length) ? c.x.slice() : null;
   panelStatus('', false);
   renderCustomMicro();
   sheet('sh-custom');
@@ -12632,7 +12669,20 @@ var PANEL_SYSTEM =
   'Rules. Energy is kJ — if the panel gives only calories, multiply by 4.184. Sodium is mg. ' +
   '"Less than 1g" is 0. Omit any row the panel does not print rather than guessing it, and ' +
   'omit "serve" if the panel has no per-serve column. Report only what you can actually read; ' +
-  'if a digit is unclear, leave that line out. Finish with {"f":"done"}.';
+  'if a digit is unclear, leave that line out.\n\n' +
+  'Read every row the panel prints. A row whose nutrient is not in the list above still comes ' +
+  'back — as {"f":"other","label":"<the row label exactly as printed>","u":"<its unit>",' +
+  '"p100":<per 100 g>,"serve":<per serve>}. Copper, manganese, vitamin K, pantothenic acid, ' +
+  'biotin, monounsaturated and polyunsaturated fat, starch, polyols, lactose and anything else ' +
+  'the pack chose to declare all come back this way. Never skip a printed row because it has ' +
+  'no id.\n\n' +
+  'Percentages are never values. A vitamin or mineral row often carries a "% RDI", "% DI" ' +
+  'or "% Daily Intake" figure beside the amount — read the amount in mg or ug and ignore the ' +
+  'percentage entirely. Calcium on a dairy panel is the usual case: "Calcium 300mg (38% RDI)" ' +
+  'is {"f":"ca","p100":120,"serve":300} if that 300 mg sits in the per-serve column, never 38. ' +
+  'Dairy packs — milk, yoghurt, cheese, custard — nearly always declare calcium below sodium; ' +
+  'look for it there.\n\n' +
+  'Finish with {"f":"done"}.';
 
 /* Four frames over half a second, and the sharpest one is sent. A hand shakes,
    a phone hunts for focus, and one crisp frame beats four soft ones — the same
@@ -12712,6 +12762,24 @@ function panelLine(obj){
   }
   if (obj.f === 'serves') return;                 /* read, not used yet */
 
+  /* A row the panel printed that this app has no column for. It is still read,
+     still shown and still saved with the food — dropping it would make the app
+     quietly less honest than the pack in your hand. */
+  if (obj.f === 'other'){
+    var lab = String(obj.label || '').trim().slice(0, 40);
+    if (!lab) return;
+    var ov = obj.p100;
+    if (ov == null && obj.serve != null && c.serveG > 0) ov = obj.serve * 100 / c.serveG;
+    if (ov == null || !isFinite(+ov)) return;
+    c.extra = c.extra || [];
+    for (var q = 0; q < c.extra.length; q++)
+      if (c.extra[q].label.toLowerCase() === lab.toLowerCase()) return;
+    c.extra.push({label:lab, v:+ov, u:String(obj.u || '').trim().slice(0, 6)});
+    c.got++;
+    renderPanelMicros();
+    return;
+  }
+
   /* Per 100 g is what this app stores, so that is preferred; a panel with only
      a per-serve column gets converted using the serve size it printed. */
   var per100 = obj.p100;
@@ -12737,9 +12805,8 @@ function panelLine(obj){
    only route by which a branded product gets a real calcium figure rather than
    a borrowed one. */
 function renderPanelMicros(){
-  var m = panelCtx && panelCtx.micros;
-  customMicro = null;
-  customOwnMicro = m || null;
+  customOwnMicro = (panelCtx && panelCtx.micros) || null;
+  customOwnExtra = (panelCtx && panelCtx.extra) || null;
   renderCustomMicro();
 }
 
@@ -12750,8 +12817,8 @@ function panelStatus(msg, busy){
 }
 
 function readPanel(dataUrl){
-  panelCtx = {got:0, serveG:0, micros:null, done:false};
-  customOwnMicro = null;
+  panelCtx = {got:0, serveG:0, micros:null, extra:null, done:false};
+  customOwnMicro = null; customOwnExtra = null;
   panelStatus('Reading the panel…', true);
   var b64 = dataUrl.split(',')[1] || '';
 
@@ -13107,7 +13174,7 @@ function renderOffResults(q, via){
 /* Bumped on every deploy. When something fails, knowing which build is
    actually loaded is the difference between debugging the bug and debugging
    a stale cache. */
-var APP_VERSION = '2026.08.21-48';
+var APP_VERSION = '2026.08.21-49';
 var SB_URL = 'https://lsrxqviwgqjpuzzcqcpu.supabase.co';
 var SB_KEY = 'sb_publishable_0lk-0UAlfW-tALEgPiqFHg_8vF9Hp63';
 var AUTH_KEY = 'eatandtrain.auth';
@@ -13886,10 +13953,15 @@ function bind(){
       code:(el('c-code').value || '').replace(/\D/g, '') || null,
       kj:kjIn, p:v('c-p'), f:v('c-f'), sat:v('c-sat'), c:v('c-c'),
       sug:v('c-sug'), fib:v('c-fib'), na:v('c-na'), alc:0,
-      microFrom: customOwnMicro ? null : (customMicro || null)};
+      microFrom: customMicro || null};
+    if (customOwnExtra && customOwnExtra.length) food.x = customOwnExtra.slice();
     if (customOwnMicro){
+      /* Only the rows the panel printed. A nutrient it never mentioned stays
+         absent so the match can fill it, rather than being written as a zero. */
       food.m = {};
-      MICRO_KEYS.forEach(function(x){ food.m[x] = +customOwnMicro[x] || 0; });
+      MICRO_KEYS.forEach(function(x){
+        if (+customOwnMicro[x] > 0) food.m[x] = +customOwnMicro[x];
+      });
     }
     var editing = customIdx !== null && S.custom[customIdx];
     if (editing){
@@ -13899,7 +13971,7 @@ function bind(){
       food.id = 'c' + S.custom.length;
       S.custom.push(food);
     }
-    customIdx = null; customMicro = null; customOwnMicro = null;
+    customIdx = null; customMicro = null; customOwnMicro = null; customOwnExtra = null;
     save();
     ['c-name','c-code','c-kj','c-p','c-f','c-sat','c-c','c-sug','c-fib','c-na'].forEach(function(i){ el(i).value = ''; });
     el('c-hint').innerHTML = '';
