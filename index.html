@@ -56,13 +56,20 @@
 .num, [class*="num"]{font-variant-numeric:tabular-nums}
 
 *{box-sizing:border-box}
-html{-webkit-text-size-adjust:100%}
+/* html carries the ground as well as body: the canvas outside the safe areas
+   and under an overscroll takes its colour from here, and an unpainted html
+   shows as a band of a different green below the tab bar. */
+html{-webkit-text-size-adjust:100%; background:var(--bg); height:100%}
 body{
   margin:0; background:var(--bg); color:var(--ink);
   font-family:var(--body); font-size:15px; line-height:1.45;
   -webkit-font-smoothing:antialiased;
+  /* dvh, not vh: a short screen should still fill the visual viewport, so a
+     tab with little on it cannot leave the bar sitting in mid-air. */
+  min-height:100dvh;
   padding-bottom:calc(72px + env(safe-area-inset-bottom));
 }
+@supports not (height:100dvh){ body{min-height:100vh} }
 h1,h2,h3{font-family:var(--disp); font-weight:400; margin:0; text-wrap:balance; letter-spacing:-.01em}
 button,input,select,textarea{font:inherit; color:inherit}
 button{cursor:pointer; background:none; border:none; padding:0}
@@ -101,6 +108,13 @@ nav.tabs{
   background:var(--sunken);
   border-top:1px solid var(--accent); padding-bottom:env(safe-area-inset-bottom);
 }
+/* Belt and braces for the bottom edge. If the bar really is flush against the
+   bottom of the viewport this paints off-screen and costs nothing; if the
+   browser has put it short of the edge — which is what iOS appeared to do —
+   it fills whatever is under it in the bar's own colour, so it still reads as
+   one bar reaching the bottom rather than a strip floating above a band. */
+nav.tabs::after{content:''; position:absolute; left:0; right:0; top:100%;
+  height:120px; background:var(--sunken); pointer-events:none}
 .tabs-in{max-width:560px; margin:0 auto; display:grid; grid-template-columns:repeat(4,1fr)}
 .tab{display:flex; flex-direction:column; align-items:center; gap:4px; padding:10px 0 9px;
   color:var(--ink-3); font-size:8.5px; font-weight:700; letter-spacing:.16em; text-transform:uppercase}
@@ -624,7 +638,7 @@ body.dragging{cursor:grabbing}
     <p class="hint" id="run-note">&mdash;</p>
     </div>
 
-    <div id="other-pane" hidden>
+    <div id="other-pane" hidden style="margin-top:13px">
     <label class="f"><span>Activity</span><select id="w-act"></select></label>
     <div class="grid2">
       <label class="f"><span>Minutes</span><input type="number" id="w-min" inputmode="numeric" min="1" max="600" step="1" value="45"></label>
@@ -640,7 +654,7 @@ body.dragging{cursor:grabbing}
     <button class="btn ghost" id="w-save" style="margin-top:10px">Add activity</button>
   </div>
 
-    <div id="lift-pane" hidden>
+    <div id="lift-pane" hidden style="margin-top:13px">
     <label class="f"><span>Exercise</span><input type="text" id="s-name" placeholder="Back squat" autocomplete="off"></label>
     <div class="grid3">
       <label class="f"><span>Sets</span><input type="number" id="s-sets" inputmode="numeric" min="1" value="4"></label>
@@ -9930,8 +9944,12 @@ function drawEnergyChart(){
 function drawWeightChart(){
   var svg = el('ch-weight'), W = 340, H = 140, padT = 10, padB = 20, padL = 34, padR = 6;
   var ws = S.weights.slice().sort(function(a,b){ return a.d < b.d ? -1 : 1; }).slice(-60);
+  /* An empty chart used to hold a chart's worth of height for one line of
+     text, which left a hand's width of nothing above the tab bar. It shrinks
+     to the message and grows back when there is something to draw. */
+  svg.setAttribute('viewBox', '0 0 ' + W + ' ' + (ws.length < 2 ? 34 : H));
   if (ws.length < 2){
-    svg.innerHTML = '<text class="axis-txt" x="' + W/2 + '" y="' + H/2 + '" text-anchor="middle" ' +
+    svg.innerHTML = '<text class="axis-txt" x="' + W/2 + '" y="20" text-anchor="middle" ' +
       'style="font-size:11px">Record two or more weigh-ins to see a trend</text>';
     el('wt-rate').textContent = '—';
     return;
@@ -11227,7 +11245,7 @@ function renderOffResults(q, via){
 /* Bumped on every deploy. When something fails, knowing which build is
    actually loaded is the difference between debugging the bug and debugging
    a stale cache. */
-var APP_VERSION = '2026.08.21-30';
+var APP_VERSION = '2026.08.21-31';
 var SB_URL = 'https://lsrxqviwgqjpuzzcqcpu.supabase.co';
 var SB_KEY = 'sb_publishable_0lk-0UAlfW-tALEgPiqFHg_8vF9Hp63';
 var AUTH_KEY = 'eatandtrain.auth';
