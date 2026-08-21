@@ -233,13 +233,16 @@ than the bin Otsu stopped at, because on a clean black-on-white row that bin is 
 a threshold of zero puts every pixel on the same side of it.
 
 Rows are read middle-out, thirty-three of them, forwards and reversed so the pack can be
-upside down. The guide box is analysed alone, 1024 pixels across, and the canvas takes
-the crop's own shape rather than a fixed one — squashing a tall crop into a short canvas
-averages across the tilt of a tilted barcode and smears it.
+upside down. **There is no guide box.** The whole frame is read, downscaled to 1024 across
+and shaped like the camera's own picture — squashing it into a shorter canvas would
+average across the tilt of a tilted barcode and smear it.
 
-The box covers **88% of the frame's width and 78% of its height**, which on a 4:3 preview
-is close to 3:2 rather than the 3:1 letterbox it started as. Squarer suits a nutrition
-panel, and a barcode only ever needed the width.
+The box is gone because it was a promise the app did not need to make. A barcode you can
+see is now a barcode this reads, wherever it sits in the view, and the panel reader was
+already using the whole frame — so one camera, one picture, both jobs. Tested through the
+real downscale: a code filling 90%, half, a third and a fifth of the frame width, level
+and tilted, high in the frame and low, with print in shot. All read, in three to eight
+milliseconds.
 
 Looks are throttled to sixteen a second, and to fewer when a look is slow. A real barcode
 is found on an early row and costs a millisecond or two. A field of stripes that is *not*
@@ -276,7 +279,9 @@ look like that, and the two-frame rule covers the rest.
 
 **Camera.** It asks for 1920 × 1080 and continuous focus, because more pixels across the
 barcode is the single biggest thing that makes a scan work and phones default to a focus
-that never settles on something this close. Where the camera reports a torch, a button
+that never settles on something this close. A code filling a fifth of the frame still
+lands on about two pixels a module after the downscale, which is where the decoder's
+floor is. Where the camera reports a torch, a button
 appears over the preview — a dim pantry is the other half of why scanning fails. Frames
 are read fifteen times a second; a frame takes longer than that to change meaningfully,
 and the spare time keeps the preview smooth.
