@@ -351,6 +351,27 @@ button.sec:hover{background:var(--surface-2)}
 .macro-track{height:3px; border-radius:0; background:var(--line); overflow:hidden; position:relative}
 .macro-bar{height:100%; border-radius:0; transition:width .4s ease}
 .macro-val{font-family:var(--disp); font-size:13.5px; color:var(--ink-3); white-space:nowrap; font-variant-numeric:tabular-nums}
+
+/* Water. Two segments in one track: what you poured, then what the drinks
+   already in your log were carrying. Same material as the macro bars — the
+   palette has one accent and this is not it. */
+.wbar{height:4px; background:var(--line); overflow:hidden; display:flex; margin:1px 0 10px}
+.wbar i{display:block; height:100%}
+.wbar i.wlog{background:var(--ink)}
+.wbar i.wdrink{background:var(--ink-4)}
+.wtop{display:flex; align-items:baseline; gap:7px; margin-bottom:3px}
+.wtop b{font-family:var(--disp); font-size:23px; font-weight:600; letter-spacing:-.03em;
+  font-variant-numeric:tabular-nums}
+.wtop span{font-size:11.5px; color:var(--ink-3)}
+.wtop .right{margin-left:auto; font-size:11px; color:var(--ink-3)}
+/* The row of pours. The two common amounts keep their width, the box for
+   anything else takes what is left. */
+.wadd{display:flex; gap:8px; align-items:stretch}
+.wadd .btn{flex:none; white-space:nowrap}
+.wamt{flex:1; min-width:0; width:auto; padding:0 9px; height:32px; background:var(--input); border:1px solid var(--line);
+  border-radius:var(--r-sm); color:var(--ink); font:inherit; font-size:12.5px;
+  font-variant-numeric:tabular-nums}
+.wamt::-webkit-outer-spin-button,.wamt::-webkit-inner-spin-button{-webkit-appearance:none; margin:0}
 .macro-val b{color:var(--ink); font-weight:400}
 .dot-pro{background:var(--pro)} .dot-carb{background:var(--carb)}
 .dot-fat{background:var(--fat)} .dot-fib{background:var(--fib)} .dot-alc{background:var(--alc)}
@@ -685,6 +706,14 @@ body.dragging{cursor:grabbing}
       <div class="macros" id="ov-macros"></div>
     </div>
     <div class="sec">
+      <div class="sec-h"><h3>Water</h3>
+        <button class="info" data-info="water" aria-expanded="false" aria-controls="info-water"
+                aria-label="Where the water target comes from">i</button>
+        <span class="right" id="ov-water-note">&mdash;</span></div>
+      <div class="infobox" id="info-water" data-for="water" hidden></div>
+      <div id="ov-water"></div>
+    </div>
+    <div class="sec">
       <div class="sec-h"><h3>Meals</h3><span class="right" id="ov-meal-note">&mdash;</span></div>
       <div id="ov-meals"></div>
     </div>
@@ -713,6 +742,14 @@ body.dragging{cursor:grabbing}
 
   <div class="subpane" data-pane="log">
   <div class="pane" id="meals"></div>
+
+  <div class="pane" style="margin-top:12px">
+    <div class="meal-head">
+      <h3>Water</h3>
+      <span class="kj num" id="wat-total">&mdash;</span>
+    </div>
+    <div id="wat-list"></div>
+  </div>
 
   <div class="pane" style="margin-top:12px">
     <div class="meal-head">
@@ -8838,6 +8875,70 @@ function dayTraining(iso){
   kj += stepsKj(dayNetSteps(iso));
   return kj;
 }
+/* ------------------------------- water ------------------------------------
+   The target is the NHMRC / NZ Ministry of Health Adequate Intake for fluids,
+   which is the same authority every vitamin and mineral bar in this app reads
+   against. Two numbers get quoted for water and they are not interchangeable:
+   total water — 3.4 L for men, 2.8 L for women — includes what arrives inside
+   food, and the fluid figure below is the drinking half of it.
+
+   Not 35 mL per kilogram. That rule is a clinical rule of thumb rather than a
+   reference value, and it happens to agree at average size (35 × 76 kg = 2.7 L,
+   near enough to 2.6) while wandering off at both ends: 120 kg asks for 4.2 L,
+   which nobody has shown a body needs, and 50 kg asks for 1.75 L, which is
+   under the AI. Weight is in the app and deliberately not used here. */
+function fluidAI(){
+  var a = +S.profile.age || 30, f = S.profile.sex === 'f';
+  if (a >= 19) return f ? 2100 : 2600;
+  if (a >= 14) return f ? 1600 : 1900;
+  if (a >= 9)  return f ? 1400 : 1600;
+  if (a >= 4)  return 1200;
+  return 1000;
+}
+
+/* About four fifths of what a session costs leaves the body as heat, and
+   evaporating a litre of sweat carries roughly 2400 kJ of it away — so the
+   loss lands near a litre per 3000 kJ of work. That sits inside the 0.5–2.0 L
+   per hour measured in athletes (ACSM), and it moves with the session you
+   actually logged instead of adding a flat 500 mL for having trained at all.
+   Ordinary walking is not in here: the AI above already assumes you live a
+   life, and only logged sessions push past it. */
+var SWEAT_KJ_PER_L = 3000;
+function sweatMl(iso){
+  var kj = 0;
+  (dayRO(iso).workouts || []).forEach(function(w){ kj += w.kj || 0; });
+  return Math.round(kj / SWEAT_KJ_PER_L * 1000 / 50) * 50;
+}
+function waterTarget(iso){
+  var base = fluidAI(), sweat = sweatMl(iso);
+  return {base:base, sweat:sweat, total:base + sweat};
+}
+
+/* A drink is mostly water and the panel says how much: whatever is not
+   protein, fat, carbohydrate or fibre in it, is. Milk comes out at 88%, juice
+   at 89%, coffee at 99% — all within a point of the analysed figures — and
+   olive oil, which is flagged a liquid in the database and is not a drink,
+   comes out at 8% and stops being a problem without needing a rule about oils.
+   Alcohol is left out entirely: it is a net loss, not a gain. */
+function entryWater(e){
+  if (!e || !e.liquid || e.alc > 0) return 0;
+  var solids = (e.p || 0) + (e.f || 0) + (e.c || 0) + (e.fib || 0);
+  return Math.max(0, (e.grams || 0) - solids);
+}
+function dayWater(iso){
+  var d = dayRO(iso), logged = 0, drinks = 0;
+  (d.water || []).forEach(function(w){ logged += w.ml || 0; });
+  MEALS.forEach(function(mm){
+    (d.meals[mm[0]] || []).forEach(function(e){ drinks += entryWater(e); });
+  });
+  drinks = Math.round(drinks);
+  return {logged:logged, drinks:drinks, total:logged + drinks};
+}
+function fmtMl(ml){
+  ml = Math.round(ml);
+  return ml < 1000 ? g(ml) + ' mL' : g(ml / 1000, 2) + ' L';
+}
+
 function dayEnergy(iso){
   var mb = measuredBaseline();
   var base = mb !== null ? mb : rmr() * (+S.profile.neat || 1.2);
@@ -9174,6 +9275,85 @@ function renderOverview(e){
   }
   el('ov-train').innerHTML = rows.join('');
   el('ov-train-note').textContent = e.train ? fmtE(e.train, true) : '';
+  renderWater();
+}
+
+/* Two quick taps cover almost every pour; the box beside them covers the rest.
+   Nothing here is a streak or a score — the target is a floor, and the note
+   says so out loud once you are well past it. */
+var WATER_QUICK = [[250, 'Glass'], [600, 'Bottle']];
+
+function renderWater(){
+  var box = el('ov-water'); if (!box) return;
+  var tg = waterTarget(DAY), w = dayWater(DAY);
+  var pctL = Math.min(w.logged / tg.total * 100, 100);
+  var pctD = Math.min(w.drinks / tg.total * 100, Math.max(0, 100 - pctL));
+  var over = w.total - tg.total;
+
+  el('ov-water-note').textContent = w.total >= tg.total
+    ? 'target met' : fmtMl(tg.total - w.total) + ' to go';
+
+  var note;
+  if (over > 1500){
+    /* Drinking far past thirst is not a better result, and an app that cheers
+       every extra litre is how someone ends up hyponatraemic on a long day. */
+    note = '<strong>Well past what today needs.</strong> More is not better — drinking far ' +
+      'beyond thirst dilutes blood sodium, which matters most on the long sessions where ' +
+      'people drink hardest. Take salt with it if you are still going.';
+  } else {
+    note = fmtMl(tg.base) + ' base' +
+      (tg.sweat ? ' · ' + fmtMl(tg.sweat) + ' for today&rsquo;s training' : '') +
+      (w.drinks ? ' · ' + fmtMl(w.drinks) + ' counted from drinks in your log' : '') +
+      '. Tea and coffee count; alcohol does not.';
+  }
+
+  box.innerHTML =
+    '<div class="wtop"><b>' + fmtMl(w.total) + '</b><span>of ' + fmtMl(tg.total) + '</span></div>' +
+    '<div class="wbar"><i class="wlog" style="width:' + pctL.toFixed(1) + '%"></i>' +
+      '<i class="wdrink" style="width:' + pctD.toFixed(1) + '%"></i></div>' +
+    '<div class="wadd">' +
+      WATER_QUICK.map(function(q){
+        return '<button class="btn sm ghost" data-water="' + q[0] + '" aria-label="Add a ' +
+          q[1].toLowerCase() + ', ' + q[0] + ' millilitres">+' + q[0] + ' mL</button>';
+      }).join('') +
+      '<input class="wamt" id="w-ml" type="number" inputmode="numeric" min="1" max="3000" ' +
+        'placeholder="mL" aria-label="Amount in millilitres">' +
+      '<button class="btn sm ghost" id="w-ml-add">Add</button>' +
+    '</div>' +
+    '<p class="hint" style="margin-top:9px">' + note + '</p>';
+
+  renderWaterList();
+}
+
+function renderWaterList(){
+  var list = el('wat-list'); if (!list) return;
+  var w = dayWater(DAY), rows = (dayRO(DAY).water || []).map(function(x, i){
+    return '<div class="row"><div class="row-main"><div class="t">' + fmtMl(x.ml) + '</div>' +
+      '<div class="s">' + esc(x.at || 'logged') + '</div></div>' +
+      '<div class="row-kj"></div>' +
+      '<button class="row-del" data-del-water="' + i + '" aria-label="Remove ' + fmtMl(x.ml) + '">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">' +
+      '<path d="M5 5l14 14M19 5L5 19"/></svg></button></div>';
+  });
+  if (w.drinks) rows.push('<div class="row"><div class="row-main">' +
+    '<div class="t">From drinks in your log</div>' +
+    '<div class="s">Water carried by what you logged, alcohol excluded</div></div>' +
+    '<div class="row-kj">' + fmtMl(w.drinks) + '</div><div style="width:26px"></div></div>');
+  el('wat-total').textContent = w.total ? fmtMl(w.total) : '';
+  list.innerHTML = rows.length ? rows.join('') : '<div class="empty">Nothing yet</div>';
+}
+
+function addWater(ml){
+  ml = Math.round(+ml || 0);
+  if (!(ml > 0)) return;
+  if (ml > 3000){ toast('That is more than three litres in one go.'); return; }
+  var d = day(DAY);
+  if (!d.water) d.water = [];
+  d.water.push({ml:ml, at:new Date().toLocaleTimeString('en-AU',
+    {hour:'numeric', minute:'2-digit'}).toLowerCase()});
+  save(); renderAll();
+  var left = waterTarget(DAY).total - dayWater(DAY).total;
+  toast(fmtMl(ml) + (left > 0 ? ' · ' + fmtMl(left) + ' to go' : ' · target met'));
 }
 
 function renderMacros(e){
@@ -10001,6 +10181,40 @@ function updateWorkoutPreview(){
    paragraph, and there is nowhere else for a sentence like that to live.
    ------------------------------------------------------------------------- */
 var EXPLAIN = {
+  water: {
+    t: 'Where the target comes from',
+    b: function(){
+      var tg = waterTarget(DAY), w = dayWater(DAY);
+      var f = S.profile.sex === 'f';
+      var html = '<p>The base is the <strong>Adequate Intake for fluids</strong> set by the ' +
+        'NHMRC and the New Zealand Ministry of Health — the same reference values every ' +
+        'vitamin and mineral in this app is read against.</p>' +
+        '<div class="irow"><b>Men 19+</b><span>2.6 L of drinks</span>' +
+          '<em>3.4 L of total water, about 800 mL of which arrives inside food.</em></div>' +
+        '<div class="irow"><b>Women 19+</b><span>2.1 L of drinks</span>' +
+          '<em>2.8 L total water, same split. Pregnancy and breastfeeding sit higher.</em></div>' +
+        '<div class="irow"><b>Training</b><span>+1 L per 3,000 kJ</span>' +
+          '<em>Most of a session\'s energy leaves as heat, and a litre of sweat carries about ' +
+          '2,400 kJ away with it. Lands inside the half to two litres an hour measured in ' +
+          'athletes, and moves with the session you logged.</em></div>' +
+        '<p style="margin-top:10px"><strong>35 mL per kilogram</strong> is the rule you see ' +
+        'quoted everywhere. It is a clinical rule of thumb, not a reference value, and it only ' +
+        'agrees in the middle: 2.7 L at 76 kg, but 4.2 L at 120 kg that no evidence supports. ' +
+        'Your weight is in this app and deliberately not used here.</p>' +
+        '<p>Tea and coffee count — under about 400 mg of caffeine a day there is no meaningful ' +
+        'diuretic effect. Alcohol does not: it is a net loss. Other drinks count at their water ' +
+        'content, so a glass of milk adds 88% of its volume rather than all of it.</p>' +
+        '<p>The target is a floor, not a score. Nothing here rewards going higher — drinking ' +
+        'far beyond thirst dilutes blood sodium, which is a real risk on long sessions.</p>';
+      html += '<div class="inow">Today: <b>' + fmtMl(tg.base) + '</b> for a ' +
+        (f ? 'woman' : 'man') + ' aged <b>' + (+S.profile.age || 30) + '</b>' +
+        (tg.sweat ? ', plus <b>' + fmtMl(tg.sweat) + '</b> for the training you logged' : '') +
+        '. You have had <b>' + fmtMl(w.total) + '</b>' +
+        (w.drinks ? ', ' + fmtMl(w.drinks) + ' of it from drinks in your log' : '') + '.</div>';
+      return html;
+    }
+  },
+
   rmr: {
     t: 'How this is worked out',
     b: function(){
@@ -13174,7 +13388,7 @@ function renderOffResults(q, via){
 /* Bumped on every deploy. When something fails, knowing which build is
    actually loaded is the difference between debugging the bug and debugging
    a stale cache. */
-var APP_VERSION = '2026.08.21-49';
+var APP_VERSION = '2026.08.21-50';
 var SB_URL = 'https://lsrxqviwgqjpuzzcqcpu.supabase.co';
 var SB_KEY = 'sb_publishable_0lk-0UAlfW-tALEgPiqFHg_8vF9Hp63';
 var AUTH_KEY = 'eatandtrain.auth';
@@ -13676,6 +13890,12 @@ function bind(){
       ' · C ' + g(t.c||0,1) + ' · F ' + g(t.f||0,1);
   });
 
+  document.addEventListener('keydown', function(ev){
+    if (ev.key === 'Enter' && ev.target && ev.target.id === 'w-ml'){
+      ev.preventDefault(); addWater(+ev.target.value);
+    }
+  });
+
   /* delegated: everything that lives in re-rendered HTML */
   document.addEventListener('click', function(ev){
     if (suppressClick){ ev.stopPropagation(); ev.preventDefault(); return; }
@@ -13800,6 +14020,16 @@ function bind(){
     }
     var dW = t.closest('[data-del-w]');
     if (dW){ day(DAY).workouts.splice(+dW.dataset.delW, 1); save(); renderAll(); return; }
+    var aw = t.closest('[data-water]');
+    if (aw){ addWater(+aw.dataset.water); return; }
+    if (t.closest('#w-ml-add')){
+      var mlIn = el('w-ml');
+      if (!(+mlIn.value > 0)){ toast('How much?'); mlIn.focus(); return; }
+      addWater(+mlIn.value);
+      return;
+    }
+    var dWa = t.closest('[data-del-water]');
+    if (dWa){ (day(DAY).water || []).splice(+dWa.dataset.delWater, 1); save(); renderAll(); return; }
     var dWt = t.closest('[data-del-wt]');
     if (dWt){
       S.weights = S.weights.filter(function(w){ return w.d !== dWt.dataset.delWt; });
