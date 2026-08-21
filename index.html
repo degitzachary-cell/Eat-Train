@@ -52,6 +52,7 @@
      tabular figures, so the old monospace token becomes that instead of being
      hunted down at every .num in the file. */
   --mono:'Newsreader',Georgia,'Times New Roman',serif;
+  --fres-h:60px;                 /* one search result, measured */
 }
 .num, [class*="num"]{font-variant-numeric:tabular-nums}
 
@@ -526,6 +527,13 @@ select{background-image:linear-gradient(45deg,transparent 50%,var(--ink-3) 50%),
   border:1px solid var(--line-strong); color:var(--ink-2); white-space:nowrap}
 .catrow button[aria-pressed="true"]{background:var(--accent); color:var(--accent-ink);
   border-color:var(--accent); font-weight:700}
+/* Eight results, then scroll. A list that runs off the bottom of the screen
+   reads as endless and buries everything under it; eight is enough to choose
+   from and short enough to see the end of. */
+#search-scroll{max-height:calc(var(--fres-h) * 8)}
+.searchfoot{flex:none; border-top:1px solid var(--line); background:var(--surface);
+  padding-bottom:env(safe-area-inset-bottom)}
+.searchfoot .fres:last-child{border-bottom:none}
 .fres{width:100%; text-align:left; padding:11px 15px; border-bottom:1px solid var(--line-soft); display:flex; gap:10px; align-items:center}
 .fres:hover{background:var(--surface-2)}
 .fres .t{font-size:13.5px; display:block}
@@ -1028,7 +1036,10 @@ body.dragging{cursor:grabbing}
   </div>
   <div class="searchwrap"><input type="search" id="q" placeholder="Search the database…" autocomplete="off" autocorrect="off"></div>
   <div class="catrow" id="cats"></div>
-  <div class="sheet-body tight"><div id="results"></div><div id="off-slot"></div></div>
+  <div class="sheet-body tight" id="search-scroll"><div id="results"></div><div id="off-slot"></div></div>
+  <!-- Outside the scroller, so the way out of a list that does not have what
+       you want is never itself something you have to scroll to reach. -->
+  <div class="searchfoot" id="search-foot"></div>
 </div>
 
 <!-- quantity sheet -->
@@ -1137,8 +1148,8 @@ body.dragging{cursor:grabbing}
       <button data-online="0" aria-pressed="true">Offline only</button>
       <button data-online="1" aria-pressed="false">Look up online</button>
     </div>
-    <p class="hint" id="online-note" style="margin-top:8px">Off by default. One request, on your
-      tap, carrying the search text and nothing else.</p>
+    <p class="hint" id="online-note" style="margin-top:8px">One request, on your tap, carrying the
+      search text and nothing else.</p>
     <div class="btnrow" style="margin-top:12px">
       <label class="btn sm ghost" style="flex:1; cursor:pointer">
         Choose CSV<input type="file" id="csv-in" accept=".csv,.tsv,text/csv,text/tab-separated-values" hidden>
@@ -8376,7 +8387,7 @@ function blankState(){
        numbers that looked authoritative and were somebody else's. Onboarding
        fills them in and will not let you past until it has. */
     profile:{sex:'', age:null, ht:null, wt:null, bf:null, smm:null, smmUnit:'pct',
-             bone:null, water:null, online:false, cadence:170, periodise:'off',
+             bone:null, water:null, online:true, cadence:170, periodise:'off',
              neat:1.35, goal:'maintain', formula:'auto', onboarded:false,
              useMeasured:false, ppk:1.8, fpk:0.9, unit:'kj'},
     weights:[], custom:[], fav:[], recent:[], imported:[], days:{},
@@ -10110,12 +10121,12 @@ var EXPLAIN = {
         'their own <strong>Packaged</strong> category so FSANZ numbers stay visually distinct from ' +
         'crowd-sourced ones. For a single item the panel on the box beats any database — use ' +
         '<strong>New food</strong>.</p>' +
-        '<p><strong>Live lookup is off by default.</strong> Switched on, the search sheet offers a ' +
-        'button to query them for whatever you typed: one request, on your tap, carrying the search ' +
-        'text and nothing else. No account, no identifier, no history. Anything you pick is written ' +
-        'to this device, so the same product never needs a second request. Their API allows about ten ' +
-        'searches a minute per person, which is why it is a deliberate tap rather than a search as ' +
-        'you type.</p>' +
+        '<p><strong>Live lookup is on.</strong> It puts a button under the search results: one ' +
+        'request, on your tap, carrying the search text and nothing else. No account, no identifier, ' +
+        'no history. Nothing is ever sent as you type — their API allows about ten searches a minute ' +
+        'per person, and typing would blow through that in a sentence. Anything you pick is written ' +
+        'to this device, so the same product never needs a second request. Switch it off above and ' +
+        'the button goes away.</p>' +
         '<p>Product data used under the <strong>Open Database License</strong>.</p>' +
         '<div class="inow">Live lookup is <b>' + (S.profile.online ? 'on' : 'off') + '</b>' +
         (imported.length ? ', and <b>' + g(imported.length) + '</b> products are imported' : '') +
@@ -11554,12 +11565,14 @@ function runSearch(){
     if (!picks.length){
       box.innerHTML = '<div class="empty" style="padding:28px 20px">Search ' +
         allFoods().length.toLocaleString('en-AU') + ' foods, or pick a category above.<br>' +
-        'What you use most will collect here.</div>' + addFoodPrompt();
+        'What you use most will collect here.</div>';
+      searchFoot('');
       return;
     }
     box.innerHTML = '<div class="meal-head"><h3>' +
       (S.fav && S.fav.length ? 'Saved &amp; recent' : 'Recent') + '</h3></div>' +
-      picks.slice(0, 40).map(function(x){ return resultRow(x.f); }).join('') + addFoodPrompt();
+      picks.slice(0, 40).map(function(x){ return resultRow(x.f); }).join('');
+    searchFoot('');
     return;
   }
 
@@ -11579,14 +11592,23 @@ function runSearch(){
   }
   if (!list.length){
     box.innerHTML = '<div class="empty" style="padding:28px 20px">Nothing matches &ldquo;' +
-      esc(el('q').value.trim()) + '&rdquo;.</div>' +
-      offPrompt(el('q').value.trim()) + addFoodPrompt();
+      esc(el('q').value.trim()) + '&rdquo;.</div>';
+    searchFoot(el('q').value.trim());
     return;
   }
-  box.innerHTML = list.map(resultRow).join('') + offPrompt(q) + addFoodPrompt();
+  box.innerHTML = list.map(resultRow).join('');
+  searchFoot(q);
+  /* A new search starts at the top of its results rather than wherever the
+     last one was left. */
+  el('search-scroll').scrollTop = 0;
 }
 /* Offered at the end of every result list: the point you discover a food is
    missing is the point to add it, not a separate screen you have to know about. */
+/* The footer sits below the scroller and holds the two things that are true
+   whatever the list says: this might not be in here, and it might be online. */
+function searchFoot(q){
+  el('search-foot').innerHTML = offPrompt(q) + addFoodPrompt();
+}
 function addFoodPrompt(){
   return '<button class="fres" data-newfood="1">' +
     '<span class="star" style="color:var(--accent)"><svg viewBox="0 0 24 24" width="15" height="15" ' +
@@ -12532,7 +12554,7 @@ function renderOffResults(q, via){
 /* Bumped on every deploy. When something fails, knowing which build is
    actually loaded is the difference between debugging the bug and debugging
    a stale cache. */
-var APP_VERSION = '2026.08.21-39';
+var APP_VERSION = '2026.08.21-40';
 var SB_URL = 'https://lsrxqviwgqjpuzzcqcpu.supabase.co';
 var SB_KEY = 'sb_publishable_0lk-0UAlfW-tALEgPiqFHg_8vF9Hp63';
 var AUTH_KEY = 'eatandtrain.auth';
@@ -13787,6 +13809,11 @@ bindOnboard();
 backfillRecipeKeys();
 seedRecipes();
 backfillMicros();
+/* Online lookup used to be off until you found it. It is on from here, which
+   only puts the button in the search sheet — a request still needs your tap,
+   still carries the search text and nothing else, and the switch is still in
+   the food sheet if you want it back off. Flipped once; a later "off" sticks. */
+if (!S.ui.onlineDefault){ S.ui.onlineDefault = 1; S.profile.online = true; save(); }
 setUnit(S.profile.unit || 'kj');
 renderAll();
 if (returned && returned.error) toast(returned.error);

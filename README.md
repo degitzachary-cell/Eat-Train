@@ -234,12 +234,23 @@ and the spare time keeps the preview smooth.
 Scanning needs camera permission and a secure origin, so it works from GitHub Pages and
 not from a local file opened with `file://`.
 
+### The search sheet
+
+Eight results, then it scrolls. A list that runs off the bottom of the screen reads as
+endless and buries whatever sits under it; eight is enough to choose between and short
+enough to see the end of.
+
+**Two rows are pinned below it and never scroll away** — *Search Open Food Facts for
+"…"* and *Not there? Scan or add it*. They are the way out of a list that does not have
+what you want, so having to scroll to the bottom of that list to find them was exactly
+backwards. They sit outside the scroller and are on screen whatever the search did.
+
 ### Live lookup
 
-The app can also query Open Food Facts directly, which is off by default. Switched on
-under **Supermarket products**, the search sheet offers a button to look up whatever
-you typed — one request, on your tap, carrying the search text and nothing else. No
-account, no identifier, no history. A query of 8–14 digits is treated as a barcode and
+The app can also query Open Food Facts directly, and does so on your tap. It is **on by
+default** — that only puts the button under the results; a request still needs the tap,
+still carries the search text and nothing else, and switching it off under **Supermarket
+products** takes the button away. No account, no identifier, no history. A query of 8–14 digits is treated as a barcode and
 goes straight to the product endpoint. Anything you pick is written to this device, so
 the same product never needs a second request.
 
@@ -257,7 +268,8 @@ Built to their published API rules:
   several shapes costs extra requests once rather than on every search.
 - **Rate limits are 10 searches and 15 product reads per minute per IP**, enforced with
   IP bans. Lookups are one deliberate tap — never as you type, which their docs single
-  out as the fastest way to get blocked — and a client-side cap of 8 searches a minute
+  out as the fastest way to get blocked, and which is why the default being on changes
+  nothing about when a request happens — and a client-side cap of 8 searches a minute
   sits under their limit. HTTP 429 and 503 get their own messages rather than a generic
   failure.
 - Product data is used under the **Open Database License**, credited in the app.
