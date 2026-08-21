@@ -1203,10 +1203,13 @@ body.dragging{cursor:grabbing}
     <div style="position:relative;border-radius:var(--r);overflow:hidden;background:#000;aspect-ratio:4/3">
       <video id="scan-video" playsinline muted autoplay
              style="width:100%;height:100%;object-fit:cover"></video>
-      <!-- Matches the crop the decoder actually reads: left 5%, width 90%,
-           top 31%, height 38%, centred. A guide that lies about what is being
-           looked at is worse than no guide, so these two move together. -->
-      <div style="position:absolute;left:5%;right:5%;top:31%;height:38%;
+      <!-- Matches the crop the decoder actually reads: left 6%, width 88%,
+           top 11%, height 78%, centred. On a 4:3 preview that is close to 3:2
+           rather than the 3:1 letterbox it was — squarer suits a nutrition
+           panel, and a barcode only ever needed the width. A guide that lies
+           about what is being looked at is worse than no guide, so these two
+           move together. -->
+      <div style="position:absolute;left:6%;right:6%;top:11%;height:78%;
                   border:2px solid var(--accent);border-radius:8px;
                   box-shadow:0 0 0 100vmax rgba(0,0,0,.35)"></div>
       <button class="iconbtn" id="scan-torch" hidden aria-pressed="false" aria-label="Torch"
@@ -12395,7 +12398,7 @@ function startScan(){
       width:{ideal:1920}, height:{ideal:1080}, frameRate:{ideal:30},
       advanced:[{focusMode:'continuous'}]}})
     .then(function(stream){
-      scan = {stream:stream, raf:null, native:null, busy:false, last:'', at:0,
+      scan = {stream:stream, raf:null, native:null, busy:false, last:'', at:0, gap:60,
               track:stream.getVideoTracks()[0], torch:false};
       video.srcObject = stream;
       video.play();
@@ -12420,19 +12423,28 @@ function startScan(){
          the way down, so trading height for width spends the pixels where the
          information is. 1024 across is around ten per module on a code that
          fills the box. */
-      /* Height tracks the crop so the squash stays where it was. A taller box
-         squashed into the same canvas would smear a tilted barcode, which is
-         the one thing this trade was not meant to cost. */
+      /* The canvas takes the crop's own shape rather than a fixed one, and is
+         sized when the camera reports its resolution. Squashing a tall crop
+         into a short canvas averages across the tilt of a tilted barcode and
+         smears it, which is the one thing enlarging the box was not meant to
+         cost. Capped so a very tall crop cannot make every frame expensive. */
       cv.width = 1024; cv.height = 320;
       function tick(){
         if (!scan) return;
         var now = Date.now();
-        /* Fifteen looks a second. A frame takes longer than that to change
-           meaningfully, and the spare time keeps the preview smooth. */
-        if (video.readyState >= 2 && !scan.busy && now - scan.at > 60){
+        /* Fifteen looks a second, and fewer when a look is expensive. A real
+           barcode is found on an early row and costs a millisecond or two; a
+           field of stripes that is not a barcode makes the decoder try every
+           guard candidate on every row and can cost thirty. Backing off to
+           three times the last look keeps that from pinning the phone while
+           you wave it at a striped shirt, and changes nothing when it is
+           quick. */
+        if (video.readyState >= 2 && !scan.busy && now - scan.at > scan.gap){
           scan.at = now;
           var vw = video.videoWidth || 1280, vh = video.videoHeight || 720;
-          var sx = vw * 0.05, sw = vw * 0.90, sy = vh * 0.31, sh = vh * 0.38;
+          var sx = vw * 0.06, sw = vw * 0.88, sy = vh * 0.11, sh = vh * 0.78;
+          var want = Math.max(160, Math.min(Math.round(cv.width * sh / sw), 512));
+          if (cv.height !== want) cv.height = want;
           ctx.drawImage(video, sx, sy, sw, sh, 0, 0, cv.width, cv.height);
           if (scan.native){
             scan.busy = true;
@@ -12442,7 +12454,9 @@ function startScan(){
               if (res && res.length) onBarcode(res[0].rawValue);
             }).catch(function(){ if (scan){ scan.busy = false; scan.native = null; } });
           } else {
+            var t0 = Date.now();
             var code = decodeFrame(ctx, cv.width, cv.height);
+            scan.gap = Math.max(60, Math.min((Date.now() - t0) * 3, 400));
             /* Two frames have to agree. A single misread that happens to pass
                its checksum is rare; two identical ones are not something a
                misread does. */
@@ -13064,7 +13078,7 @@ function renderOffResults(q, via){
 /* Bumped on every deploy. When something fails, knowing which build is
    actually loaded is the difference between debugging the bug and debugging
    a stale cache. */
-var APP_VERSION = '2026.08.21-44';
+var APP_VERSION = '2026.08.21-45';
 var SB_URL = 'https://lsrxqviwgqjpuzzcqcpu.supabase.co';
 var SB_KEY = 'sb_publishable_0lk-0UAlfW-tALEgPiqFHg_8vF9Hp63';
 var AUTH_KEY = 'eatandtrain.auth';

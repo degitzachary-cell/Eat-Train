@@ -233,11 +233,19 @@ than the bin Otsu stopped at, because on a clean black-on-white row that bin is 
 a threshold of zero puts every pixel on the same side of it.
 
 Rows are read middle-out, thirty-three of them, forwards and reversed so the pack can be
-upside down. The guide box is analysed alone and squashed to 1024 × 320 — a barcode is
-the same all the way down, so trading height for width spends the pixels where the
-information is. The box covers 90% of the frame's width and 38% of its height, and the
-canvas height tracks the crop: a taller box squashed into the same canvas would smear a
-tilted barcode, which is the one thing enlarging it was not meant to cost.
+upside down. The guide box is analysed alone, 1024 pixels across, and the canvas takes
+the crop's own shape rather than a fixed one — squashing a tall crop into a short canvas
+averages across the tilt of a tilted barcode and smears it.
+
+The box covers **88% of the frame's width and 78% of its height**, which on a 4:3 preview
+is close to 3:2 rather than the 3:1 letterbox it started as. Squarer suits a nutrition
+panel, and a barcode only ever needed the width.
+
+Looks are throttled to fifteen a second, and to fewer when a look is expensive. A real
+barcode is found on an early row and costs a millisecond or two; a field of stripes that
+is *not* a barcode makes the decoder try every guard candidate on every row, and that
+costs thirty. Backing off to three times the last look keeps it from pinning the phone
+while you wave it at a striped shirt, and changes nothing when it is quick.
 
 **What it will and will not believe.** A located EAN-13 is accepted on one row: twelve
 digits each had to match their pattern and then agree with a check digit. Two things are
