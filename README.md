@@ -291,8 +291,15 @@ request rather than open download.
 
 ## Running
 
-Two modes. **Run** is a duration and a pace you type, with optional elevation gain and
-strides. **Workout** opens the structured plan, laid out the way a session is written:
+Three things you do, then which kind of it — because four flat buttons put *Workout*
+beside *Run* as though they were different sports, and left *Lift* looking like an
+afterthought at the end.
+
+**Run · Lift · Other.** Run splits into **Easy** and **Workout**; Lift into **Strength**
+and **Hybrid**.
+
+**Easy** is a duration and a pace you type, with optional elevation gain and strides.
+**Workout** opens the structured plan, laid out the way a session is written:
 
     Warm up      minutes @ pace
     Interval     distance or time × reps @ pace
@@ -302,6 +309,27 @@ strides. **Workout** opens the structured plan, laid out the way a session is wr
 Distance-or-time is a toggle, so `6 × 1 km @ 3:30` and `6 × 5 min @ 4:05` are the same
 form. Compromised sessions put a strength or plyometric effort between reps instead of
 a recovery, priced by MET for its duration. Every field is remembered per mode.
+
+### Lifting
+
+**Strength** is minutes and an effort — light, moderate, heavy — priced at 3.5, 5.0 and
+6.0 METs from the Compendium of Physical Activities. Underneath it, the sets: exercise,
+sets, reps, kilograms. Those are kept so you can watch the numbers move and do not touch
+your budget, because the time under the bar has already been paid for above them.
+
+**Hybrid** is the Hyrox-shaped session: running and stations in one workout, which a
+watch records as general cardio with no idea which was which. Give it the total time, the
+running distance and the pace you ran it at, and the running is priced by the same ACSM
+equations a run gets while whatever minutes are left over become the stations, priced at
+7.2, 8.5 or 10 METs. Leave the kilometres blank and it is all stations. The running can
+never be given more minutes than the session lasted, whatever pace is typed, so a slip in
+one field cannot price time that did not happen.
+
+Steps are read off the blocks rather than off the session, so the running inside a hybrid
+takes steps out of your daily count and the stations do not — which no single figure for
+the session could say. And a hybrid reports its time and its distance without an average
+pace, because an average over a session that was only partly running is a division, not a
+pace.
 
 ### Energy
 

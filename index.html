@@ -382,6 +382,12 @@ select{background-image:linear-gradient(45deg,transparent 50%,var(--ink-3) 50%),
   border-right:1px solid var(--line)}
 .seg button:last-child{border-right:none}
 .seg button[aria-pressed="true"]{background:var(--surface-2); color:var(--accent); font-weight:700}
+/* The second level of a two-level choice. Same control, quieter, so the row
+   above it still reads as the decision and this one as the qualifier. */
+.seg.quiet{border-color:var(--line)}
+.seg.quiet button{padding:6px 4px; font-size:11.5px}
+.seg.quiet button[aria-pressed="true"]{background:none; color:var(--accent);
+  box-shadow:inset 0 -2px 0 var(--accent)}
 .hint{font-size:11.5px; color:var(--ink-3); line-height:1.5; margin-top:6px}
 .hint code{font-family:var(--mono); font-size:11px; background:var(--surface-2); padding:1px 4px; border-radius:3px}
 
@@ -684,12 +690,15 @@ body.dragging{cursor:grabbing}
   <div class="subpane on" data-pane="session">
   <div class="card">
     <div class="card-head"><h2>Log a session</h2><span class="right" id="tr-date">&mdash;</span></div>
+    <!-- Three things you do, then which kind of it. Four flat buttons put
+         "Workout" beside "Run" as though they were different sports, and left
+         Lift looking like an afterthought at the end. -->
     <div class="seg" id="run-type" role="group" aria-label="Session type">
       <button data-rt="run" aria-pressed="true">Run</button>
-      <button data-rt="wo" aria-pressed="false">Workout</button>
-      <button data-rt="other" aria-pressed="false">Other</button>
       <button data-rt="lift" aria-pressed="false">Lift</button>
+      <button data-rt="other" aria-pressed="false">Other</button>
     </div>
+    <div class="seg quiet" id="run-mode" role="group" aria-label="Kind" style="margin-top:8px"></div>
     <div id="run-pane"><div id="run-fields" style="margin-top:13px"></div>
     <div class="card" style="background:var(--surface-2); box-shadow:none; margin:2px 0 12px">
       <div class="budget-top" style="margin-bottom:9px">
@@ -719,7 +728,8 @@ body.dragging{cursor:grabbing}
     <button class="btn ghost" id="w-save" style="margin-top:10px">Add activity</button>
   </div>
 
-    <div id="lift-pane" hidden style="margin-top:13px">
+    <div id="lift-vol" hidden style="margin-top:18px">
+    <div class="sec-h"><h3>Sets</h3><span class="right">for progression</span></div>
     <label class="f"><span>Exercise</span><input type="text" id="s-name" placeholder="Back squat" autocomplete="off"></label>
     <div class="grid3">
       <label class="f"><span>Sets</span><input type="number" id="s-sets" inputmode="numeric" min="1" value="4"></label>
@@ -727,8 +737,8 @@ body.dragging{cursor:grabbing}
       <label class="f"><span>kg</span><input type="number" id="s-load" inputmode="decimal" min="0" step="2.5" value="60"></label>
     </div>
     <button class="btn ghost" id="s-save">Add to session log</button>
-    <p class="hint">Volume is tracked for progression only — its energy cost is already counted by the
-      weights session above, so adding sets here does not change your budget.</p>
+    <p class="hint">What you lifted, kept so you can see it move. Its energy cost is already in the
+      session above, so adding sets here does not change your budget.</p>
   </div>
   </div>
 
@@ -8593,14 +8603,18 @@ var WALK_CADENCE = 115;
 function workoutSteps(w){
   if (w.steps != null) return w.steps;
   var cad = +S.profile.cadence || 170;
-  if (w.type === 'run' && w.blocks){
+  /* Blocks first, and by what each block is rather than by what the session
+     is called: the running inside a hybrid takes steps and the stations do
+     not, which no single figure for the session could say. */
+  if (w.blocks && w.blocks.length){
     return Math.round(w.blocks.reduce(function(a, b){
       if (b.kind === 'walk') return a + (b.mins || 0) * WALK_CADENCE;
       if (b.kind === 'run' || b.km > 0) return a + (b.mins || 0) * cad;
       return a;
     }, 0));
   }
-  if (w.type === 'run') return Math.round((w.mins || 0) * cad);
+  if (w.type === 'run' || w.type === 'wo') return Math.round((w.mins || 0) * cad);
+  if (w.type === 'lift' || w.type === 'hyb') return 0;
   if (w.type === 'strength') return 0;
   if (/walk|hike|stair/i.test(w.name || '')) return Math.round((w.mins || 0) * WALK_CADENCE);
   if (/run|jog/i.test(w.name || '')) return Math.round((w.mins || 0) * cad);
@@ -8949,11 +8963,7 @@ function renderOverview(e){
   var sessions = d.workouts || [];
   var stepKj = stepsKj(dayNetSteps(DAY));
   var rows = sessions.map(function(w, i){
-    var sub = w.type === 'run'
-      ? g(w.km,2) + ' km · ' + fmtDur(w.mins) + ' · ' + fmtPace(w.mins * 60 / (w.km || 1)) + '/km'
-      : w.type === 'strength'
-        ? w.sets + ' × ' + w.reps + ' @ ' + g(w.load,1) + ' kg'
-        : w.mins + ' min';
+    var sub = sessionSub(w, false);
     return '<button class="line" data-gotrain="1">' +
       '<span style="min-width:0"><span class="lt" style="display:block;overflow:hidden;' +
         'text-overflow:ellipsis;white-space:nowrap">' + esc(w.name) + '</span>' +
@@ -9031,6 +9041,28 @@ function renderMacros(e){
   el('micros').innerHTML = chips.map(function(c){
     return '<span class="chip' + (c.bad ? ' hi' : '') + '">' + c.l + ' <b>' + c.v + '</b></span>';
   }).join('');
+}
+
+/* One sentence describing a logged session. A run says its distance and pace;
+   a session that covered no ground has no pace worth printing, so it says what
+   it was and how long it went for. */
+function sessionSub(w, full){
+  if (w.type === 'strength')
+    return w.sets + ' × ' + w.reps + ' @ ' + g(w.load,1) + ' kg' +
+           (full ? ' · ' + g(w.sets * w.reps * w.load) + ' kg volume' : '');
+  var known = {run:1, wo:1, lift:1, hyb:1};
+  if (known[w.type] || (w.blocks && w.blocks.length)){
+    /* An average pace over a session that was only partly running is not a
+       pace, it is a division. A hybrid says its time and its distance and
+       leaves the rate to the breakdown. */
+    var paced = w.type === 'run' || w.type === 'wo' || !w.type;
+    var line = (w.km > 0.05 && paced)
+      ? g(w.km,2) + ' km · ' + fmtDur(w.mins) + ' · ' + fmtPace(w.mins * 60 / w.km) + '/km'
+      : (w.km > 0.05 ? fmtDur(w.mins) + ' · ' + g(w.km,2) + ' km running'
+                     : fmtDur(w.mins) + ' · ' + (RUN_NAMES[w.type] || 'Session').toLowerCase());
+    return line + (full && w.summary ? '<br>' + esc(w.summary) : '');
+  }
+  return w.mins + ' min' + (full && w.met ? ' · ' + g(w.met,1) + ' MET' : '');
 }
 
 /* "2 slices · 100 g" reads better than "100 g" when a portion was chosen. */
@@ -9247,12 +9279,7 @@ function renderTrainingList(listId, totalId){
   var total = dayTraining(DAY);
   el(totalId).textContent = total ? fmtE(total, true) : '';
   var rows = d.workouts.map(function(w, i){
-    var sub = w.type === 'strength'
-      ? w.sets + ' × ' + w.reps + ' @ ' + g(w.load,1) + ' kg · ' + g(w.sets * w.reps * w.load) + ' kg volume'
-      : w.type === 'run'
-        ? g(w.km,2) + ' km · ' + fmtDur(w.mins) + ' · ' + fmtPace(w.mins * 60 / (w.km || 1)) + '/km' +
-          (w.summary ? '<br>' + esc(w.summary) : '')
-        : w.mins + ' min · ' + g(w.met,1) + ' MET';
+    var sub = sessionSub(w, true);
     return '<div class="row"><div class="row-main"><div class="t">' + esc(w.name) + '</div>' +
       '<div class="s">' + sub + '</div></div>' +
       '<div class="row-kj">' + (w.kj ? fmtE(w.kj) : '—') + '</div>' +
@@ -9325,27 +9352,66 @@ function blockKj(b){
   return kcal * KJ_PER_KCAL;
 }
 
-var RUN_NAMES = {run:'Run', wo:'Interval session'};
-/* Run and Workout share the structured form; Other and Lift are their own
-   panes. One card, one choice, instead of four forms stacked up. */
+var RUN_NAMES = {run:'Easy run', wo:'Interval session', lift:'Strength', hyb:'Hybrid session'};
+/* Two levels: what you did, then which kind of it. Run splits into an easy one
+   and a structured workout; Lift into straight strength and a hybrid — a Hyrox
+   or a circuit, which is running and stations in one session and comes off the
+   watch as general cardio with no idea which was which. */
+var RUN_MODES = {
+  run:  [['easy','Easy'],['workout','Workout']],
+  lift: [['strength','Strength'],['hybrid','Hybrid']]
+};
+function topType(){
+  var b = el('run-type').querySelector('[aria-pressed="true"]');
+  return b ? b.dataset.rt : 'run';
+}
+function runMode(){
+  var b = el('run-mode').querySelector('[aria-pressed="true"]');
+  return b ? b.dataset.rm : '';
+}
+/* The rest of the file thinks in the four session shapes, not in the two
+   buttons it takes to pick one. */
+function runType(){
+  var t = topType();
+  if (t === 'run')  return runMode() === 'workout' ? 'wo' : 'run';
+  if (t === 'lift') return runMode() === 'hybrid' ? 'hyb' : 'lift';
+  return 'other';
+}
+function renderModes(){
+  var t = topType(), opts = RUN_MODES[t];
+  var bar = el('run-mode');
+  bar.hidden = !opts;
+  if (!opts) return;
+  var cur = (S.runLast || {})['mode.' + t] || opts[0][0];
+  bar.innerHTML = opts.map(function(o){
+    return '<button data-rm="' + o[0] + '" aria-pressed="' +
+      (o[0] === cur ? 'true' : 'false') + '">' + o[1] + '</button>';
+  }).join('');
+}
 function showPane(){
   var t = runType();
-  el('run-pane').hidden = !(t === 'run' || t === 'wo');
+  el('run-pane').hidden = (t === 'other');
   el('other-pane').hidden = t !== 'other';
-  el('lift-pane').hidden = t !== 'lift';
+  el('lift-vol').hidden = topType() !== 'lift';
 }
 var EX_METS = [['Bodyweight strength',5.0],['Heavy strength',6.0],['Core',3.8],
                ['Plyometrics',8.0],['Burpees',8.0],['Kettlebell',9.8]];
+/* Compendium of Physical Activities values. Resistance training runs 3.5 for
+   light effort to 6.0 for a hard compound session; a circuit that keeps the
+   heart rate up sits between 7.2 and 10, which is the range a Hyrox or a
+   station workout actually lives in. */
+var LIFT_METS = [['light','Light',3.5],['moderate','Moderate',5.0],['heavy','Heavy',6.0]];
+var HYB_METS  = [['moderate','Moderate',7.2],['hard','Hard',8.5],['allout','All out',10.0]];
+function metOf(table, id){
+  for (var i = 0; i < table.length; i++) if (table[i][0] === id) return table[i][2];
+  return table[0][2];
+}
 var BETWEEN = [['rest','Rest'],['jog','Jog'],['float','Float'],['comp','Compromised']];
 
 function runVal(id, dflt){
   var e = el('rf-' + id);
   if (!e || e.value === '') return dflt;
   return e.value;
-}
-function runType(){
-  var b = el('run-type').querySelector('[aria-pressed="true"]');
-  return b ? b.dataset.rt : 'run';
 }
 function saved(k, dflt){
   var s = S.runLast || {};
@@ -9443,6 +9509,31 @@ function renderRunFields(){
       'works out to.</p>';
   }
 
+  if (t === 'lift'){
+    html += '<div class="grid2">' +
+      fld('lmin', 'Minutes', 'number', saved('lift.lmin', '50')) + '</div>' +
+      sub('Effort') +
+      toggle('lmet', 'lmet', LIFT_METS.map(function(m){ return [m[0], m[1]]; }),
+             saved('lift.effort', 'moderate')) +
+      '<p class="hint">Priced by MET for the time under the bar. Log what you lifted underneath — ' +
+      'that is for watching the numbers move, and does not touch your budget.</p>';
+  }
+
+  if (t === 'hyb'){
+    html += '<div class="grid2">' +
+      fld('hmin', 'Total minutes', 'number', saved('hyb.hmin', '60')) +
+      fld('hkm', 'Running km', 'number', saved('hyb.hkm', '')) + '</div>' +
+      '<div class="grid2">' +
+      fld('hpace', 'Running pace min/km', 'text', saved('hyb.hpace', '5:00')) + '</div>' +
+      sub('Effort on the stations') +
+      toggle('hmet', 'hmet', HYB_METS.map(function(m){ return [m[0], m[1]]; }),
+             saved('hyb.effort', 'moderate')) +
+      '<p class="hint">A Hyrox or a circuit is two things at once and the watch records it as one. ' +
+      'Give it the running and the running is priced by the same equations a run gets; whatever ' +
+      'minutes are left over are the stations, priced by MET. Leave the kilometres blank and it is ' +
+      'all stations.</p>';
+  }
+
   html += toggle('epoc', 'epoc', [['0','Session only'],['1','+ 6% afterburn']], saved('epoc','0'));
   el('run-fields').innerHTML = html;
   updateRun();
@@ -9450,7 +9541,7 @@ function renderRunFields(){
 
 function buildRun(){
   var t = runType(), blocks = [], name = RUN_NAMES[t] || 'Run', parts = [];
-  if (t !== 'run' && t !== 'wo') return {type:t, name:name, blocks:[], kj:0, epoc:0,
+  if (t === 'other') return {type:t, name:name, blocks:[], kj:0, epoc:0,
     mins:0, km:0, planned:0, plannedMin:0, gap:null, over:null, summary:''};
   function grade(km){
     var gm = parseFloat(runVal('gain', '')) || 0;
@@ -9471,6 +9562,35 @@ function buildRun(){
       blocks.push({kind:'run', label:n + ' strides', mins:sm, km:sp ? sm * 60 / sp : 0, pace:sp, grade:0});
       blocks.push({kind:'walk', label:'Stride walk-back', mins:n * 0.75, km:n * 0.75 * 0.08, pace:750, grade:0});
       parts.push(n + ' × ' + sec + ' s strides @ ' + fmtPace(sp));
+    }
+  }
+
+  if (t === 'lift'){
+    var lm = parseFloat(runVal('lmin', 0)) || 0;
+    var lsel = el('rf-lmet') && el('rf-lmet').querySelector('[aria-pressed="true"]');
+    var lid = lsel ? lsel.dataset.lmet : 'moderate';
+    blocks.push({kind:'ex', label:'Lifting', mins:lm, km:0, met:metOf(LIFT_METS, lid)});
+    parts.push(Math.round(lm) + ' min, ' + lid + ' effort');
+  }
+
+  if (t === 'hyb'){
+    var hm = parseFloat(runVal('hmin', 0)) || 0;
+    var hkm = parseFloat(runVal('hkm', '')) || 0;
+    var hp = parsePace(runVal('hpace', '5:00'));
+    var hsel = el('rf-hmet') && el('rf-hmet').querySelector('[aria-pressed="true"]');
+    var hid = hsel ? hsel.dataset.hmet : 'moderate';
+    /* The running cannot take longer than the session did, whatever pace was
+       typed — otherwise a slip in one field prices minutes that never
+       happened, and the stations go negative to pay for them. */
+    var runMin = hkm > 0 && hp ? Math.min(hkm * hp / 60, hm) : 0;
+    if (runMin > 0){
+      blocks.push({kind:'run', label:g(hkm,1) + ' km running', mins:runMin, km:hkm, pace:hp, grade:0});
+      parts.push(g(hkm,1) + ' km @ ' + fmtPace(hp));
+    }
+    var stationMin = Math.max(hm - runMin, 0);
+    if (stationMin > 0){
+      blocks.push({kind:'ex', label:'Stations', mins:stationMin, km:0, met:metOf(HYB_METS, hid)});
+      parts.push(Math.round(stationMin) + ' min stations, ' + hid);
     }
   }
 
@@ -9590,7 +9710,11 @@ function updateRun(){
   var r = buildRun();
   el('run-kj').textContent = fmtE(r.kj, true);
   el('run-dist').textContent = g(r.km, 2) + ' km';
-  el('run-time').textContent = fmtDur(r.mins) + (r.km > 0 ? ' · ' + fmtPace(r.mins * 60 / r.km) + '/km avg' : '');
+  /* Same rule as the log: an average over a session that was only partly
+     running is a division, not a pace. */
+  var paced = r.type === 'run' || r.type === 'wo';
+  el('run-time').textContent = fmtDur(r.mins) +
+    (r.km > 0 ? (paced ? ' · ' + fmtPace(r.mins * 60 / r.km) + '/km avg' : ' · running') : '');
   el('run-breakdown').innerHTML = r.blocks.filter(function(b){ return b.mins > 0; }).map(function(b){
     return '<span class="chip">' + esc(b.label) + ' <b>' + fmtE(b.kj) + '</b></span>';
   }).join('') + (r.epoc ? '<span class="chip">Afterburn <b>' + fmtE(r.epoc) + '</b></span>' : '');
@@ -9617,9 +9741,19 @@ function updateRun(){
         'means a rep or warm-up pace was a touch off.';
     recon += '<br>';
   }
-  el('run-note').innerHTML = recon +
-    'ACSM running equations at ' + g(bodyKg(),1) + ' kg, net of the resting cost your baseline ' +
-    'already covers &mdash; near <strong>1 kcal per kg per km</strong> whatever the pace.';
+  /* The note explains the arithmetic that was actually used, which is not the
+     same arithmetic for a session with no running in it. */
+  var tt = runType();
+  var basis = (tt === 'lift')
+    ? 'MET values from the <strong>Compendium of Physical Activities</strong> at ' +
+      g(bodyKg(),1) + ' kg, net of the resting cost your baseline already covers.'
+    : (tt === 'hyb' && r.km <= 0.05)
+      ? 'All stations, priced by MET at ' + g(bodyKg(),1) + ' kg. Add the running and that part ' +
+        'is priced by the ACSM equations instead.'
+      : 'ACSM running equations at ' + g(bodyKg(),1) + ' kg, net of the resting cost your baseline ' +
+        'already covers &mdash; near <strong>1 kcal per kg per km</strong> whatever the pace.' +
+        (tt === 'hyb' ? ' The stations are priced by MET.' : '');
+  el('run-note').innerHTML = recon + basis;
   return r;
 }
 
@@ -9633,16 +9767,21 @@ function saveRunLast(){
     var k = sg.id === 'rf-epoc' ? 'epoc'
           : sg.id === 'rf-unit' ? t + '.unit'
           : sg.id === 'rf-between' ? t + '.between'
-          : sg.id === 'rf-str-tog' ? t + '.strides' : null;
-    if (k) last[k] = on.dataset.epoc || on.dataset.unit || on.dataset.btw || on.dataset.str;
+          : sg.id === 'rf-str-tog' ? t + '.strides'
+          : sg.id === 'rf-lmet' ? 'lift.effort'
+          : sg.id === 'rf-hmet' ? 'hyb.effort' : null;
+    if (k) last[k] = on.dataset.epoc || on.dataset.unit || on.dataset.btw || on.dataset.str ||
+                     on.dataset.lmet || on.dataset.hmet;
   });
+  var top = topType();
+  if (RUN_MODES[top]) last['mode.' + top] = runMode();
   S.runLast = last;
 }
 
 function renderTrainView(){
+  if (!el('run-mode').innerHTML) renderModes();
   showPane();
-  var t = runType();
-  if (t === 'run' || t === 'wo'){
+  if (runType() !== 'other'){
     if (!el('run-fields').innerHTML) renderRunFields(); else updateRun();
   }
   var sel = el('w-act');
@@ -12047,7 +12186,7 @@ function renderOffResults(q, via){
 /* Bumped on every deploy. When something fails, knowing which build is
    actually loaded is the difference between debugging the bug and debugging
    a stale cache. */
-var APP_VERSION = '2026.08.21-36';
+var APP_VERSION = '2026.08.21-37';
 var SB_URL = 'https://lsrxqviwgqjpuzzcqcpu.supabase.co';
 var SB_KEY = 'sb_publishable_0lk-0UAlfW-tALEgPiqFHg_8vF9Hp63';
 var AUTH_KEY = 'eatandtrain.auth';
@@ -12791,8 +12930,14 @@ function bind(){
   el('run-type').addEventListener('click', function(ev){
     var b = ev.target.closest('[data-rt]'); if (!b) return;
     saveRunLast(); press('run-type', 'rt', b.dataset.rt);
+    renderModes(); showPane();
+    if (runType() !== 'other') renderRunFields();
+  });
+  el('run-mode').addEventListener('click', function(ev){
+    var b = ev.target.closest('[data-rm]'); if (!b) return;
+    saveRunLast(); press('run-mode', 'rm', b.dataset.rm);
     showPane();
-    if (b.dataset.rt === 'run' || b.dataset.rt === 'wo') renderRunFields();
+    if (runType() !== 'other') renderRunFields();
   });
   el('run-fields').addEventListener('input', updateRun);
   el('run-fields').addEventListener('change', updateRun);
@@ -12804,13 +12949,17 @@ function bind(){
     var s = ev.target.closest('[data-str]');
     if (s){ press('rf-str-tog', 'str', s.dataset.str);
       el('rf-str-fields').hidden = s.dataset.str !== '1'; updateRun(); return; }
+    var lm = ev.target.closest('[data-lmet]');
+    if (lm){ press('rf-lmet', 'lmet', lm.dataset.lmet); saveRunLast(); updateRun(); return; }
+    var hm = ev.target.closest('[data-hmet]');
+    if (hm){ press('rf-hmet', 'hmet', hm.dataset.hmet); saveRunLast(); updateRun(); return; }
     var e2 = ev.target.closest('[data-epoc]');
     if (e2){ press('rf-epoc', 'epoc', e2.dataset.epoc); updateRun(); return; }
   });
   el('run-save').addEventListener('click', function(){
     var r = buildRun();
     if (!(r.mins > 0)){ toast('Fill in the session first.'); return; }
-    day(DAY).workouts.push({name:r.name, type:'run', mins:Math.round(r.mins*10)/10,
+    day(DAY).workouts.push({name:r.name, type:r.type, mins:Math.round(r.mins*10)/10,
       km:r.km, kj:r.kj, summary:r.summary, blocks:r.blocks.map(function(b){
         return {kind:b.kind, label:b.label, mins:Math.round(b.mins*10)/10, km:b.km, kj:b.kj};
       })});
