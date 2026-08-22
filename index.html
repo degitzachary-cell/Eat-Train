@@ -481,20 +481,30 @@ select{background-image:linear-gradient(45deg,transparent 50%,var(--ink-3) 50%),
   line-height:1.55; color:var(--ink-2)}
 .steps li::before{content:counter(step); position:absolute; left:0; top:0; width:20px;
   font-family:var(--disp); font-size:14px; color:var(--accent); text-align:right}
-/* How many people, right above the amounts it changes. */
-.peeps{display:flex; align-items:center; gap:10px; margin:0 0 11px}
-.peeps b{font-size:12.5px; font-weight:600; color:var(--ink-2); margin-right:auto}
-.peeps button{width:30px; height:30px; flex:none; border-radius:99px; font-size:15px;
-  border:1px solid var(--line-strong); color:var(--ink-2); display:grid; place-items:center;
-  line-height:1}
-.peeps button:disabled{opacity:.35}
+/* Portions and macro adjustments, as two closed boxes rather than a row of
+   pills you have to swipe through to find out what is in it. Built rather
+   than borrowed from <select> because the second one holds more than one
+   answer at a time. */
+.ddwrap{position:relative; margin-bottom:11px}
+.ddlab{display:block; font-size:10px; letter-spacing:.18em; text-transform:uppercase;
+  color:var(--ink-3); margin-bottom:5px; font-weight:700}
+.dd{width:100%; display:flex; align-items:center; gap:10px; padding:9px 11px;
+  border:1px solid var(--line-strong); border-radius:8px; background:var(--input);
+  color:var(--ink); font:inherit; font-size:13.5px; text-align:left}
+.dd span{min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.dd svg{margin-left:auto; flex:none; color:var(--ink-3); transition:transform .15s}
+.dd[aria-expanded="true"]{border-color:var(--accent)}
+.dd[aria-expanded="true"] svg{transform:rotate(180deg)}
+.ddmenu{position:absolute; z-index:12; left:0; right:0; top:calc(100% + 4px);
+  max-height:262px; overflow-y:auto; background:var(--surface-2);
+  border:1px solid var(--line-strong); border-radius:8px; box-shadow:var(--shadow); padding:4px}
+.ddmenu button{width:100%; display:flex; align-items:center; gap:9px; padding:9px 10px;
+  border-radius:6px; color:var(--ink-2); font:inherit; font-size:13.5px; text-align:left}
+.ddmenu button:hover{background:var(--surface)}
+.ddmenu button i{flex:none; width:14px; color:var(--accent); font-style:normal; font-size:12px}
+.ddmenu button[aria-pressed="true"]{color:var(--ink); font-weight:600}
+.ddmenu .ddnote{font-size:11px; color:var(--ink-4); padding:6px 10px 8px}
 
-.modrow{display:flex; gap:6px; overflow-x:auto; padding-bottom:2px; scrollbar-width:none}
-.modrow::-webkit-scrollbar{display:none}
-.modrow button{flex:none; font-size:11px; padding:5px 11px; border-radius:99px;
-  border:1px solid var(--line-strong); color:var(--ink-2); white-space:nowrap}
-.modrow button[aria-pressed="true"]{background:var(--accent); color:var(--accent-ink);
-  border-color:var(--accent); font-weight:700}
 .ob-or b{font-size:10px; font-weight:700; letter-spacing:.16em; color:var(--ink-4)}
 @media (max-height:900px){
   .ob.welcome .ob-logo{width:74px; height:74px; margin-bottom:18px}
@@ -11336,9 +11346,30 @@ function openCook(i){
      count where "2 large eggs" and "1 tbsp" in the ingredient list match the
      grams beside them, and where the method's "80 ml of pasta water" is true. */
   var r0 = S.recipes[i];
-  cookCtx = {i:i, mods:[], people:Math.max(Math.round(+(r0 && r0.servings) || 1), 1)};
+  cookCtx = {i:i, mods:[], open:null,
+              people:Math.max(Math.round(+(r0 && r0.servings) || 1), 1)};
   renderCook();
   sheet('sh-cook');
+}
+
+var PORTIONS = [1,2,3,4,5,6,8,10,12];
+var DD_CHEV = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+  'width="13" height="13"><path d="M6 9l6 6 6-6"/></svg>';
+
+/* A closed box that says what is chosen, opens to the list, and closes again
+   on a tap. `field` is the data attribute the options carry, so the existing
+   handlers for data-people and data-mod keep working unchanged. */
+function dropdown(field, label, summary, isOpen, opts, foot){
+  return '<div class="ddwrap"><span class="ddlab">' + esc(label) + '</span>' +
+    '<button class="dd" data-dd="' + field + '" aria-expanded="' + (isOpen ? 'true' : 'false') +
+      '"><span>' + esc(summary) + '</span>' + DD_CHEV + '</button>' +
+    '<div class="ddmenu"' + (isOpen ? '' : ' hidden') + '>' +
+      opts.map(function(o){
+        return '<button data-' + field + '="' + o.v + '" aria-pressed="' + (o.on ? 'true' : 'false') +
+          '"><i>' + (o.on ? '&#10003;' : '') + '</i>' + esc(o.label) + '</button>';
+      }).join('') +
+      (foot ? '<div class="ddnote">' + esc(foot) + '</div>' : '') +
+    '</div></div>';
 }
 
 function renderCook(){
@@ -11359,19 +11390,23 @@ function renderCook(){
   var meta = [tg.cuisine && tg.cuisine !== 'None' ? tg.cuisine : '', tg.base,
               tg.time ? tg.time + ' min' : ''].filter(Boolean).join(' · ');
 
-  var stepper = '<div class="peeps"><b>Cooking for ' + people +
-    (people === 1 ? '' : ' people') + '</b>' +
-    '<button data-people="-1"' + (people <= 1 ? ' disabled' : '') +
-      ' aria-label="Fewer people">&minus;</button>' +
-    '<button data-people="1"' + (people >= 12 ? ' disabled' : '') +
-      ' aria-label="More people">+</button></div>';
+  var open = cookCtx.open || '';
+  var portions = dropdown('people', 'Portions',
+    people + (people === 1 ? ' portion' : ' portions'), open === 'people',
+    PORTIONS.map(function(k){
+      return {v:k, label:k + (k === 1 ? ' portion' : ' portions'), on:k === people};
+    }));
 
-  var chips = '<div class="modrow"><button data-mod="-1" aria-pressed="' +
-    (cookCtx.mods.length ? 'false' : 'true') + '">As written</button>' +
-    (r.mods || []).map(function(m, k){
-      return '<button data-mod="' + k + '" aria-pressed="' +
-        (cookCtx.mods.indexOf(k) >= 0 ? 'true' : 'false') + '">' + esc(m.name) + '</button>';
-    }).join('') + '</div>';
+  /* One box, more than one answer: tapping a chosen adjustment takes it back
+     off, so more carbs and more protein sit here together. */
+  var chosen = cookCtx.mods.map(function(k){ return r.mods[k].name; });
+  var mods = dropdown('mod', 'Macro adjustments',
+    chosen.length ? chosen.join(' · ') : 'As written', open === 'mod',
+    [{v:-1, label:'As written', on:!chosen.length}].concat(
+      (r.mods || []).map(function(m, k){
+        return {v:k, label:m.name, on:cookCtx.mods.indexOf(k) >= 0};
+      })),
+    chosen.length > 1 ? 'Tap one again to take it back off.' : '');
 
   var note = cookCtx.mods.map(function(k){
     return r.mods[k] && r.mods[k].note ? '<p class="hint" style="margin-top:9px"><b>' +
@@ -11395,7 +11430,7 @@ function renderCook(){
   }).join('');
 
   el('cook-body').innerHTML =
-    '<p class="hint" style="margin:0 0 11px">' + esc(meta) + '</p>' + stepper + chips + note +
+    '<p class="hint" style="margin:0 0 11px">' + esc(meta) + '</p>' + portions + mods + note +
     '<div class="readout" style="margin-top:14px"><div class="k">Per serve<em>' +
       g(per(t.p),0) + ' g protein · ' + g(per(t.c),0) + ' g carbs · ' + g(per(t.f),0) +
       ' g fat · ' + g(per(t.fib),1) + ' g fibre</em></div>' +
@@ -13451,7 +13486,7 @@ function renderOffResults(q, via){
 /* Bumped on every deploy. When something fails, knowing which build is
    actually loaded is the difference between debugging the bug and debugging
    a stale cache. */
-var APP_VERSION = '2026.08.21-51';
+var APP_VERSION = '2026.08.22-52';
 var SB_URL = 'https://lsrxqviwgqjpuzzcqcpu.supabase.co';
 var SB_KEY = 'sb_publishable_0lk-0UAlfW-tALEgPiqFHg_8vF9Hp63';
 var AUTH_KEY = 'eatandtrain.auth';
@@ -13964,6 +13999,16 @@ function bind(){
     if (suppressClick){ ev.stopPropagation(); ev.preventDefault(); return; }
     var t = ev.target;
 
+    /* Closed by tapping away, and closed here rather than by re-rendering the
+       sheet, so whatever was actually tapped still gets its turn below. */
+    if (cookCtx && cookCtx.open && !t.closest('.ddwrap')){
+      cookCtx.open = null;
+      var oM = document.querySelector('.ddmenu:not([hidden])');
+      if (oM) oM.hidden = true;
+      var oB = document.querySelector('.dd[aria-expanded="true"]');
+      if (oB) oB.setAttribute('aria-expanded', 'false');
+    }
+
     var ec = t.closest('[data-edit-custom]');
     if (ec){ openCustom(+ec.dataset.editCustom); return; }
     var inf = t.closest('[data-info]');
@@ -13979,16 +14024,23 @@ function bind(){
     }
     var ck = t.closest('[data-cook]');
     if (ck){ openCook(+ck.dataset.cook); return; }
+    var dd = t.closest('[data-dd]');
+    if (dd && cookCtx){
+      cookCtx.open = cookCtx.open === dd.dataset.dd ? null : dd.dataset.dd;
+      renderCook(); return;
+    }
     var md = t.closest('[data-mod]');
     if (md && cookCtx){
       var mi = +md.dataset.mod;
       if (mi < 0) cookCtx.mods = [];
       else toggleMod(S.recipes[cookCtx.i], mi);
+      cookCtx.open = null;
       renderCook(); return;
     }
     var pe = t.closest('[data-people]');
     if (pe && cookCtx){
-      cookCtx.people = Math.min(Math.max((cookCtx.people || 1) + (+pe.dataset.people), 1), 12);
+      cookCtx.people = Math.min(Math.max(+pe.dataset.people, 1), 12);
+      cookCtx.open = null;
       renderCook(); return;
     }
     var cl = t.closest('[data-cooklog]');
