@@ -12805,10 +12805,12 @@ function onBarcode(code){
   el('scan-note').textContent = 'Found ' + code + ' — looking it up…';
   /* v3 is the current product read; v2 is deprecated but still answers, and
      is worth one try before giving up on a code that scanned cleanly. */
+  var px = offProxy('read', 'code', code);
   offFetch(OFF_BASE + '/api/v3/product/' + encodeURIComponent(code))
     .catch(function(){ return offFetch(OFF_BASE + '/api/v2/product/' + encodeURIComponent(code) + '.json'); })
+    .catch(function(){ return offFetch(px.u, px); })
     .then(function(j){
-      var p = (j && j.product) || null;
+      var p = (j && j.product) || (j && j.hits && j.hits[0]) || null;
       var f = p ? offToFood(p, 0) : null;
       if (!f) throw new Error('not in the database');
       closeSheet();
@@ -13316,7 +13318,10 @@ function offFetch(url, opts){
   var timer = setTimeout(function(){ if (ctl) ctl.abort(); }, 9000);
   var init = {method: opts.method || 'GET'};
   if (ctl) init.signal = ctl.signal;
-  if (opts.body){ init.body = JSON.stringify(opts.body); init.headers = {'Content-Type':'application/json'}; }
+  var hd = null;
+  if (opts.body){ init.body = JSON.stringify(opts.body); hd = {'Content-Type':'application/json'}; }
+  if (opts.headers){ hd = hd || {}; for (var k in opts.headers) hd[k] = opts.headers[k]; }
+  if (hd) init.headers = hd;
   return fetch(url, init)
     .then(function(r){
       if (!r.ok) throw new Error('http ' + r.status);
@@ -13327,6 +13332,13 @@ function offFetch(url, opts){
 }
 
 var offResults = [];
+
+/* Safari says "Load failed", Chrome "Failed to fetch", Firefox "NetworkError".
+   All three mean the same thing and none of them carries a status: the request
+   never produced a response the page was allowed to read. */
+function offNetworkErr(m){
+  return /Load failed|Failed to fetch|NetworkError|Network request failed/i.test(String(m || ''));
+}
 
 /* Per the API docs: full-text search does not exist in v2 or v3 — only
    Search-a-licious and the legacy CGI path. Product reads should be v3, with
@@ -13345,6 +13357,18 @@ var offResults = [];
    Product — the v3 OpenAPI spec gives the path as /api/v3/product/{code}
    with no .json suffix, and `fields` defaulting to "all" on reads, so
    nutriments arrive without asking. */
+/* The same question asked from a server instead of from the phone. Open Food
+   Facts wants every caller to name itself in a User-Agent, which a browser is
+   forbidden to set, and a refusal served without CORS headers reaches the page
+   as a bare network error with no status on it — so from in here, being turned
+   away and being offline look exactly alike. This route has a name on it, no
+   origin, and no preflight to refuse. It goes last, and stays last until it is
+   the one that works, at which point offRoute promotes it. */
+function offProxy(kind, param, value){
+  return {u:SB_URL + '/functions/v1/off-lookup?' + param + '=' + encodeURIComponent(value),
+          name:'via TrueCount', kind:kind, proxy:true, headers:{'apikey':SB_KEY}};
+}
+
 function offEndpoints(q){
   var digits = q.replace(/\s/g, '');
   var list;
@@ -13353,7 +13377,8 @@ function offEndpoints(q){
     list = [
       {u:OFF_BASE + '/api/v3/product/' + c, name:'v3 product', kind:'read'},
       {u:OFF_BASE + '/api/v3/product/' + c + '.json', name:'v3 product .json', kind:'read'},
-      {u:OFF_BASE + '/api/v2/product/' + c + '.json', name:'v2 product', kind:'read'}
+      {u:OFF_BASE + '/api/v2/product/' + c + '.json', name:'v2 product', kind:'read'},
+      offProxy('read', 'code', digits)
     ];
   } else {
     var e = encodeURIComponent(q), SAL = 'https://search.openfoodfacts.org';
@@ -13369,7 +13394,8 @@ function offEndpoints(q){
       {u:SAL + '/search?q=' + e + '&page_size=20', name:'GET /search', kind:'search'},
       {u:OFF_BASE + '/cgi/search.pl?search_terms=' + e +
          '&search_simple=1&action=process&json=1&page_size=20&fields=' + OFF_FIELDS,
-       name:'legacy cgi', kind:'search'}
+       name:'legacy cgi', kind:'search'},
+      offProxy('search', 'q', q)
     ];
   }
   var last = S.offRoute;
@@ -13421,8 +13447,18 @@ function offSearch(q){
       if (S.offRoute !== eps[i].name){ S.offRoute = eps[i].name; save(); }
       return {rows:rows, via:eps[i].name};
     }).catch(function(err){
-      tried.push(eps[i].name + ' ' + (err.message || 'failed'));
-      if (i < eps.length - 1) return attempt(i + 1);
+      var msg = err.message || 'failed';
+      tried.push(eps[i].name + ' ' + msg);
+      /* A network-class error carries no status because the browser never got
+         to read one. Whatever caused it — a block, a refusal without CORS
+         headers, no signal — it will do the same to the next direct route, so
+         there is no sense spending another nine seconds proving it. Jump to
+         the route that does not go through the browser at all. */
+      var next = i + 1;
+      if (offNetworkErr(msg)){
+        for (var j = next; j < eps.length; j++) if (eps[j].proxy){ next = j; break; }
+      }
+      if (next < eps.length) return attempt(next);
       throw new Error(tried.join(' · '));
     });
   }
@@ -13435,26 +13471,68 @@ function offSearch(q){
     var m = String(err.message || '');
     var host = location.hostname || 'a local file';
     var sandboxed = /claude\.ai|anthropic/.test(host);
-    var everyOne = (m.match(/Failed to fetch/g) || []).length >= 2;
+    var everyOne = (m.match(/Failed to fetch|Load failed|NetworkError|Network request failed/g) || []).length >= 2;
     var head = /429/.test(m) ? 'Open Food Facts is rate-limiting you. Give it a minute.'
              : /503/.test(m) ? 'Open Food Facts is refusing traffic right now. Try later.'
              : sandboxed ? 'This copy cannot reach any other site.'
-             : everyOne ? 'Nothing could be reached.'
+             : everyOne ? 'Nothing answered.'
              : 'Open Food Facts did not answer.';
     var why = sandboxed
       ? 'You are on <strong>' + esc(host) + '</strong>, the claude.ai preview. It blocks every ' +
         'external host by design, so lookups and sync can never work here. Open the GitHub Pages ' +
         'copy instead.'
       : everyOne
-        ? 'Every route failed at the network layer, not with an error from their server — so this ' +
-          'is your connection, not them. Page is served from <strong>' + esc(host) + '</strong>.'
+        ? 'Every route failed without a status. That happens when the request is refused before ' +
+          'the browser is allowed to read the answer, and it looks the same whether you are ' +
+          'blocked or simply offline — so the test below is the way to tell. Page is served from ' +
+          '<strong>' + esc(host) + '</strong>.'
         : 'Page is served from <strong>' + esc(host) + '</strong>.';
     b.innerHTML = '<div class="empty" style="padding:16px 18px;text-align:left">' +
       '<strong>' + head + '</strong><br>' +
       '<span style="font-size:11px">' + why + '<br>Routes tried: ' + esc(m) +
-      '<br>Build ' + APP_VERSION + '.</span></div>';
+      '<br>Build ' + APP_VERSION + '.</span>' +
+      '<button class="btn sm ghost" id="off-test" style="margin-top:11px">Test the connection</button>' +
+      '<div id="off-test-out" style="font-size:11px;margin-top:9px"></div></div>';
   });
 }
+/* Which of them can this phone actually reach. Three hosts, one known
+   barcode, and the exact outcome of each printed rather than summarised —
+   because "did not answer" has been covering four different faults, and the
+   difference between them decides what to do next. */
+function offSelfTest(){
+  var out = el('off-test-out'); if (!out) return;
+  out.innerHTML = '<span class="spin"></span> Testing…';
+  var probes = [
+    {n:'Open Food Facts, product read', u:OFF_BASE + '/api/v2/product/9310072030084.json?fields=code'},
+    {n:'Open Food Facts, search', u:'https://search.openfoodfacts.org/search?q=milk&page_size=1'},
+    {n:'TrueCount route', u:SB_URL + '/functions/v1/off-lookup?q=milk', h:{'apikey':SB_KEY}}
+  ];
+  Promise.all(probes.map(function(pr){
+    var t0 = Date.now();
+    return offFetch(pr.u, {headers:pr.h})
+      .then(function(){ return {n:pr.n, r:'answered', ms:Date.now() - t0}; })
+      .catch(function(e){
+        var msg = e.message || 'failed';
+        return {n:pr.n, ms:Date.now() - t0,
+                r: offNetworkErr(msg) ? 'blocked or unreachable — no status came back'
+                 : /abort/i.test(msg) ? 'timed out after 9 s' : msg};
+      });
+  })).then(function(rs){
+    out.innerHTML = rs.map(function(r){
+      var ok = r.r === 'answered';
+      return '<div style="margin-bottom:3px"><b style="color:var(--' + (ok ? 'ok' : 'over') + ')">' +
+        (ok ? '&#10003;' : '&#10005;') + '</b> ' + esc(r.n) + ' &mdash; ' + esc(r.r) +
+        ' <span style="color:var(--ink-4)">' + r.ms + ' ms</span></div>';
+    }).join('') +
+    (rs[2] && rs[2].r === 'answered' && rs[0].r !== 'answered'
+      ? '<div style="margin-top:7px">Their servers turn this browser away but answer ours. ' +
+        'Search again and it will come back through the TrueCount route.</div>'
+      : rs.every(function(r){ return r.r !== 'answered'; })
+        ? '<div style="margin-top:7px">Nothing at all is reachable, so this is the connection ' +
+          'rather than any one service.</div>' : '');
+  });
+}
+
 function renderOffResults(q, via){
   var b = el('off-slot'); if (!b) return;
   if (!offResults.length){
@@ -13486,7 +13564,7 @@ function renderOffResults(q, via){
 /* Bumped on every deploy. When something fails, knowing which build is
    actually loaded is the difference between debugging the bug and debugging
    a stale cache. */
-var APP_VERSION = '2026.08.22-52';
+var APP_VERSION = '2026.08.22-53';
 var SB_URL = 'https://lsrxqviwgqjpuzzcqcpu.supabase.co';
 var SB_KEY = 'sb_publishable_0lk-0UAlfW-tALEgPiqFHg_8vF9Hp63';
 var AUTH_KEY = 'eatandtrain.auth';
@@ -14107,6 +14185,7 @@ function bind(){
     if (nf){ openCustom(null); return; }
     var os = t.closest('[data-offsearch]');
     if (os){ offSearch(el('q').value.trim()); return; }
+    if (t.closest('#off-test')){ offSelfTest(); return; }
     var op = t.closest('[data-off]');
     if (op){
       var f = offResults[+op.dataset.off];
