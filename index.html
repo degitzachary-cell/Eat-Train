@@ -8513,29 +8513,91 @@ var DERIVED_FOODS = DERIVED.trim().split('\n').map(function(l, i){
    of what goes in a pan divided by what comes out of it, which is the same
    arithmetic the recipes tab does, done once and shipped as a food.
 
+   Some of them are not composed at all. FSANZ has analysed a steamed seafood
+   dumpling and a fried meat one; what it has not done is file them under har
+   gow and gow gee, or portion them by the piece, which is the only way anyone
+   eats them. Those entries carry the analysed figures unchanged and add the
+   name and the portion — a real measurement beats an estimate every time, and
+   the note says which one you are looking at.
+
    They are foods, not recipes: they belong in a search for what you ate, not
    on a shelf of things to cook. Nothing here claims to be the restaurant's own
    numbers. The composition is written out on each one so you can see what was
-   assumed and argue with it. */
+   assumed and argue with it.
+
+   tools/build_dishes.py regenerates the three blocks below. Edit the grams
+   there, not the numbers here. */
 var DISHES = `
+Har gow, prawn dumpling, steamed (yum cha)|91|645|10.2|2.4|0.49|22|1.2|0.9|585|0.2|0|35|0.88|26|129|179|1.17|15.2|17.6|11|1|0.61|0.5|0.076|0.054|3.1|11|0.1|0.6|80|0|162.8|0.45|0.03|0.3|21|6|0|R000010
+Siu mai, pork and prawn dumpling, steamed (yum cha)|91|721|9.6|3.7|1.17|23.9|1.3|0.9|563|0.2|0|15|0.87|22|106|176|0.92|8.8|5.9|12|1|0.74|0.15|0.153|0.061|3.82|11|0.08|0.3|39|0|12.9|0.62|0.03|0.4|29.8|7|0|R000011
+Gow gee, pan-fried dumpling / potsticker / gyoza (yum cha)|91|1203|11.3|14|2.3|28.1|1.5|1.1|661|0.2|0|17|1.02|26|124|207|1.08|10.3|6.9|13|2|0.86|2.26|0.174|0.071|4.49|12|0.1|0.3|46|0|15.2|3.85|0.76|0.4|137.5|8|0|R000012
+Wonton, deep-fried (yum cha)|91|1203|11.3|14|2.3|28.1|1.5|1.1|661|0.2|0|17|1.02|26|124|207|1.08|10.3|6.9|13|2|0.86|2.26|0.174|0.071|4.49|12|0.1|0.3|46|0|15.2|3.85|0.76|0.4|137.5|8|0|R000013
+Vegetable dumpling, steamed (yum cha)|91|578|5.3|1.8|0.37|24|1.5|1.2|554|0.2|0|19|0.76|19|82|157|0.47|7.6|8.9|22|4|0.62|0.23|0.082|0.054|1.66|36|0.04|0.1|49|0|7.24|0.47|0.02|0.4|7.04|12|0|R000014
+Char siu bao, BBQ pork bun, steamed (yum cha)|91|1107|9.4|5.2|1.4|44.4|15.7|1.4|292|0|0|18|0.99|22|106|168|1.06|8.8|4.2|4|0|0.36|0.39|0.175|0.071|3.63|23|0.11|0.1|17|0|8.78|0.83|0.09|14.6|24|4|0|R000015
+Salt and pepper squid (yum cha)|91|1239|18.3|17.1|2.77|16.3|0|1.9|561|0|0|28|0.59|42|227|148|1.67|28.4|5|4|1|0.05|4.16|0.21|0.12|2.84|0|0.07|0.9|123|0|602.4|3.42|1.3|0|195.4|0|0|R000016
 Shengjian bao, pork, pan-fried (restaurant)|91|1166|12.2|11.97|2.75|29.87|2.36|1.07|249|0.05|0|14.18|0.907|27.44|126.98|206.793|1.183|10.471|3.802|7.02|1.33|0.86|0.848|0.369|0.065|5.374|9.623|0.161|0.183|21.2|0|16.915|2.794|0.428|1.377|102.005|2.75|0|R000001
 Liangmian, cold sesame noodles (restaurant)|91|690|5.84|7.81|1.21|16.47|1.62|2.54|260|0.05|0|36.209|0.776|35.65|91.612|78.93|0.716|5.359|2.939|9.683|2.963|0|0.088|0.088|0.038|1.836|11.822|0.05|0.22|0|0|0|3.245|0.022|1.147|89.473|0|0|R000002
 Cumin lamb, sliced, with bean sprouts (restaurant)|91|894|12.75|16.69|5.18|2.73|1.67|1.64|216|0.05|0|30.377|2.728|29.968|163.916|330.045|3.193|6.582|1.522|58.461|8.968|0.4|1.471|0.085|0.196|5.657|21.806|0.238|1.806|36.129|0|69.161|2.078|0.663|0.687|954.755|9.032|0|R000003
+Xiao long bao, soup dumpling, steamed (yum cha)|91|850|11.76|5.84|2.07|25.14|1.66|0.77|296|0.05|0|11.882|0.797|22.273|114.873|197.982|1.124|9.754|3.466|2.836|0.055|0.9|0.059|0.359|0.065|5.255|7.982|0.164|0.193|22.036|0|17.388|0.733|0.052|0.956|28.574|2.727|0|R000020
+Cheung fun, prawn rice noodle roll (yum cha)|91|497|5.44|2.91|0.37|17.28|1.36|0.14|347|0.07|0|16.675|0.13|15.144|82.531|84.156|0.501|10.976|11.968|0.375|0|0.002|0.605|0.017|0.017|1.443|8.138|0.081|0.188|76.125|0|25.762|0.928|0.163|1.315|32.297|0.188|0|R000021
+Lo mai gai, sticky rice in lotus leaf (yum cha)|91|750|6.35|4.62|0.59|27.23|1.14|0.76|200|0.05|0|3.958|0.255|10.229|68.754|123.733|0.742|6.505|2.226|4.604|0.667|0.434|0.911|0.048|0.037|2.379|13.508|0.054|0.075|16.5|0|1.596|1.313|0.344|0.877|49.805|2.438|0|R000022
+Lo bak go, turnip cake, pan-fried (yum cha)|91|582|3.23|4.9|0.89|19.62|2.02|1.39|93|0|0|23.787|0.274|15.1|55.72|176.457|0.654|5.285|2.182|6.853|11.867|0.029|0.575|0.057|0.015|1.593|23.293|0.067|0.057|13.827|0|6.354|1.085|0.284|0.01|47.531|0.427|0|R000023
+Wu gok, taro puff, deep-fried (yum cha)|91|1342|5.7|20.76|2.66|26.82|1.81|2.36|130|0.03|0|9.725|0.666|17.975|93.31|270.225|0.839|4.276|2.078|4|6.6|0.592|4.518|0.182|0.046|3.281|30.08|0.197|0.1|10.8|0|8.06|5.793|1.597|1.026|243.122|1|0|R000024
+Egg tart, dan tat (yum cha)|91|1146|7.26|12.64|5.31|32.16|14.66|2.79|247|0|0|44.109|0.688|11.618|96.764|101.673|0.496|10.056|22.68|50.636|0|1.7|1.261|0.035|0.17|1.744|35.8|0.026|0.502|156.982|0|19.683|1|0.118|12.727|422.531|49.927|0|R000025
+Custard bun, lai wong bao, steamed (yum cha)|91|1254|6.58|9.56|5.84|46.7|13.79|1.02|96|0|0|27.723|0.79|19.446|91.938|111.538|0.564|9.077|13.775|99.354|0|0.789|0.446|0.117|0.075|2.014|19.631|0.032|0.209|76.4|0|9.122|0.467|0.069|12.308|194.753|96.677|0|R000026
+Sesame ball, jian dui, deep-fried (yum cha)|91|1493|6.43|16.24|1.75|45.09|12.92|2.89|5|0|0|15.255|0.892|42.582|122.182|109.636|1.136|7.509|0.618|0.073|0|0|2.095|0.11|0.013|2.352|49.455|0.077|0|0|0|0|5.427|1.071|12.727|195.727|0|0|R000027
+Spare ribs in black bean, steamed (yum cha)|91|1486|20.43|28.51|10.5|4.5|2.63|0.51|455|0.1|0|15.606|0.583|25.176|204.642|386.503|1.148|2.856|0.632|6.606|0.333|2.705|0.624|0.629|0.155|9.56|29.836|0.311|0.545|51.273|0|0|0.707|0.196|2.519|27.709|0|0|R000028
+Beef ball, steamed (yum cha)|91|896|27.1|8.84|3.33|6.21|0.53|0.27|362|0.07|0|14.117|2.042|36.117|249.75|451.217|2.749|14.712|1.955|25.833|3.667|1.715|0.138|0.067|0.051|8.661|30.9|0.088|3.5|88.667|0|23.1|0.794|0.044|0.065|246.433|0|0|R000029
+Mango pancake (yum cha)|91|835|3.08|11.54|7.17|21.02|12.19|0.98|21|0|0|39.15|0.354|12.67|60.45|164.37|0.308|3.491|10.063|180.81|13.75|0.439|0.861|0.073|0.095|0.787|35.36|0.038|0.18|60.52|0|25.855|0.328|0.099|4.084|553.567|107.48|0|R000030
+Chicken feet, braised (phoenix claws, yum cha)|91|1181|20.12|20.8|5.05|3.86|3.55|0.42|534|0.12|0|90.533|1.061|9.792|95.633|68.733|0.758|4.247|2.613|30.05|0.275|1.87|1.622|0.076|0.211|4.941|88.908|0.041|0.5|84|0|86.9|4.768|0.669|3.442|159|30|0|R000031
 `;
 var DISH_MEASURES = `
+R000010|piece:22;serve of four:88
+R000011|piece:25;serve of four:100
+R000012|piece:28;serve of five:140
+R000013|piece:16;serve of six:96
+R000014|piece:25;serve of four:100
+R000015|bun:85;serve of three:255
+R000016|serve:180;small serve:120
 R000001|bun:75;serve of four:300
 R000002|bowl:454;half bowl:227
 R000003|serve:310;share of a plate:155
+R000020|piece:28;serve of four:110
+R000021|roll:107;serve of three:320
+R000022|parcel:240;half parcel:120
+R000023|piece:55;serve of three:165
+R000024|piece:45;serve of three:135
+R000025|tart:55;two tarts:110
+R000026|bun:65;serve of three:195
+R000027|ball:55;serve of three:165
+R000028|serve:165;half serve:82
+R000029|ball:30;serve of four:120
+R000030|pancake:100;two pancakes:200
+R000031|serve:120;half serve:60
 `;
 var DISH_NOTES = {
-  R000001: '115 g of flour and 65 g of water for the dough, 90 g of pork mince with 25 g of ' +
-    'belly through it, 30 g of stock for the soup inside, then spring onion, ginger, soy, sugar, ' +
-    'sesame, and 14 g of oil in the pan. Cooked down to 300 g: four buns of 75 g.',
-  R000002: '250 g of cooked wheat noodles under a dressing of 32 g sesame paste, 12 g chilli oil, ' +
-    'soy, black vinegar, sugar and garlic, with 70 g of cucumber and 40 g of bean sprouts ' +
-    'through it. A 454 g bowl, nothing cooked off.',
-  R000003: '200 g of lamb shoulder with the fat left on, 18 g of oil, cumin, ground dried chilli ' +
-    'and garlic, finished with 110 g of bean sprouts and 30 g of spring onion. Cooked down to 310 g.'
+  R000010: 'FSANZ analysed a steamed seafood dumpling; this is that food under the name it goes by on a trolley, portioned by the piece.',
+  R000011: 'FSANZ analysed a steamed meat dumpling; this is that food named and portioned the way it arrives.',
+  R000012: 'FSANZ analysed a fried meat dumpling. Potsticker, guotie and gyoza are the same thing under other names.',
+  R000013: 'FSANZ analysed a fried meat dumpling. A wonton is a smaller, thinner-skinned one, so the per-100 g figures hold and only the piece weight differs.',
+  R000014: 'FSANZ analysed a steamed vegetable dumpling, portioned by the piece.',
+  R000015: 'FSANZ analysed a savoury steamed pork bun, which is what this is.',
+  R000016: 'FSANZ analysed crumbed squid deep fried at a takeaway outlet.',
+  R000001: 'Composed from AUSNUT ingredients — 115 g flour wheat, 90 g pork, 65 g water, 30 g stock, 25 g pork, 14 g oil and the rest — cooked down to 300 g. An estimate of a restaurant serve, not an analysis of one. Salt is the least certain number here: kitchens season harder than a recipe does.',
+  R000002: 'Composed from AUSNUT ingredients — 250 g noodle wheat, 70 g cucumber common, 40 g sprout bean, 32 g tahini, 16 g sauce, 12 g oil and the rest — cooked down to 454 g. An estimate of a restaurant serve, not an analysis of one. Salt is the least certain number here: kitchens season harder than a recipe does.',
+  R000003: 'Composed from AUSNUT ingredients — 200 g lamb, 110 g sprout bean, 30 g onion, 18 g oil, 10 g sauce, 8 g garlic peeled and the rest — cooked down to 310 g. An estimate of a restaurant serve, not an analysis of one. Salt is the least certain number here: kitchens season harder than a recipe does.',
+  R000020: '36 g of flour and 18 g of water for a thin unleavened skin, 36 g of pork mince with 8 g of belly, and 20 g of stock set as aspic that melts back to soup.',
+  R000021: '55 g of rice flour and 12 g of cornflour steamed into sheets with the water, 60 g of prawn inside, and 16 g of sweet soy poured over at the table.',
+  R000022: '180 g of cooked rice — FSANZ has no glutinous rice, and plain white is within a few per cent of it — with 45 g of chicken thigh, shiitake, soy and a little oil.',
+  R000023: '200 g of daikon with 60 g of rice flour and 10 g of cornflour to set it, bacon standing in for lap cheong, dried prawn and spring onion through it, then 10 g of oil in the pan.',
+  R000024: '120 g of taro mashed with 25 g of starch and 22 g of fat into the lacy shell, 40 g of pork mince and shiitake inside, and 18 g of oil taken up in the fryer.',
+  R000025: '24 g of shortcrust under a custard of 16 g egg, 13 g milk and 7 g sugar. Baked down to a 55 g tart.',
+  R000026: '30 g of flour and 16 g of water for the bun, filled with a custard of egg, milk, butter and 8 g of sugar.',
+  R000027: '22 g of rice flour rolled in sesame, around a sweet bean paste. FSANZ has no adzuki, so cooked red kidney with sugar stands in — near enough on energy, protein and fibre.',
+  R000028: '180 g of untrimmed spare rib steamed with soy, garlic, sugar and a little oil — FSANZ has no fermented black bean, and the soy carries most of what it brings.',
+  R000029: '140 g of beef mince with cornflour and spring onion, steamed on bean curd skin. No coriander stalk in the numbers, only in the flavour.',
+  R000030: '55 g of mango and 28 g of whipped cream in a thin crepe of flour, egg and milk.',
+  R000031: '120 g of cooked chicken feet braised in soy, sugar, garlic and oil. Edible portion — the bone is not in the weight.',
 };
 DISH_MEASURES.trim().split('\n').forEach(function(line){
   var i = line.indexOf('|'); if (i < 0) return;
@@ -13608,7 +13670,7 @@ function renderOffResults(q, via){
 /* Bumped on every deploy. When something fails, knowing which build is
    actually loaded is the difference between debugging the bug and debugging
    a stale cache. */
-var APP_VERSION = '2026.08.22-54';
+var APP_VERSION = '2026.08.23-55';
 var SB_URL = 'https://lsrxqviwgqjpuzzcqcpu.supabase.co';
 var SB_KEY = 'sb_publishable_0lk-0UAlfW-tALEgPiqFHg_8vF9Hp63';
 var AUTH_KEY = 'eatandtrain.auth';
