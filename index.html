@@ -5567,7 +5567,7 @@ var CATS = {
   '23':'Sauces', '24':'Vegetables', '25':'Legumes', '26':'Snacks',
   '27':'Sweets', '28':'Confectionery', '29':'Alcohol', '30':'Sports & diet',
   '31':'Herbs & spices', '32':'Infant foods', '33':'Game meat',
-  '34':'Supplements', '90':'Packaged'
+  '34':'Supplements', '90':'Packaged', '91':'Eating out'
 };
 /* ------------------------------- portions --------------------------------
    The fallback layer, for the 1,523 foods FSANZ's measures file does not cover
@@ -8507,6 +8507,50 @@ var DERIVED_FOODS = DERIVED.trim().split('\n').map(function(l, i){
   return f;
 }).filter(Boolean);
 
+/* ------------------------------ eating out -------------------------------
+   Restaurant dishes have no panel and never will. What they do have is a
+   recipe, and AUSNUT has every ingredient in it — so each of these is the sum
+   of what goes in a pan divided by what comes out of it, which is the same
+   arithmetic the recipes tab does, done once and shipped as a food.
+
+   They are foods, not recipes: they belong in a search for what you ate, not
+   on a shelf of things to cook. Nothing here claims to be the restaurant's own
+   numbers. The composition is written out on each one so you can see what was
+   assumed and argue with it. */
+var DISHES = `
+Shengjian bao, pork, pan-fried (restaurant)|91|1166|12.2|11.97|2.75|29.87|2.36|1.07|249|0.05|0|14.18|0.907|27.44|126.98|206.793|1.183|10.471|3.802|7.02|1.33|0.86|0.848|0.369|0.065|5.374|9.623|0.161|0.183|21.2|0|16.915|2.794|0.428|1.377|102.005|2.75|0|R000001
+Liangmian, cold sesame noodles (restaurant)|91|690|5.84|7.81|1.21|16.47|1.62|2.54|260|0.05|0|36.209|0.776|35.65|91.612|78.93|0.716|5.359|2.939|9.683|2.963|0|0.088|0.088|0.038|1.836|11.822|0.05|0.22|0|0|0|3.245|0.022|1.147|89.473|0|0|R000002
+Cumin lamb, sliced, with bean sprouts (restaurant)|91|894|12.75|16.69|5.18|2.73|1.67|1.64|216|0.05|0|30.377|2.728|29.968|163.916|330.045|3.193|6.582|1.522|58.461|8.968|0.4|1.471|0.085|0.196|5.657|21.806|0.238|1.806|36.129|0|69.161|2.078|0.663|0.687|954.755|9.032|0|R000003
+`;
+var DISH_MEASURES = `
+R000001|bun:75;serve of four:300
+R000002|bowl:454;half bowl:227
+R000003|serve:310;share of a plate:155
+`;
+var DISH_NOTES = {
+  R000001: '115 g of flour and 65 g of water for the dough, 90 g of pork mince with 25 g of ' +
+    'belly through it, 30 g of stock for the soup inside, then spring onion, ginger, soy, sugar, ' +
+    'sesame, and 14 g of oil in the pan. Cooked down to 300 g: four buns of 75 g.',
+  R000002: '250 g of cooked wheat noodles under a dressing of 32 g sesame paste, 12 g chilli oil, ' +
+    'soy, black vinegar, sugar and garlic, with 70 g of cucumber and 40 g of bean sprouts ' +
+    'through it. A 454 g bowl, nothing cooked off.',
+  R000003: '200 g of lamb shoulder with the fat left on, 18 g of oil, cumin, ground dried chilli ' +
+    'and garlic, finished with 110 g of bean sprouts and 30 g of spring onion. Cooked down to 310 g.'
+};
+DISH_MEASURES.trim().split('\n').forEach(function(line){
+  var i = line.indexOf('|'); if (i < 0) return;
+  MEASURE_MAP[line.slice(0, i)] = line.slice(i + 1).split(';').map(function(x){
+    var j = x.lastIndexOf(':');
+    return [x.slice(0, j), +x.slice(j + 1)];
+  }).filter(function(x){ return x[1] > 0; });
+});
+var DISH_FOODS = DISHES.trim().split('\n').map(function(l, i){
+  var f = parseFoodLine(l, 'r', i);
+  if (f) f.derived = 'Composed, not analysed. ' + (DISH_NOTES[f.key] || '') +
+    ' Salt is the least certain number here — kitchens season harder than a recipe does.';
+  return f;
+}).filter(Boolean);
+
 /* ------------------------------- state ---------------------------------- */
 var KEY = 'eatandtrain.v1';
 var S, VIEW = 'today', DAY = todayISO(), imported = [];
@@ -8626,7 +8670,7 @@ function borrowMicros(c){
   return o;
 }
 function allFoods(){
-  if (!_foodCache) _foodCache = BUILTIN.concat(DERIVED_FOODS, imported,
+  if (!_foodCache) _foodCache = BUILTIN.concat(DERIVED_FOODS, DISH_FOODS, imported,
                                                (S.custom || []).map(borrowMicros));
   return _foodCache;
 }
@@ -13564,7 +13608,7 @@ function renderOffResults(q, via){
 /* Bumped on every deploy. When something fails, knowing which build is
    actually loaded is the difference between debugging the bug and debugging
    a stale cache. */
-var APP_VERSION = '2026.08.22-53';
+var APP_VERSION = '2026.08.22-54';
 var SB_URL = 'https://lsrxqviwgqjpuzzcqcpu.supabase.co';
 var SB_KEY = 'sb_publishable_0lk-0UAlfW-tALEgPiqFHg_8vF9Hp63';
 var AUTH_KEY = 'eatandtrain.auth';
