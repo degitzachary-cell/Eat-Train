@@ -1226,12 +1226,8 @@ body.dragging{cursor:grabbing}
     <div class="infobox" id="info-off" data-for="off" hidden></div>
     <p class="note">The branded shelf FSANZ does not cover, from <strong>Open Food Facts</strong>
       &mdash; as a CSV you load, or looked up one product at a time.</p>
-    <div class="seg" id="online-tog" role="group" aria-label="Online lookup" style="margin-top:11px">
-      <button data-online="0" aria-pressed="true">Offline only</button>
-      <button data-online="1" aria-pressed="false">Look up online</button>
-    </div>
-    <p class="hint" id="online-note" style="margin-top:8px">One request, on your tap, carrying the
-      search text and nothing else.</p>
+    <p class="hint" style="margin-top:9px">Looked up on your tap, carrying the search text and
+      nothing else. Nothing is sent as you type.</p>
     <div class="btnrow" style="margin-top:12px">
       <label class="btn sm ghost" style="flex:1; cursor:pointer">
         Choose CSV<input type="file" id="csv-in" accept=".csv,.tsv,text/csv,text/tab-separated-values" hidden>
@@ -8625,7 +8621,7 @@ function blankState(){
        numbers that looked authoritative and were somebody else's. Onboarding
        fills them in and will not let you past until it has. */
     profile:{sex:'', age:null, ht:null, wt:null, bf:null, smm:null, smmUnit:'pct',
-             bone:null, water:null, online:true, cadence:170, periodise:'off',
+             bone:null, water:null, cadence:170, periodise:'off',
              neat:1.35, goal:'maintain', formula:'auto', onboarded:false,
              useMeasured:false, ppk:1.8, fpk:0.9, unit:'kj'},
     weights:[], custom:[], fav:[], recent:[], imported:[], days:{},
@@ -10591,15 +10587,15 @@ var EXPLAIN = {
         'their own <strong>Packaged</strong> category so FSANZ numbers stay visually distinct from ' +
         'crowd-sourced ones. For a single item the panel on the box beats any database — use ' +
         '<strong>New food</strong>.</p>' +
-        '<p><strong>Live lookup is on.</strong> It puts a button under the search results: one ' +
-        'request, on your tap, carrying the search text and nothing else. No account, no identifier, ' +
-        'no history. Nothing is ever sent as you type — their API allows about ten searches a minute ' +
-        'per person, and typing would blow through that in a sentence. Anything you pick is written ' +
-        'to this device, so the same product never needs a second request. Switch it off above and ' +
-        'the button goes away.</p>' +
+        '<p>A lookup is always offered: a button under the search results, one request, on your ' +
+        'tap, carrying the search text and nothing else. No account, no identifier, no history. ' +
+        'Nothing is ever sent as you type — their API allows about ten searches a minute per ' +
+        'person, and typing would blow through that in a sentence. Anything you pick is written to ' +
+        'this device, so the same product never needs a second request, and with no signal the app ' +
+        'carries on with what it already has.</p>' +
         '<p>Product data used under the <strong>Open Database License</strong>.</p>' +
-        '<div class="inow">Live lookup is <b>' + (S.profile.online ? 'on' : 'off') + '</b>' +
-        (imported.length ? ', and <b>' + g(imported.length) + '</b> products are imported' : '') +
+        '<div class="inow">' + g(allFoods().length) + ' foods on this device' +
+        (imported.length ? ', <b>' + g(imported.length) + '</b> of them imported' : '') +
         '.</div>';
     }
   },
@@ -10863,7 +10859,6 @@ function press(groupId, attr, val){
 }
 
 function renderFoodView(){
-  press('online-tog', 'online', S.profile.online ? '1' : '0');
   el('db-count').textContent = g(allFoods().length) + ' foods';
   el('csv-status').textContent = imported.length
     ? (S.importNote || imported.length.toLocaleString('en-AU') + ' products imported.') +
@@ -12212,8 +12207,12 @@ function addFoodPrompt(){
     '<span style="min-width:0"><span class="t">Not there? Scan or add it</span>' +
     '<span class="s">Barcode, or type the panel yourself.</span></span></button>';
 }
+/* No switch on this. A lookup costs one tap and one request, and a database
+   of 4,129 analysed foods with no branded shelf is not a feature — the point
+   of typing a brand name is to find the brand. Offline still works: the app
+   runs on what is already on the device and the button simply fails. */
 function offPrompt(q){
-  if (!S.profile.online || !q || q.length < 3) return '';
+  if (!q || q.length < 3) return '';
   return '<button class="fres" data-offsearch="1" style="color:var(--accent)">' +
     '<span class="star" style="color:var(--accent)"><svg viewBox="0 0 24 24" width="15" height="15" ' +
     'fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="11" cy="11" r="6.5"/>' +
@@ -13689,7 +13688,7 @@ function renderOffResults(q, via){
 /* Bumped on every deploy. When something fails, knowing which build is
    actually loaded is the difference between debugging the bug and debugging
    a stale cache. */
-var APP_VERSION = '2026.08.23-56';
+var APP_VERSION = '2026.08.23-57';
 var SB_URL = 'https://lsrxqviwgqjpuzzcqcpu.supabase.co';
 var SB_KEY = 'sb_publishable_0lk-0UAlfW-tALEgPiqFHg_8vF9Hp63';
 var AUTH_KEY = 'eatandtrain.auth';
@@ -14477,14 +14476,6 @@ function bind(){
     r.readAsText(file);
     ev.target.value = '';
   });
-  el('online-tog').addEventListener('click', function(ev){
-    var b = ev.target.closest('[data-online]'); if (!b) return;
-    S.profile.online = b.dataset.online === '1';
-    press('online-tog', 'online', b.dataset.online);
-    save();
-    toast(S.profile.online ? 'Online lookup on — searches still need your tap.'
-                           : 'Online lookup off.');
-  });
   el('csv-clear').addEventListener('click', function(){
     if (!S.imported.length){ toast('Nothing imported.'); return; }
     S.imported = []; save(); load(); renderCats(); renderFoodView();
@@ -15055,7 +15046,6 @@ backfillMicros();
    only puts the button in the search sheet — a request still needs your tap,
    still carries the search text and nothing else, and the switch is still in
    the food sheet if you want it back off. Flipped once; a later "off" sticks. */
-if (!S.ui.onlineDefault){ S.ui.onlineDefault = 1; S.profile.online = true; save(); }
 setUnit(S.profile.unit || 'kj');
 renderAll();
 if (returned && returned.error) toast(returned.error);
