@@ -1148,7 +1148,7 @@ body.dragging{cursor:grabbing}
     <button class="btn" id="c-scan" style="margin-bottom:12px">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="16" height="16">
         <path d="M3 7V4h3M18 4h3v3M21 17v3h-3M6 20H3v-3"/><path d="M7 8v8M10 8v8M13 8v8M17 8v8"/></svg>
-      Scan a barcode</button>
+      Scan nutrition panel or barcode</button>
     <label class="f"><span>Name</span><input type="text" id="c-name" placeholder="e.g. Mum's lasagne" autocomplete="off"></label>
     <label class="f"><span>Barcode <em style="text-transform:none;letter-spacing:0">— optional</em></span>
       <input type="text" id="c-code" inputmode="numeric" placeholder="—"></label>
@@ -1248,8 +1248,9 @@ body.dragging{cursor:grabbing}
 </div>
 
 <!-- barcode scanner -->
-<div class="sheet" id="sh-scan" role="dialog" aria-modal="true" aria-label="Scan a barcode">
-  <div class="sheet-head"><h2>Scan a barcode</h2><button class="iconbtn sheet-close" aria-label="Close">&#10005;</button></div>
+<div class="sheet" id="sh-scan" role="dialog" aria-modal="true"
+     aria-label="Scan a nutrition panel or barcode">
+  <div class="sheet-head"><h2>Scan panel or barcode</h2><button class="iconbtn sheet-close" aria-label="Close">&#10005;</button></div>
   <div class="sheet-body">
     <div style="position:relative;border-radius:var(--r);overflow:hidden;background:#000;aspect-ratio:4/3">
       <video id="scan-video" playsinline muted autoplay
@@ -12204,8 +12205,8 @@ function addFoodPrompt(){
     '<span class="star" style="color:var(--accent)"><svg viewBox="0 0 24 24" width="15" height="15" ' +
     'fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 7V4h3M18 4h3v3M21 17v3h-3M6 20H3v-3"/>' +
     '<path d="M7 8v8M10 8v8M13 8v8M17 8v8"/></svg></span>' +
-    '<span style="min-width:0"><span class="t">Not there? Scan or add it</span>' +
-    '<span class="s">Barcode, or type the panel yourself.</span></span></button>';
+    '<span style="min-width:0"><span class="t">Not there? Scan nutrition panel or barcode</span>' +
+    '<span class="s">Or type it in yourself.</span></span></button>';
 }
 /* No switch on this. A lookup costs one tap and one request, and a database
    of 4,129 analysed foods with no branded shelf is not a feature — the point
@@ -13688,7 +13689,7 @@ function renderOffResults(q, via){
 /* Bumped on every deploy. When something fails, knowing which build is
    actually loaded is the difference between debugging the bug and debugging
    a stale cache. */
-var APP_VERSION = '2026.08.23-57';
+var APP_VERSION = '2026.08.23-58';
 var SB_URL = 'https://lsrxqviwgqjpuzzcqcpu.supabase.co';
 var SB_KEY = 'sb_publishable_0lk-0UAlfW-tALEgPiqFHg_8vF9Hp63';
 var AUTH_KEY = 'eatandtrain.auth';
