@@ -651,6 +651,85 @@ body.dragging{cursor:grabbing}
 .badge.warn{background:color-mix(in srgb,var(--warn) 18%,transparent); color:var(--warn)}
 .note{font-size:11.5px; color:var(--ink-3); line-height:1.55}
 .note strong{color:var(--ink-2); font-weight:600}
+/* ------------------------- coach report ---------------------------------
+   A print document, not an app screen: it carries its own light palette
+   rather than the app's tokens, because it exists to come out of a printer.
+   On screen it sits over the app as one white sheet; at print everything
+   else is display:none and this is the page.
+   ------------------------------------------------------------------------- */
+#rep{display:none; position:fixed; inset:0; z-index:120; background:#E9E7E0; overflow-y:auto;
+  -webkit-overflow-scrolling:touch}
+#rep.on{display:block}
+#rep-bar{position:sticky; top:0; z-index:2; display:flex; gap:8px; align-items:center;
+  padding:10px 14px; background:#1F2A22; color:#F5F2E9}
+#rep-bar b{font-size:12.5px; font-weight:600; margin-right:auto}
+#rep-bar button{padding:7px 13px; border-radius:7px; font:inherit; font-size:12.5px;
+  font-weight:700; border:1px solid #F5F2E9; background:none; color:#F5F2E9}
+#rep-bar button.go{background:#C8A96A; border-color:#C8A96A; color:#1F2A22}
+#rep-sheet{background:#fff; color:#1F2A22; max-width:186mm; margin:16px auto 40px;
+  padding:13mm; font-family:'Hanken Grotesk',system-ui,sans-serif; font-size:12px;
+  line-height:1.45; box-shadow:0 2px 10px rgba(20,20,19,.18)}
+#rep-sheet .num, #rep-sheet .ser{font-family:'Newsreader',Georgia,serif; font-variant-numeric:tabular-nums}
+#rep-sheet h1,#rep-sheet h2,#rep-sheet h3{font-weight:inherit; font-size:inherit; margin:0}
+.rp-hd{display:flex; align-items:baseline; gap:14px; border-bottom:2px solid #1F2A22; padding-bottom:9px}
+.rp-mark{font-family:'Newsreader',Georgia,serif; font-size:24px; white-space:nowrap}
+.rp-mark i{font-style:italic; color:#8A6F3C}
+.rp-kick{font-size:10px; font-weight:700; letter-spacing:.24em; text-transform:uppercase; color:#6E7568}
+.rp-unit{margin-left:auto; font-size:10.5px; color:#6E7568}
+.rp-who{display:flex; gap:24px; align-items:baseline; padding:9px 0 2px;
+  border-bottom:1px solid #E2DDD0}
+.rp-who .nm{flex:none; white-space:nowrap}
+.rp-who .nm{font-family:'Newsreader',Georgia,serif; font-size:16px}
+.rp-who .nm em{font-size:12px; color:#6E7568}
+.rp-who .win{font-size:10.5px; color:#6E7568; margin-left:auto}
+.rp-p{break-inside:avoid}
+.rp-h{display:flex; align-items:center; gap:10px; margin:16px 0 6px}
+.rp-h span{font-size:9.5px; font-weight:700; letter-spacing:.2em; text-transform:uppercase;
+  color:#8A6F3C; white-space:nowrap}
+.rp-h i{flex:1; height:1px; background:#1F2A22; font-style:normal}
+.rp-h em{font-size:9.5px; color:#8A8E7F; font-style:normal}
+.rp-lv{display:grid; grid-template-columns:2fr 1.4fr; gap:0 14px; padding:3px 0;
+  border-bottom:1px solid #EAE5D8; align-items:baseline}
+.rp-lv .k{font-size:11.5px}
+.rp-lv .k small{font-size:10px; color:#8A8E7F}
+.rp-lv .v{font-size:12.5px}
+.rp-note{font-family:'Newsreader',Georgia,serif; font-style:italic; font-size:11.5px;
+  color:#4A5248; padding:7px 0 0; max-width:620px}
+.rp-g{display:grid; gap:0 12px; align-items:baseline}
+.rp-th{font-size:8.5px; font-weight:700; letter-spacing:.14em; text-transform:uppercase;
+  color:#8A8E7F; padding:2px 0; border-bottom:1px solid #1F2A22}
+.rp-tr{padding:3px 0; border-bottom:1px solid #EAE5D8}
+.rp-r{text-align:right}
+.rp-box{border:1px solid #1F2A22; padding:10px 14px; margin-top:9px; break-inside:avoid}
+.rp-box .lb{font-size:8.5px; font-weight:700; letter-spacing:.16em; text-transform:uppercase;
+  color:#6E7568; margin-bottom:6px}
+.rp-box .pair{display:flex; gap:32px; align-items:baseline}
+.rp-box .big{font-size:24px}
+.rp-box .cap{font-size:9.5px; color:#6E7568}
+.rp-day{break-inside:avoid; border:1px solid #E2DDD0; margin-bottom:5px}
+.rp-day .dh{display:flex; align-items:baseline; gap:10px; padding:4px 10px; background:#F5F2E9;
+  border-bottom:1px solid #E2DDD0}
+.rp-day .dh b{font-size:11.5px}
+.rp-day .dh em{margin-left:auto; font-size:10px; color:#8A6F3C; font-style:italic;
+  font-family:'Newsreader',Georgia,serif}
+.rp-meal{padding:2px 10px; border-bottom:1px solid #F0ECE1; font-size:11px}
+.rp-tot{padding:2px 10px; font-weight:700; font-size:11px}
+.rp-buck{font-size:8.5px; font-weight:700; letter-spacing:.16em; text-transform:uppercase;
+  color:#6E7568; margin-top:8px; border-bottom:1px solid #1F2A22; padding-bottom:2px}
+.rp-dim{color:#8A8E7F; font-style:italic; font-family:'Newsreader',Georgia,serif; font-size:11.5px}
+.rp-foot{display:none}
+
+@media print{
+  body > *{display:none !important}
+  body > #rep{display:block !important; position:static; inset:auto; background:none; overflow:visible}
+  #rep-bar{display:none !important}
+  #rep-sheet{max-width:none; margin:0; padding:0; box-shadow:none}
+  .rp-foot{display:flex; position:fixed; bottom:0; left:0; right:0; justify-content:space-between;
+    font-size:8.5px; letter-spacing:.14em; text-transform:uppercase; color:#8A8E7F}
+  @page{size:A4; margin:13mm}
+  .rp-p, .rp-day, .rp-box, tr{break-inside:avoid}
+}
+
 </style>
 </head>
 <body>
@@ -1041,6 +1120,16 @@ body.dragging{cursor:grabbing}
     <div id="weekly"></div>
   </div>
 
+  <div class="card">
+    <div class="card-head"><h2>Coach report</h2><span class="right">print or save as PDF</span></div>
+    <p class="note">One window, computed from what is logged, laid out for someone reading it
+      away from the app. Every figure comes from the same numbers on these screens.</p>
+    <div class="btnrow" style="margin-top:12px">
+      <button class="btn sm" id="rep-3" style="flex:1">Last 3 days</button>
+      <button class="btn sm" id="rep-7" style="flex:1">Last 7 days</button>
+    </div>
+  </div>
+
   </div>
 
   <div class="subpane on" data-pane="weight">
@@ -1337,6 +1426,14 @@ body.dragging{cursor:grabbing}
     <p class="note" style="margin-top:14px"><strong>On your phone:</strong> open this page in Safari or
       Chrome and use Share → Add to Home Screen. It then launches full screen and works with no signal.</p>
   </div>
+</div>
+
+<!-- coach report: a print document that lives over the app -->
+<div id="rep" role="dialog" aria-modal="true" aria-label="Coach report">
+  <div id="rep-bar"><b id="rep-title">Coach report</b>
+    <button id="rep-close">Close</button>
+    <button class="go" id="rep-print">Print / Save PDF</button></div>
+  <div id="rep-sheet"></div>
 </div>
 
 <!-- first run -->
@@ -9272,6 +9369,458 @@ function renderCheckinBanner(){
   el('checkin-go').addEventListener('click', function(){ switchView('trends'); });
 }
 
+
+/* ========================== coach report =================================
+   One athlete, one window, computed once and printed. Every figure here is
+   read out of the same functions the app's own screens use — nothing is
+   recalculated a second way, so the report cannot disagree with the app.
+
+   The window is fixed at generation: 3 days or 7. Deltas compare against the
+   immediately preceding window of the same length, never against the other
+   window's length. Averages divide by LOGGED days, not by the window, and
+   say so — five days of food across a week is a 5-day average, and calling
+   it a weekly one would flatter it by 30%.
+   ------------------------------------------------------------------------- */
+function repEntries(iso){
+  var d = dayRO(iso), out = [];
+  MEALS.forEach(function(m){ (d.meals[m[0]] || []).forEach(function(e){ out.push(e); }); });
+  return out;
+}
+function repMean(a){ return a.length ? a.reduce(function(x,y){ return x+y; },0) / a.length : 0; }
+function repSD(a){
+  if (a.length < 2) return null;
+  var m = repMean(a);
+  return Math.sqrt(repMean(a.map(function(v){ return (v-m)*(v-m); })));
+}
+
+function reportData(days, endISO){
+  var end = endISO || todayISO();
+  var win = lastDays(days, end);
+  var prev = lastDays(days, shiftISO(win[0], -1));
+  var start = win[0];
+
+  /* ---- per day ---- */
+  var rows = win.map(function(iso){
+    var t = dayTotals(iso), e = dayEnergy(iso), d = dayRO(iso);
+    var ent = repEntries(iso);
+    return {iso:iso, t:t, e:e, d:d, n:ent.length, logged:t.kj > 0,
+            meals: MEALS.map(function(m){
+              var list = d.meals[m[0]] || [], mt = {n:m[1], has:list.length > 0,
+                kj:0, p:0, c:0, f:0, fib:0};
+              list.forEach(function(x){
+                mt.kj += x.kj; mt.p += x.p; mt.c += x.c; mt.f += x.f; mt.fib += x.fib || 0; });
+              return mt;
+            })};
+  });
+  var lg = rows.filter(function(r){ return r.logged; });
+  var nLog = lg.length;
+
+  /* ---- 1. data quality ---- */
+  var noMicroEntries = 0, noMicroDays = 0, complete = 0, single = [], allFour = 0;
+  rows.forEach(function(r){
+    if (!r.logged) return;
+    if (r.t.noMicro){ noMicroEntries += r.t.noMicro; noMicroDays++; } else complete++;
+    if (r.n === 1) single.push(r.iso);
+    if (r.meals.every(function(m){ return m.has; })) allFour++;
+  });
+  var wsWin = (S.weights || []).filter(function(w){ return w.d >= start && w.d <= end; });
+
+  /* ---- 2. body markers ---- */
+  var all = (S.weights || []).slice().sort(function(a,b){ return a.d < b.d ? -1 : 1; });
+  var trend = trendSeries();
+  function marker(label, sub, get, unit, dp){
+    var pts = all.filter(function(w){ return get(w) !== null; });
+    if (!pts.length) return null;
+    var cur = pts[pts.length - 1], before = null, pv = pts[pts.length - 2] || null;
+    for (var i = 0; i < pts.length; i++) if (pts[i].d < start) before = pts[i];
+    var v = get(cur);
+    return {n:label, sub:sub, cur:v.toFixed(dp) + ' ' + unit,
+      prev: pv ? repSigned(v - get(pv), dp, unit) : '—',
+      pd: pv ? repDate(pv.d) : '',
+      dw: before ? repSigned(v - get(before), dp, unit) : '—'};
+  }
+  var body = [];
+  body.push(marker('Weight, last reading', '', function(w){ return +w.kg || null; }, 'kg', 1));
+  if (trend.length){
+    var tc = trend[trend.length - 1], tp = trend[trend.length - 2] || null, tb = null;
+    for (var ti = 0; ti < trend.length; ti++) if (trend[ti].d < start) tb = trend[ti];
+    body.push({n:'Weight, trend', sub:'the app runs on this', bold:1,
+      cur:tc.trend.toFixed(1) + ' kg',
+      prev: tp ? repSigned(tc.trend - tp.trend, 1, 'kg') : '—',
+      pd: tp ? repDate(tp.d) : '',
+      dw: tb ? repSigned(tc.trend - tb.trend, 1, 'kg') : '—'});
+  }
+  body.push(marker('Body fat', '', function(w){ return has(w.bf) ? +w.bf : null; }, '%', 1));
+  body.push(marker('Fat mass', 'derived: weight × body fat',
+    function(w){ return has(w.bf) && w.kg ? w.kg * w.bf / 100 : null; }, 'kg', 1));
+  body.push(marker('Skeletal muscle mass', '', function(w){
+    if (!has(w.smm)) return null;
+    return w.smmUnit === 'kg' ? +w.smm : (w.kg ? w.kg * w.smm / 100 : null);
+  }, 'kg', 1));
+  body.push(marker('Lean mass', 'derived: weight − fat mass',
+    function(w){ return has(w.bf) && w.kg ? w.kg - w.kg * w.bf / 100 : null; }, 'kg', 1));
+  body.push(marker('Bone mineral', '', function(w){ return has(w.bone) ? +w.bone : null; }, 'kg', 1));
+  body.push(marker('Body water', '', function(w){ return has(w.water) ? +w.water : null; }, '%', 1));
+  body = body.filter(Boolean);
+
+  /* ---- rate of change: what the scale did against what the food said ---- */
+  var slope = weightSlope(wsWin.slice().sort(function(a,b){ return a.d < b.d ? -1 : 1; }));
+  var deficit = repMean(lg.map(function(r){ return r.e.burn - r.e.eaten; }));
+  var rate = {
+    actual: (wsWin.length >= 2 && slope !== null) ? repSigned(slope * 7, 2, 'kg/wk') : '—',
+    pred:   nLog ? repSigned(-deficit * 7 / KJ_PER_KG_FAT, 2, 'kg/wk') : '—'
+  };
+
+  /* ---- 3. energy ---- */
+  var eaten = lg.map(function(r){ return r.e.eaten; });
+  var tKj = repMean(lg.map(function(r){ return r.e.target; }));
+  var trainDays = lg.filter(function(r){ return r.d.workouts.length; });
+  var restDays  = lg.filter(function(r){ return !r.d.workouts.length; });
+  var prevEaten = prev.map(function(iso){ return dayTotals(iso).kj; }).filter(function(k){ return k > 0; });
+  var byBal = lg.slice().sort(function(a,b){
+    return (b.e.eaten - b.e.target) - (a.e.eaten - a.e.target); });
+  var sd = repSD(eaten);
+  var basis = lg.length ? (lg[lg.length-1].e.measured ? 'measured'
+            : lg[lg.length-1].e.coached ? 'coached' : 'formula') : '—';
+  var efig = [
+    ['Average eaten', nLog ? fmtE(repMean(eaten), true) + ' over ' + nLog + ' logged day' + (nLog===1?'':'s') : '—'],
+    ['Average target', nLog ? fmtE(tKj, true) : '—'],
+    ['Average balance', nLog ? repSignedE(repMean(eaten) - tKj) + ' / day' : '—'],
+    ['Change vs preceding ' + days + ' days', (nLog && prevEaten.length)
+        ? repSignedE(repMean(eaten) - repMean(prevEaten)) + ' / day' : '—'],
+    ['Target basis', basis],
+    ['Day-to-day variability (SD)', sd === null ? '—' : '±' + fmtE(sd, true)],
+    ['Training-day average', trainDays.length ? fmtE(repMean(trainDays.map(function(r){ return r.e.eaten; })), true) : '—'],
+    ['Rest-day average', restDays.length ? fmtE(repMean(restDays.map(function(r){ return r.e.eaten; })), true) : '—'],
+    ['Largest surplus day', byBal.length ? repSignedE(byBal[0].e.eaten - byBal[0].e.target) + ' · ' + repDate(byBal[0].iso, 1) : '—'],
+    ['Largest deficit day', byBal.length ? repSignedE(byBal[byBal.length-1].e.eaten - byBal[byBal.length-1].e.target) + ' · ' + repDate(byBal[byBal.length-1].iso, 1) : '—']
+  ];
+
+  /* ---- 5. macros ---- */
+  var av = {};
+  ['kj','p','f','sat','c','sug','fib','na','alc'].forEach(function(k){
+    av[k] = repMean(lg.map(function(r){ return r.t[k]; })); });
+  var mt = macroTargets(tKj), lim = energyLimits(tKj);
+  var kg = bodyKg();
+  var pctE = function(gr, kjPerG){ return av.kj ? Math.round(gr * kjPerG / av.kj * 100) : 0; };
+  var macros = [
+    {n:'Protein', v:g(av.p) + ' g · ' + pctE(av.p,17) + '% E · ' + repSigned(av.p - mt.p, 0, 'g vs target')},
+    {n:'Protein per kg bodyweight', bold:1, v:kg ? g(av.p / kg, 1) + ' g/kg' : '—'},
+    {n:'Carbohydrate', v:g(av.c) + ' g · ' + pctE(av.c,16) + '% E · ' + repSigned(av.c - mt.c, 0, 'g vs target')},
+    {n:'Fat', v:g(av.f) + ' g · ' + pctE(av.f,37) + '% E · ' + repSigned(av.f - mt.f, 0, 'g vs target')},
+    {n:'Fibre', v:g(av.fib) + ' g vs ' + (S.profile.sex === 'm' ? 30 : 25) + ' g'},
+    {n:'Saturated fat', sub:'a limit, not a target', v:g(av.sat) + ' g · ' + pctE(av.sat,37) + '% E'},
+    {n:'Free sugars', sub:'limit: 10% of energy',
+     v:g(repMean(lg.map(function(r){ return r.t.m.fs || 0; }))) + ' g vs ' + g(lim.fs) + ' g limit'},
+    {n:'Trans fat', sub:'limit: 1% of energy', v:g(repMean(lg.map(function(r){ return r.t.m.tfa || 0; }))) + ' mg vs ' + g(lim.tfa) + ' mg limit'}
+  ];
+  if (av.alc > 0) macros.push({n:'Alcohol', v:g(av.alc,1) + ' g · ' +
+    (av.kj ? Math.round(av.alc * 29 / av.kj * 100) : 0) + '% of window energy'});
+  var naUL = NRV.na.ul;
+  macros.push({n:'Sodium', sub:'a ceiling — high is the problem',
+    v:g(av.na) + ' mg vs ' + g(naUL) + ' mg' + (av.na > naUL ? ' — OVER' : '')});
+
+  /* ---- 6. micronutrients ---- */
+  /* Which food is responsible, not which entry. A coach reading "most from
+     Saturday's milk" about milk drunk every day learns nothing — so a food
+     that turns up on half the logged days or more is named without a day. */
+  function contributor(k){
+    var byFood = {}, best = null;
+    win.forEach(function(iso){
+      repEntries(iso).forEach(function(e){
+        if (!e.m || !(e.m[k] > 0)) return;
+        var nm = e.name.split(',')[0].toLowerCase();
+        var f = byFood[nm] || (byFood[nm] = {v:0, days:{}, top:0, topDay:iso});
+        f.v += e.m[k]; f.days[iso] = 1;
+        if (e.m[k] > f.top){ f.top = e.m[k]; f.topDay = iso; }
+        if (!best || f.v > byFood[best].v) best = nm;
+      });
+    });
+    if (!best) return '';
+    var f = byFood[best], n = Object.keys(f.days).length;
+    return n >= Math.max(2, Math.ceil(nLog / 2))
+      ? best + ', most days'
+      : 'most from ' + repDate(f.topDay, 1) + '’s ' + best;
+  }
+  var short = [], border = [], hit = [], over = [];
+  Object.keys(NRV).forEach(function(k){
+    if (k === 'na') return;                    /* a ceiling; it lives in macros */
+    var r = NRV[k], tgt = nrvTarget(k); if (!tgt) return;
+    var avg = repMean(lg.map(function(x){ return x.t.m[k] || 0; }));
+    var pct = avg / tgt * 100;
+    var ref = (r.sdt ? 'suggested target ' : r.ai ? 'read against AI ' : 'RDI ') + g(tgt, tgt < 10 ? 1 : 0) + ' ' + r.u;
+    var row = {n:r.n, ref:ref, amt:g(avg, avg < 10 ? 1 : 0) + ' ' + r.u, pct:Math.round(pct) + '%', p:pct};
+    if (pct < 70){ row.src = contributor(k); short.push(row); }
+    else if (pct < 100) border.push(row);
+    else hit.push(r.n);
+    /* The same test microState() applies on the app's own screens: a limit
+       written for supplements is not breached by food, and one written for a
+       separately-counted form is checked against that form. Niacin from
+       dinner is not a niacin overdose. */
+    var ulAmt = r.ulKey ? repMean(lg.map(function(x){ return x.t.m[r.ulKey] || 0; })) : avg;
+    if (r.ul && (r.ulKey || !r.ulOf) && ulAmt > r.ul)
+      over.push({n:r.n, amt:g(ulAmt, 1) + ' ' + r.u,
+        note:'limit ' + g(r.ul) + ' ' + r.u + (r.ulOf ? ' — ' + r.ulOf : '')});
+  });
+  short.sort(function(a,b){ return a.p - b.p; });
+  border.sort(function(a,b){ return a.p - b.p; });
+
+  hit.sort();
+  var caf = repMean(lg.map(function(r){ return r.t.m.caf || 0; }));
+
+  /* ---- 7. training and hydration ---- */
+  var sess = [], mins = 0, skj = 0, types = {};
+  win.forEach(function(iso){
+    (dayRO(iso).workouts || []).forEach(function(w){
+      sess.push(w); mins += w.mins || 0; skj += w.kj || 0;
+      var t = RUN_NAMES[w.type] || (w.type === 'strength' ? 'strength' : w.type || 'session');
+      types[t.toLowerCase()] = (types[t.toLowerCase()] || 0) + 1;
+    });
+  });
+  var prevKj = 0;
+  prev.forEach(function(iso){ prevKj += dayTraining(iso); });
+  var thisKj = 0; win.forEach(function(iso){ thisKj += dayTraining(iso); });
+  var waterDays = win.filter(function(iso){ return dayWater(iso).total > 0; });
+  var train = [
+    ['Sessions', sess.length ? sess.length + ' — ' + Object.keys(types).map(function(t){
+        return types[t] + ' ' + t; }).join(', ') : 'none'],
+    ['Session minutes', mins ? Math.round(mins) + ' min' : '—'],
+    ['Session energy', skj ? fmtE(skj, true) : '—'],
+    ['Steps, daily average', (function(){
+        var v = win.map(dayNetSteps).filter(function(x){ return x > 0; });
+        return v.length ? g(repMean(v)) + ' over ' + v.length + ' day' + (v.length===1?'':'s') : '—';
+      })()],
+    ['Energy from steps', fmtE(win.reduce(function(a,iso){ return a + stepsKj(dayNetSteps(iso)); }, 0), true)],
+    ['Load vs previous ' + days + ' days', prevKj > 0 ? repSigned((thisKj - prevKj) / prevKj * 100, 0, '%') : '—']
+  ];
+  if (waterDays.length) train.push(['Water, daily average vs target',
+    fmtMl(repMean(win.map(function(iso){ return dayWater(iso).total; }))) + ' vs ' +
+    fmtMl(repMean(win.map(function(iso){ return waterTarget(iso).total; })))]);
+
+  return {
+    days:days, win:win, rows:rows, nLog:nLog,
+    range: repDate(start, 1) + ' – ' + repDate(end, 1) + ' (last ' + days + ' days)',
+    prevRange: 'the preceding ' + days + ' days (' + repDate(prev[0], 1) + ' – ' + repDate(prev[prev.length-1], 1) + ')',
+    dq: [
+      ['Days logged', nLog + ' of ' + days],
+      ['Days with all four meals', allFour + ' of ' + days]
+    ].concat(single.length ? [['Days with a single entry only',
+        single.length + ' (' + single.map(function(d){ return repDate(d,1); }).join(', ') + ')']] : [])
+     .concat(noMicroEntries ? [['Entries with no micronutrient data',
+        noMicroEntries + ' entr' + (noMicroEntries===1?'y':'ies') + ' across ' + noMicroDays + ' day' + (noMicroDays===1?'':'s')]] : [])
+     .concat([['Weigh-ins in window', String(wsWin.length)],
+              ['Micronutrient coverage', complete + ' of ' + nLog + ' logged days complete']]),
+    body:body, rate:rate, efig:efig, macros:macros,
+    mealAvg: MEALS.map(function(m, i){
+      var src = lg.filter(function(r){ return r.meals[i].has; });
+      return {n:m[1], kj:repMean(src.map(function(r){ return r.meals[i].kj; })),
+        p:repMean(src.map(function(r){ return r.meals[i].p; })),
+        c:repMean(src.map(function(r){ return r.meals[i].c; })),
+        f:repMean(src.map(function(r){ return r.meals[i].f; })),
+        fib:repMean(src.map(function(r){ return r.meals[i].fib; })), n2:src.length};
+    }),
+    micro: {short:short, border:border, hit:hit, over:over, caf:caf,
+      coverage: 'Micronutrient data complete on ' + complete + ' of ' + nLog + ' logged days.' +
+        (complete < nLog ? ' Shortfalls below are partly a coverage problem.' : '')},
+    train:train, measured: measured().ok && S.profile.useMeasured ? measuredBaseline() : null
+  };
+}
+
+/* Formatting the report leans on, kept out of the app's own helpers because
+   the rules differ: a true minus sign, and zero printed as an em dash. */
+function repSigned(v, dp, unit){
+  if (v === null || !isFinite(v)) return '—';
+  var r = Math.round(v * Math.pow(10,dp)) / Math.pow(10,dp);
+  if (r === 0) return '—';
+  return (r > 0 ? '+' : '−') + Math.abs(r).toFixed(dp) +
+    (unit ? (unit === '%' ? '' : ' ') + unit : '');
+}
+function repSignedE(kj, bare){
+  if (!isFinite(kj)) return '—';
+  var v = isKcal() ? kj / KJ_PER_KCAL : kj;
+  if (Math.round(v) === 0) return '—';
+  return (v > 0 ? '+' : '−') + g(Math.abs(v)) + (bare ? '' : ' ' + unitName());
+}
+function repDate(iso, withDay){
+  var d = isoToDate(iso);
+  return d.toLocaleDateString('en-AU', withDay
+    ? {weekday:'short', day:'numeric', month:'short'} : {day:'numeric', month:'short'})
+    .replace(',', '');
+}
+
+
+/* The document itself. Static HTML, no interactivity, one window per
+   generation — the coach chose 3 days or 7 by which button they pressed. */
+var MEAL_COLS = 'grid-template-columns:1.4fr 1fr .8fr .8fr .8fr .8fr';
+function repHead(title, right){
+  return '<div class="rp-h"><span>' + title + '</span><i></i>' +
+    (right ? '<em>' + esc(right) + '</em>' : '') + '</div>';
+}
+function repLV(rows){
+  return rows.map(function(r){
+    var name = r.length ? r[0] : r.n, val = r.length ? r[1] : r.v, sub = r.sub || '';
+    return '<div class="rp-lv"' + (r.bold ? ' style="font-weight:700"' : '') + '>' +
+      '<span class="k">' + esc(name) + (sub ? ' <small>' + esc(sub) + '</small>' : '') + '</span>' +
+      '<span class="v ser">' + esc(val) + '</span></div>';
+  }).join('');
+}
+function repCells(vals, cls){
+  return vals.map(function(v, i){
+    return '<span class="' + (i ? 'rp-r ' + (cls || 'ser') : '') + '">' + esc(v) + '</span>';
+  }).join('');
+}
+
+function renderReport(r){
+  var d = new Date();
+  var name = (S.profile.name || '').trim() || 'Athlete';
+  var goalWord = {cut:'fat loss', lean:'slow fat loss', maintain:'maintenance', gain:'gaining'};
+  var sub = [S.profile.sex === 'f' ? 'female' : 'male', S.profile.age || null].filter(Boolean).join(', ') +
+    ' · goal: ' + (goalWord[S.profile.goal] || 'maintenance');
+
+  var html =
+  '<div class="rp-hd"><div class="rp-mark">Eat <i>&amp;</i> Train</div>' +
+    '<div class="rp-kick">Coach report · last ' + r.days + ' days</div>' +
+    '<div class="rp-unit">All energy in <b>' + (isKcal() ? 'Calories' : 'kilojoules') +
+      '</b> — athlete&rsquo;s setting</div></div>' +
+  '<div class="rp-who"><div class="nm">' + esc(name) + ' <em>' + esc(sub) + '</em></div>' +
+    '<div class="win">Window: <b>' + esc(r.range) + '</b> · deltas vs ' + esc(r.prevRange) + '</div></div>';
+
+  /* 1 */
+  html += '<div class="rp-p">' + repHead('1 · Data quality') + repLV(r.dq) +
+    '<div class="rp-note">Self-reported intake is under-reported by 20–30% in the published ' +
+    'literature, consistently and across populations. Read the totals below as a floor, not a ' +
+    'measurement.</div></div>';
+
+  /* 2 */
+  if (r.body.length){
+    var bcol = 'grid-template-columns:2.3fr 1fr 1.25fr .95fr';
+    html += '<div class="rp-p">' + repHead('2 · Body markers') +
+      '<div class="rp-g rp-th" style="' + bcol + '"><span></span><span class="rp-r">Current</span>' +
+      '<span class="rp-r">vs previous reading</span><span class="rp-r">Δ this window</span></div>' +
+      r.body.map(function(b){
+        return '<div class="rp-g rp-tr" style="' + bcol + '">' +
+          '<span style="font-size:11.5px' + (b.bold ? ';font-weight:700' : '') + '">' + esc(b.n) +
+            (b.sub ? ' <small style="font-size:10px;color:#8A8E7F;font-weight:400">' + esc(b.sub) + '</small>' : '') + '</span>' +
+          '<span class="rp-r ser">' + esc(b.cur) + '</span>' +
+          '<span class="rp-r ser">' + (b.pd ? '<small style="font-size:10px;color:#8A8E7F;font-family:inherit">' + esc(b.pd) + ' </small>' : '') + esc(b.prev) + '</span>' +
+          '<span class="rp-r ser">' + esc(b.dw) + '</span></div>';
+      }).join('') +
+      (r.measured ? '<div style="font-size:10.5px;color:#6E7568;padding:3px 0 0">Measured maintenance ' +
+        '<b class="ser" style="color:#1F2A22">' + fmtE(r.measured, true) + ' / day</b> — 28-day estimate, live.</div>' : '') +
+      '<div class="rp-box"><div class="lb">Rate of change — this window</div><div class="pair">' +
+        '<div><div class="big ser">' + esc(r.rate.actual) + '</div><div class="cap">actual, from weigh-ins</div></div>' +
+        '<div><div class="big ser" style="color:#8A6F3C">' + esc(r.rate.pred) + '</div><div class="cap">predicted from logged intake</div></div>' +
+      '</div></div></div>';
+  }
+
+  /* 3 */
+  var ecol = 'grid-template-columns:1.4fr 1fr 1fr 1fr .9fr';
+  html += '<div class="rp-p">' + repHead('3 · Energy') +
+    '<div class="rp-g rp-th" style="' + ecol + '"><span>Day</span><span class="rp-r">Eaten</span>' +
+    '<span class="rp-r">Target</span><span class="rp-r">Balance</span><span class="rp-r">Trained</span></div>' +
+    r.rows.map(function(x){
+      return '<div class="rp-g rp-tr" style="' + ecol + '">' +
+        '<span style="font-size:11.5px">' + esc(repDate(x.iso, 1)) + '</span>' +
+        (x.logged
+          ? '<span class="rp-r ser">' + fmtE(x.e.eaten) + '</span>' +
+            '<span class="rp-r ser">' + fmtE(x.e.target) + '</span>' +
+            '<span class="rp-r ser">' + esc(repSignedE(x.e.eaten - x.e.target, 1)) + '</span>'
+          : '<span class="rp-r rp-dim">not logged</span><span class="rp-r ser">' + fmtE(x.e.target) + '</span><span class="rp-r ser">—</span>') +
+        '<span class="rp-r" style="font-size:11.5px">' + (x.d.workouts.length ? 'Y' : '') + '</span></div>';
+    }).join('') +
+    '<div style="margin-top:7px"></div>' + repLV(r.efig) + '</div>';
+
+  /* 4 */
+  html += '<div>' + repHead('4 · The meal grid', 'empty meal = — · a skipped meal is not a zero-calorie meal') +
+    '<div class="rp-g rp-th" style="' + MEAL_COLS + ';border:none;padding:2px 11px"><span>Meal</span>' +
+    '<span class="rp-r">Energy</span><span class="rp-r">Protein</span><span class="rp-r">Carbs</span>' +
+    '<span class="rp-r">Fat</span><span class="rp-r">Fibre</span></div>' +
+    r.rows.map(function(x){
+      var head = '<div class="rp-day"><div class="dh"><b>' + esc(repDate(x.iso, 1)) + '</b>' +
+        (x.logged && x.n === 1 ? '<em>single entry — one row carries the day</em>' : '') + '</div>';
+      if (!x.logged) return head + '<div style="padding:5px 10px" class="rp-dim">Nothing logged.</div></div>';
+      return head + x.meals.map(function(m){
+        return '<div class="rp-g rp-meal" style="' + MEAL_COLS + '">' +
+          repCells([m.n, m.has ? fmtE(m.kj) : '—', m.has ? g(m.p) : '—', m.has ? g(m.c) : '—',
+                    m.has ? g(m.f) : '—', m.has ? g(m.fib) : '—']) + '</div>';
+      }).join('') +
+      '<div class="rp-g rp-tot" style="' + MEAL_COLS + '">' +
+        repCells(['Day total', fmtE(x.t.kj), g(x.t.p), g(x.t.c), g(x.t.f), g(x.t.fib)]) + '</div></div>';
+    }).join('') +
+    '<div class="rp-p" style="margin-top:7px">' +
+      '<div class="rp-g rp-th" style="' + MEAL_COLS + ';padding:2px 11px"><span>Window average</span>' +
+      '<span class="rp-r">Energy</span><span class="rp-r">Protein</span><span class="rp-r">Carbs</span>' +
+      '<span class="rp-r">Fat</span><span class="rp-r">Fibre</span></div>' +
+      r.mealAvg.map(function(m){
+        return '<div class="rp-g rp-tr" style="' + MEAL_COLS + ';padding:2px 11px">' +
+          repCells([m.n, m.n2 ? fmtE(m.kj) : '—', m.n2 ? g(m.p) : '—', m.n2 ? g(m.c) : '—',
+                    m.n2 ? g(m.f) : '—', m.n2 ? g(m.fib) : '—']) + '</div>';
+      }).join('') +
+      '<div style="font-size:9.5px;color:#8A8E7F;padding:3px 0 0">Averaged over the days each meal ' +
+      'was actually logged, not over the window.</div></div></div>';
+
+  /* 5 */
+  html += '<div class="rp-p">' + repHead('5 · Macros') + repLV(r.macros) + '</div>';
+
+  /* 6 */
+  var mcol = 'grid-template-columns:1.75fr .8fr .5fr 1.55fr';
+  html += '<div class="rp-p">' + repHead('6 · Micronutrients',
+      'vs NHMRC / NZ Nutrient Reference Values, ' + (S.profile.sex === 'f' ? 'female' : 'male') +
+      ' ' + (+S.profile.age || 30)) +
+    '<div style="font-size:11.5px;font-weight:700;padding:2px 0">' + esc(r.micro.coverage) + '</div>';
+  html += '<div class="rp-g rp-th" style="' + mcol + ';margin-top:7px"><span>Short — &lt;70% · worst first</span>' +
+    '<span class="rp-r">Window avg</span><span class="rp-r">% of ref</span><span>Largest contributor</span></div>';
+  html += r.micro.short.length ? r.micro.short.map(function(m){
+      return '<div class="rp-g rp-tr" style="' + mcol + '">' +
+        '<span style="font-size:11.5px;font-weight:600">' + esc(m.n) +
+          ' <small style="font-size:9.5px;color:#8A8E7F;font-weight:400">' + esc(m.ref) + '</small></span>' +
+        '<span class="rp-r ser">' + esc(m.amt) + '</span><span class="rp-r ser">' + esc(m.pct) + '</span>' +
+        '<span style="font-size:10.5px;color:#4A5248;font-style:italic;font-family:\'Newsreader\',Georgia,serif">' +
+          esc(m.src) + '</span></div>';
+    }).join('') : '<div class="rp-dim" style="padding:3px 0">Nothing below 70% of its reference.</div>';
+
+  html += '<div class="rp-g rp-th" style="' + mcol + ';margin-top:8px"><span>Borderline — 70–99%</span>' +
+    '<span class="rp-r">Window avg</span><span class="rp-r">% of ref</span><span></span></div>' +
+    (r.micro.border.length ? r.micro.border.map(function(m){
+      return '<div class="rp-g rp-tr" style="' + mcol + '">' +
+        '<span style="font-size:11.5px">' + esc(m.n) + ' <small style="font-size:9.5px;color:#8A8E7F">' + esc(m.ref) + '</small></span>' +
+        '<span class="rp-r ser">' + esc(m.amt) + '</span><span class="rp-r ser">' + esc(m.pct) + '</span><span></span></div>';
+    }).join('') : '<div class="rp-dim" style="padding:3px 0">None between 70 and 99%.</div>');
+  html += '<div class="rp-buck">Hit — ≥100%</div><div style="font-size:11px;color:#4A5248;padding:3px 0">' +
+    (r.micro.hit.length ? esc(r.micro.hit.join(' · ')) : '<span class="rp-dim">None at or above its reference.</span>') + '</div>';
+  html += '<div class="rp-buck">Over the upper limit</div>' +
+    (r.micro.over.length ? r.micro.over.map(function(m){
+      return '<div class="rp-lv"><span class="k">' + esc(m.n) + ' <small>' + esc(m.note) + '</small></span>' +
+        '<span class="v ser">' + esc(m.amt) + '</span></div>'; }).join('')
+      : '<div class="rp-dim" style="padding:3px 0">None over the upper limit this window.</div>');
+  html += '<div style="display:flex;gap:14px;align-items:baseline;padding:6px 0 0;border-top:1px solid #EAE5D8;margin-top:6px">' +
+    '<span style="font-size:11.5px;font-weight:600">Caffeine</span>' +
+    '<span class="ser" style="font-size:12.5px">' + g(r.micro.caf) + ' mg/day</span>' +
+    '<span style="font-size:10.5px;color:#6E7568">no RDI — caution threshold 400 mg/day</span></div></div>';
+
+  /* 7 */
+  html += '<div class="rp-p">' + repHead('7 · Training &amp; hydration') + repLV(r.train) + '</div>';
+
+  html += '<div class="rp-foot"><span>' + esc(name) + ' — coach report</span>' +
+    '<span>Eat &amp; Train · generated ' + d.toLocaleDateString('en-AU',
+      {day:'numeric', month:'short', year:'numeric'}) + '</span></div>';
+  return html;
+}
+
+var repWindow = 7;
+function openReport(days){
+  repWindow = days;
+  el('rep-sheet').innerHTML = renderReport(reportData(days));
+  el('rep-title').textContent = 'Coach report · last ' + days + ' days';
+  el('rep').classList.add('on');
+  document.body.style.overflow = 'hidden';
+}
+function closeReport(){
+  el('rep').classList.remove('on');
+  document.body.style.overflow = '';
+}
+
+
 function renderToday(){
   var e = dayEnergy(DAY);
   var over = e.remaining < 0;
@@ -13689,7 +14238,7 @@ function renderOffResults(q, via){
 /* Bumped on every deploy. When something fails, knowing which build is
    actually loaded is the difference between debugging the bug and debugging
    a stale cache. */
-var APP_VERSION = '2026.08.23-58';
+var APP_VERSION = '2026.09.04-59';
 var SB_URL = 'https://lsrxqviwgqjpuzzcqcpu.supabase.co';
 var SB_KEY = 'sb_publishable_0lk-0UAlfW-tALEgPiqFHg_8vF9Hp63';
 var AUTH_KEY = 'eatandtrain.auth';
@@ -14196,6 +14745,11 @@ function bind(){
       ev.preventDefault(); addWater(+ev.target.value);
     }
   });
+
+  el('rep-3').addEventListener('click', function(){ openReport(3); });
+  el('rep-7').addEventListener('click', function(){ openReport(7); });
+  el('rep-close').addEventListener('click', closeReport);
+  el('rep-print').addEventListener('click', function(){ window.print(); });
 
   /* delegated: everything that lives in re-rendered HTML */
   document.addEventListener('click', function(ev){
