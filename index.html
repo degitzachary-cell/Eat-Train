@@ -736,8 +736,13 @@ body.dragging{cursor:grabbing}
 .rp-dim{color:#8A8E7F; font-style:italic; font-family:'Newsreader',Georgia,serif; font-size:11.5px}
 .rp-foot{display:none}
 
+#rep-pages{display:none}
 @media print{
   body > *{display:none !important}
+  .rep-imgprint #rep-scroll{display:none !important}
+  .rep-imgprint #rep-pages{display:block}
+  #rep-pages img.pg{display:block; width:100%; height:auto; break-inside:avoid; break-after:page}
+  #rep-pages img.pg:last-child{break-after:auto}
   body > #rep{display:block !important; position:static; inset:auto; background:none}
   #rep-scroll{overflow:visible; min-height:0}
   #rep-bar{display:none !important}
@@ -750,13 +755,6 @@ body.dragging{cursor:grabbing}
     font-size:8.5px; letter-spacing:.14em; text-transform:uppercase; color:#8A8E7F}
   @page{size:A4; margin:13mm}
   .rp-day, .rp-box, .rp-lv, .rp-tr, .rp-meal, .rp-tot, tr{break-inside:avoid}
-  /* On one continuous page there is nothing to break across, and these rules
-     only push a block past the end of it — which spilled the whole tail onto
-     a second sheet and defeated the point. */
-  .rep-long .rp-day, .rep-long .rp-box, .rep-long .rp-lv, .rep-long .rp-tr,
-  .rep-long .rp-meal, .rep-long .rp-tot, .rep-long tr{break-inside:auto}
-  .rep-long .rp-h, .rep-long .rp-th, .rep-long .rp-buck{break-after:auto}
-  .rep-long .rp-foot{position:static; margin-top:10px}
   /* A heading never sits alone at the foot of a page. */
   .rp-h{break-after:avoid}
   .rp-th{break-after:avoid}
@@ -1467,8 +1465,8 @@ body.dragging{cursor:grabbing}
   <div id="rep-scroll"><div id="rep-scale"><div id="rep-sheet"></div></div></div>
   <div id="rep-bar"><b id="rep-title">Coach report</b>
     <button id="rep-close">Close</button>
-    <button id="rep-a4">A4 pages</button>
-    <button class="go" id="rep-long">One page</button></div>
+    <button id="rep-a4">Print A4</button>
+    <button class="go" id="rep-long">Share file</button></div>
 </div>
 
 <!-- first run -->
@@ -9865,6 +9863,7 @@ function openReport(days){
   el('rep').classList.add('on');
   document.body.style.overflow = 'hidden';
   repFit();
+  repFonts();                     /* warm the cache before the share tap */
 }
 /* 186mm at 96dpi is 703px. Anything narrower gets the whole page scaled down
    rather than reflowed. */
@@ -9877,48 +9876,230 @@ window.addEventListener('resize', function(){
   if (el('rep') && el('rep').classList.contains('on')) repFit();
 });
 
-/* Two ways out, because they are two different objects. A4 pages are for
-   paper and for anyone who wants to hold it. One page is a single sheet as
-   long as the report — no breaks to land badly, no half-empty pages, and it
-   reads on a phone the way it looks on screen. The page box is set here
-   rather than in the stylesheet because its height is the content's. */
-function repPrint(mode){
-  var st = document.getElementById('rep-page');
-  if (!st){ st = document.createElement('style'); st.id = 'rep-page'; document.head.appendChild(st); }
-  if (mode === 'long'){
-    /* Measured in the geometry it will print in, not the one it is being
-       previewed in: full printed width, no sheet padding, no preview zoom.
-       Measuring the on-screen sheet gave a height for a narrower page and the
-       document spilled onto a second sheet anyway. */
-    var sheet = el('rep-sheet');
-    var was = {zoom:sheet.style.zoom, width:sheet.style.width, padding:sheet.style.padding};
-    /* The class first: it turns the running footer from fixed to static,
-       which adds to the height being measured. Measuring before applying it
-       came up seven millimetres short and spilled a second page. */
-    document.documentElement.classList.add('rep-long');
-    sheet.style.zoom = 1; sheet.style.width = '184mm'; sheet.style.padding = '0';
-    /* Measured under screen styles, where the running footer is still hidden
-       and the print-only rules have not applied — so the figure runs about a
-       centimetre under the printed height. The slack below covers that and
-       leaves a bottom margin rather than a second sheet. */
-    var mm = sheet.scrollHeight / (96 / 25.4);
-    sheet.style.zoom = was.zoom; sheet.style.width = was.width; sheet.style.padding = was.padding;
-    /* Measured against the real thing rather than reasoned about: for a
-       seven-day report the estimate came in 21 mm under the smallest page
-       that holds it on one sheet. The shortfall grows with the document, so
-       the allowance is proportional, plus the margins and the footer. */
-    st.textContent = '@page{size:210mm ' + (Math.ceil(mm * 1.03) + 34) + 'mm; margin:13mm}';
-  } else {
-    document.documentElement.classList.remove('rep-long');
+/* Two ways out, because they are two different objects.
+
+   A4 pages go through the print dialog, which every engine can do.
+
+   One page does NOT go anywhere near the print dialog, because it cannot:
+   the only way CSS can make a page as tall as its content is the @page size
+   descriptor, and WebKit has never implemented it — iOS Safari paginates
+   onto default paper no matter what the stylesheet says. That is why the
+   first version of this produced A4 pages on an iPhone while passing every
+   Chromium test. So the file is built by hand instead: the sheet is
+   snapshotted exactly as the app renders it, rastered, and wrapped in a
+   single-page PDF written byte by byte — then handed to the share sheet for
+   WhatsApp or email. No print dialog, no engine to disagree with. */
+/* A4 prints the same snapshot the share file uses, sliced into pages. Not
+   the live DOM: handing this layout to each engine's print pipeline is how
+   Safari grew phantom rules down the left margin that no screen ever showed.
+   A raster page is beyond an engine's opinion. Slices are cut where a band of
+   pixels is blank, so no line of text is ever halved at a page boundary. */
+function repPrint(){
+  toast('Preparing pages…');
+  repSnapshot().then(function(cv){
+    /* Well under the 271 mm content box. An image is width:100% of the page,
+       so its printed height is its own aspect ratio times the content width —
+       at full height, rounding tips it a fraction past the page and drags a
+       blank sheet behind every slice. 262 mm leaves margin the rounding can
+       never eat. */
+    var pageH = Math.floor(cv.width * 262 / 184);
+    var ctx = cv.getContext('2d');
+    function cleanCut(target){
+      /* walk up from the target looking for a blank band to cut in */
+      for (var y = target; y > target - 90 && y > 0; y -= 2){
+        var row = ctx.getImageData(0, y, cv.width, 1).data, ink = 0;
+        for (var i = 0; i < row.length; i += 16) if (row[i] < 235) ink++;
+        if (!ink) return y;
+      }
+      return target;
+    }
+    var holder = el('rep-pages');
+    if (!holder){
+      holder = document.createElement('div'); holder.id = 'rep-pages';
+      el('rep').appendChild(holder);
+    }
+    holder.innerHTML = '';
+    var y = 0;
+    while (y < cv.height - 4){
+      var end = y + pageH >= cv.height ? cv.height : cleanCut(y + pageH);
+      var pg = document.createElement('canvas');
+      pg.width = cv.width; pg.height = pageH;
+      var pctx = pg.getContext('2d');
+      pctx.fillStyle = '#fff'; pctx.fillRect(0, 0, pg.width, pg.height);
+      pctx.drawImage(cv, 0, y, cv.width, end - y, 0, 0, cv.width, end - y);
+      var img = new Image();
+      img.src = pg.toDataURL('image/jpeg', 0.9);
+      img.className = 'pg';
+      holder.appendChild(img);
+      y = end;
+    }
+    var st = document.getElementById('rep-page');
+    if (!st){ st = document.createElement('style'); st.id = 'rep-page'; document.head.appendChild(st); }
     st.textContent = '@page{size:A4; margin:13mm}';
-  }
-  window.print();
+    document.documentElement.classList.add('rep-imgprint');
+    window.print();
+  }).catch(function(e){
+    toast('Could not prepare pages' + (e && e.message ? ' — ' + e.message : ''));
+  });
 }
 window.addEventListener('afterprint', function(){
-  document.documentElement.classList.remove('rep-long');
+  document.documentElement.classList.remove('rep-imgprint');
 });
 
+/* The report's own CSS, pulled from the stylesheet so the snapshot carries
+   everything the live sheet had. Screen rules only — the snapshot is the
+   screen rendering, which is the thing the user was promised. */
+function repCssText(){
+  var out = [];
+  /* All sheets, each behind its own guard: styleSheets[0] is the Google Fonts
+     link, and reading a cross-origin sheet's rules throws. One try around the
+     whole loop swallowed that throw and returned nothing — which stripped
+     every grid and border out of the snapshot and turned it to soup. */
+  Array.prototype.forEach.call(document.styleSheets, function(sheet){
+    var rules;
+    try { rules = sheet.cssRules; } catch(e){ return; }
+    if (!rules) return;
+    Array.prototype.forEach.call(rules, function(r){
+      if (r.type === 1 && r.selectorText &&
+          (r.selectorText.indexOf('.rp-') >= 0 || r.selectorText.indexOf('#rep-sheet') >= 0))
+        out.push(r.cssText);
+    });
+  });
+  return out.join('\n');
+}
+
+/* The webfonts, inlined as data URIs. A snapshot loads as an image, and an
+   image is allowed no network of its own — an external font URL inside it is
+   simply ignored and the text falls back. Fetched once, kept for the session;
+   offline the report renders in the fallback stack instead of not at all. */
+var repFontCss = null;
+function repFonts(){
+  if (repFontCss !== null) return Promise.resolve(repFontCss);
+  var link = document.querySelector('link[href*="fonts.googleapis"]');
+  if (!link) return Promise.resolve('');
+  return fetch(link.href).then(function(r){ return r.text(); }).then(function(css){
+    var urls = [], m, re = /url\((https:[^)]+)\)/g;
+    while ((m = re.exec(css))) if (urls.indexOf(m[1]) < 0) urls.push(m[1]);
+    return Promise.all(urls.map(function(u){
+      return fetch(u).then(function(r){ return r.arrayBuffer(); }).then(function(b){
+        var v = new Uint8Array(b), str = '';
+        for (var i = 0; i < v.length; i += 8192)
+          str += String.fromCharCode.apply(null, v.subarray(i, i + 8192));
+        return [u, 'data:font/woff2;base64,' + btoa(str)];
+      });
+    })).then(function(pairs){
+      pairs.forEach(function(pr){ css = css.split(pr[0]).join(pr[1]); });
+      repFontCss = css;
+      return css;
+    });
+  }).catch(function(){ return ''; });          /* offline: fall back, retry next time */
+}
+
+/* The sheet as one bitmap, via SVG foreignObject: the same markup, the same
+   CSS, the same fonts, laid out at the sheet's true unzoomed size. */
+function repSnapshot(){
+  var sheet = el('rep-sheet');
+  var was = sheet.style.zoom; sheet.style.zoom = 1;
+  var w = sheet.offsetWidth, h = sheet.scrollHeight;
+  sheet.style.zoom = was;
+  return repFonts().then(function(fonts){
+    var css = fonts + '\n' + repCssText() +
+      '\n#rep-sheet{width:' + w + 'px; margin:0; box-shadow:none}' +
+      '\n.rp-foot{display:flex; position:static; justify-content:space-between; margin-top:14px;' +
+      ' font-size:8.5px; letter-spacing:.14em; text-transform:uppercase; color:#8A8E7F}';
+    var html = sheet.innerHTML.replace(/&nbsp;/g, '\u00a0');
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + w + '" height="' + h + '">' +
+      '<style>' + css.replace(/</g, '\u003c') + '</style>' +
+      '<foreignObject width="100%" height="100%">' +
+      '<div xmlns="http://www.w3.org/1999/xhtml" id="rep-sheet">' + html + '</div>' +
+      '</foreignObject></svg>';
+    return new Promise(function(resolve, reject){
+      var img = new Image();
+      img.onload = function(){
+        /* Big canvases hit hard device ceilings on phones; scale to stay
+           inside them rather than produce a silently blank bitmap. */
+        var scale = Math.min(2, Math.sqrt(14e6 / (w * h)));
+        var cv = document.createElement('canvas');
+        cv.width = Math.round(w * scale); cv.height = Math.round(h * scale);
+        var ctx = cv.getContext('2d');
+        ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, cv.width, cv.height);
+        ctx.drawImage(img, 0, 0, cv.width, cv.height);
+        resolve(cv);
+      };
+      img.onerror = function(){ reject(new Error('the snapshot did not render')); };
+      img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+    });
+  });
+}
+
+/* A one-page PDF, written by hand. It holds exactly one JPEG on a page with
+   the sheet's own proportions — about sixty lines of format instead of a
+   third of a megabyte of library, and no engine's paper size anywhere in it. */
+function repPdf(jpeg, pxW, pxH, mmW){
+  var ptW = +(mmW * 72 / 25.4).toFixed(2), ptH = +(ptW * pxH / pxW).toFixed(2);
+  var enc = new TextEncoder();
+  var parts = [], offsets = [], pos = 0;
+  function push(x){
+    var b = typeof x === 'string' ? enc.encode(x) : x;
+    parts.push(b); pos += b.length;
+  }
+  push('%PDF-1.4\n');
+  function obj(n, body, stream){
+    offsets[n] = pos;
+    push(n + ' 0 obj\n' + body + '\n');
+    if (stream){ push('stream\n'); push(stream); push('\nendstream\n'); }
+    push('endobj\n');
+  }
+  obj(1, '<</Type/Catalog/Pages 2 0 R>>');
+  obj(2, '<</Type/Pages/Kids[3 0 R]/Count 1>>');
+  obj(3, '<</Type/Page/Parent 2 0 R/MediaBox[0 0 ' + ptW + ' ' + ptH + ']' +
+         '/Resources<</XObject<</Im0 4 0 R>>>>/Contents 5 0 R>>');
+  obj(4, '<</Type/XObject/Subtype/Image/Width ' + pxW + '/Height ' + pxH +
+         '/ColorSpace/DeviceRGB/BitsPerComponent 8/Filter/DCTDecode/Length ' + jpeg.length + '>>', jpeg);
+  var draw = 'q ' + ptW + ' 0 0 ' + ptH + ' 0 0 cm /Im0 Do Q';
+  obj(5, '<</Length ' + draw.length + '>>', draw);
+  var xref = pos;
+  push('xref\n0 6\n0000000000 65535 f \n');
+  for (var n = 1; n <= 5; n++) push(('0000000000' + offsets[n]).slice(-10) + ' 00000 n \n');
+  push('trailer\n<</Size 6/Root 1 0 R>>\nstartxref\n' + xref + '\n%%EOF');
+  var out = new Uint8Array(pos), at = 0;
+  parts.forEach(function(b){ out.set(b, at); at += b.length; });
+  return out;
+}
+
+function repShare(){
+  toast('Building the file…');
+  repSnapshot().then(function(cv){
+    var b64 = cv.toDataURL('image/jpeg', 0.9).split(',')[1];
+    var bin = atob(b64), jpeg = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) jpeg[i] = bin.charCodeAt(i);
+    var pdf = repPdf(jpeg, cv.width, cv.height, 186);
+    var blob = new Blob([pdf], {type:'application/pdf'});
+    var name = 'truecount-' + repWindow + 'day-' + todayISO() + '.pdf';
+    var file = null;
+    try { file = new File([blob], name, {type:'application/pdf'}); } catch(e){}
+    if (file && navigator.canShare && navigator.canShare({files:[file]})){
+      return navigator.share({files:[file], title:'TrueCount report'}).catch(function(err){
+        if (!err || err.name !== 'AbortError') repSaveBlob(blob, name);
+      });
+    }
+    repSaveBlob(blob, name);
+  }).catch(function(e){
+    toast('Could not build the file' + (e && e.message ? ' — ' + e.message : '') +
+          '. Print A4 still works.');
+  });
+}
+function repSaveBlob(blob, name){
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url; a.download = name; a.rel = 'noopener';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 60000);
+}
+
 function closeReport(){
+  var pgs = el('rep-pages'); if (pgs) pgs.innerHTML = '';
+  document.documentElement.classList.remove('rep-imgprint');
   el('rep').classList.remove('on');
   document.body.style.overflow = '';
 }
@@ -14341,7 +14522,7 @@ function renderOffResults(q, via){
 /* Bumped on every deploy. When something fails, knowing which build is
    actually loaded is the difference between debugging the bug and debugging
    a stale cache. */
-var APP_VERSION = '2026.09.04-64';
+var APP_VERSION = '2026.09.04-66';
 var SB_URL = 'https://lsrxqviwgqjpuzzcqcpu.supabase.co';
 var SB_KEY = 'sb_publishable_0lk-0UAlfW-tALEgPiqFHg_8vF9Hp63';
 var AUTH_KEY = 'eatandtrain.auth';
@@ -14852,8 +15033,8 @@ function bind(){
   el('rep-3').addEventListener('click', function(){ openReport(3); });
   el('rep-7').addEventListener('click', function(){ openReport(7); });
   el('rep-close').addEventListener('click', closeReport);
-  el('rep-a4').addEventListener('click', function(){ repPrint('a4'); });
-  el('rep-long').addEventListener('click', function(){ repPrint('long'); });
+  el('rep-a4').addEventListener('click', function(){ repPrint(); });
+  el('rep-long').addEventListener('click', repShare);
 
   /* delegated: everything that lives in re-rendered HTML */
   document.addEventListener('click', function(ev){
