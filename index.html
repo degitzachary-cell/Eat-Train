@@ -10004,6 +10004,13 @@ function repSnapshot(){
   sheet.style.zoom = was;
   return repFonts().then(function(fonts){
     var css = fonts + '\n' + repCssText() +
+      /* The global reset lives on a bare * selector the CSS pull does not
+         match, so inside the foreignObject the sheet falls back to
+         content-box and its 13 mm padding is added OUTSIDE the width — which
+         shoved every row 13 mm off the right edge of the page. Re-assert it
+         for the snapshot subtree. */
+      '\n#rep-sheet, #rep-sheet *, #rep-sheet *::before, #rep-sheet *::after' +
+      '{box-sizing:border-box}' +
       '\n#rep-sheet{width:' + w + 'px; margin:0; box-shadow:none}' +
       '\n.rp-foot{display:flex; position:static; justify-content:space-between; margin-top:14px;' +
       ' font-size:8.5px; letter-spacing:.14em; text-transform:uppercase; color:#8A8E7F}';
@@ -14522,7 +14529,7 @@ function renderOffResults(q, via){
 /* Bumped on every deploy. When something fails, knowing which build is
    actually loaded is the difference between debugging the bug and debugging
    a stale cache. */
-var APP_VERSION = '2026.09.04-66';
+var APP_VERSION = '2026.09.04-67';
 var SB_URL = 'https://lsrxqviwgqjpuzzcqcpu.supabase.co';
 var SB_KEY = 'sb_publishable_0lk-0UAlfW-tALEgPiqFHg_8vF9Hp63';
 var AUTH_KEY = 'eatandtrain.auth';
