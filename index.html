@@ -8743,6 +8743,11 @@ var DISH_FOODS = DISHES.trim().split('\n').map(function(l, i){
 }).filter(Boolean);
 
 /* ------------------------------- state ---------------------------------- */
+/* Not renamed with the app. This string is the address of every existing
+   user's data in localStorage — change it and their log, weigh-ins and foods
+   are still on the device but the app is looking somewhere else, which reads
+   as total data loss. The name it carries is invisible; the loss would not
+   be. Same for the auth key below. */
 var KEY = 'eatandtrain.v1';
 var S, VIEW = 'today', DAY = todayISO(), imported = [];
 
@@ -9723,7 +9728,7 @@ function renderReport(r){
     ' · goal: ' + (goalWord[S.profile.goal] || 'maintenance');
 
   var html =
-  '<div class="rp-hd"><div class="rp-mark">Eat <i>&amp;</i> Train</div>' +
+  '<div class="rp-hd"><div class="rp-mark">True<i>Count</i></div>' +
     '<div class="rp-kick">Coach report · last ' + r.days + ' days</div>' +
     '<div class="rp-unit">All energy in <b>Calories</b>' +
       (isKcal() ? '' : ' — the athlete&rsquo;s own app shows kilojoules') + '</div></div>' +
@@ -9847,7 +9852,7 @@ function renderReport(r){
   html += '<div class="rp-p">' + repHead('7 · Training &amp; hydration') + repLV(r.train) + '</div>';
 
   html += '<div class="rp-foot"><span>' + esc(name) + ' — coach report</span>' +
-    '<span>Eat &amp; Train · generated ' + d.toLocaleDateString('en-AU',
+    '<span>TrueCount · generated ' + d.toLocaleDateString('en-AU',
       {day:'numeric', month:'short', year:'numeric'}) + '</span></div>';
   return html;
 }
@@ -14336,7 +14341,7 @@ function renderOffResults(q, via){
 /* Bumped on every deploy. When something fails, knowing which build is
    actually loaded is the difference between debugging the bug and debugging
    a stale cache. */
-var APP_VERSION = '2026.09.04-63';
+var APP_VERSION = '2026.09.04-64';
 var SB_URL = 'https://lsrxqviwgqjpuzzcqcpu.supabase.co';
 var SB_KEY = 'sb_publishable_0lk-0UAlfW-tALEgPiqFHg_8vF9Hp63';
 var AUTH_KEY = 'eatandtrain.auth';
