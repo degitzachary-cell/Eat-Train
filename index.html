@@ -1096,6 +1096,17 @@ body.dragging{cursor:grabbing}
 <section class="view" id="v-trends">
   <div id="prog-coach" style="margin-top:12px"></div>
 
+  <div class="card">
+    <div class="card-head"><h2>Coach report</h2><span class="right">print or save as PDF</span></div>
+    <p class="note">One window of your log, laid out for someone reading it away from the app —
+      energy, macros, body markers, micronutrients and training. Always in Calories, whichever
+      unit you use here.</p>
+    <div class="btnrow" style="margin-top:12px">
+      <button class="btn sm" id="rep-3" style="flex:1">Last 3 days</button>
+      <button class="btn sm" id="rep-7" style="flex:1">Last 7 days</button>
+    </div>
+  </div>
+
   <div class="subtabs" id="sub-trends" role="group" aria-label="Sections">
     <button data-sub="weight" aria-pressed="true">Trend</button>
     <button data-sub="weighin" aria-pressed="false">Weigh in</button>
@@ -1118,16 +1129,6 @@ body.dragging{cursor:grabbing}
   <div class="card">
     <div class="card-head"><h2>Weekly averages</h2></div>
     <div id="weekly"></div>
-  </div>
-
-  <div class="card">
-    <div class="card-head"><h2>Coach report</h2><span class="right">print or save as PDF</span></div>
-    <p class="note">One window, computed from what is logged, laid out for someone reading it
-      away from the app. Every figure comes from the same numbers on these screens.</p>
-    <div class="btnrow" style="margin-top:12px">
-      <button class="btn sm" id="rep-3" style="flex:1">Last 3 days</button>
-      <button class="btn sm" id="rep-7" style="flex:1">Last 7 days</button>
-    </div>
   </div>
 
   </div>
@@ -9483,15 +9484,15 @@ function reportData(days, endISO){
   var basis = lg.length ? (lg[lg.length-1].e.measured ? 'measured'
             : lg[lg.length-1].e.coached ? 'coached' : 'formula') : '—';
   var efig = [
-    ['Average eaten', nLog ? fmtE(repMean(eaten), true) + ' over ' + nLog + ' logged day' + (nLog===1?'':'s') : '—'],
-    ['Average target', nLog ? fmtE(tKj, true) : '—'],
+    ['Average eaten', nLog ? repE(repMean(eaten), true) + ' over ' + nLog + ' logged day' + (nLog===1?'':'s') : '—'],
+    ['Average target', nLog ? repE(tKj, true) : '—'],
     ['Average balance', nLog ? repSignedE(repMean(eaten) - tKj) + ' / day' : '—'],
     ['Change vs preceding ' + days + ' days', (nLog && prevEaten.length)
         ? repSignedE(repMean(eaten) - repMean(prevEaten)) + ' / day' : '—'],
     ['Target basis', basis],
-    ['Day-to-day variability (SD)', sd === null ? '—' : '±' + fmtE(sd, true)],
-    ['Training-day average', trainDays.length ? fmtE(repMean(trainDays.map(function(r){ return r.e.eaten; })), true) : '—'],
-    ['Rest-day average', restDays.length ? fmtE(repMean(restDays.map(function(r){ return r.e.eaten; })), true) : '—'],
+    ['Day-to-day variability (SD)', sd === null ? '—' : '±' + repE(sd, true)],
+    ['Training-day average', trainDays.length ? repE(repMean(trainDays.map(function(r){ return r.e.eaten; })), true) : '—'],
+    ['Rest-day average', restDays.length ? repE(repMean(restDays.map(function(r){ return r.e.eaten; })), true) : '—'],
     ['Largest surplus day', byBal.length ? repSignedE(byBal[0].e.eaten - byBal[0].e.target) + ' · ' + repDate(byBal[0].iso, 1) : '—'],
     ['Largest deficit day', byBal.length ? repSignedE(byBal[byBal.length-1].e.eaten - byBal[byBal.length-1].e.target) + ' · ' + repDate(byBal[byBal.length-1].iso, 1) : '—']
   ];
@@ -9585,12 +9586,12 @@ function reportData(days, endISO){
     ['Sessions', sess.length ? sess.length + ' — ' + Object.keys(types).map(function(t){
         return types[t] + ' ' + t; }).join(', ') : 'none'],
     ['Session minutes', mins ? Math.round(mins) + ' min' : '—'],
-    ['Session energy', skj ? fmtE(skj, true) : '—'],
+    ['Session energy', skj ? repE(skj, true) : '—'],
     ['Steps, daily average', (function(){
         var v = win.map(dayNetSteps).filter(function(x){ return x > 0; });
         return v.length ? g(repMean(v)) + ' over ' + v.length + ' day' + (v.length===1?'':'s') : '—';
       })()],
-    ['Energy from steps', fmtE(win.reduce(function(a,iso){ return a + stepsKj(dayNetSteps(iso)); }, 0), true)],
+    ['Energy from steps', repE(win.reduce(function(a,iso){ return a + stepsKj(dayNetSteps(iso)); }, 0), true)],
     ['Load vs previous ' + days + ' days', prevKj > 0 ? repSigned((thisKj - prevKj) / prevKj * 100, 0, '%') : '—']
   ];
   if (waterDays.length) train.push(['Water, daily average vs target',
@@ -9635,11 +9636,21 @@ function repSigned(v, dp, unit){
   return (r > 0 ? '+' : '−') + Math.abs(r).toFixed(dp) +
     (unit ? (unit === '%' ? '' : ' ') + unit : '');
 }
+/* The report is always in Calories, whatever the athlete's app is set to.
+   A coach reads a stack of these and should not have to check the unit on
+   each one before comparing them; the athlete's own screens are untouched,
+   so their kilojoules stay theirs. */
+function repE(kj, withUnit){
+  if (!isFinite(kj)) return '—';
+  var s = Math.round(kj / KJ_PER_KCAL).toLocaleString('en-AU');
+  return withUnit ? s + ' Cal' : s;
+}
 function repSignedE(kj, bare){
   if (!isFinite(kj)) return '—';
-  var v = isKcal() ? kj / KJ_PER_KCAL : kj;
+  var v = kj / KJ_PER_KCAL;
   if (Math.round(v) === 0) return '—';
-  return (v > 0 ? '+' : '−') + g(Math.abs(v)) + (bare ? '' : ' ' + unitName());
+  return (v > 0 ? '+' : '−') + Math.round(Math.abs(v)).toLocaleString('en-AU') +
+    (bare ? '' : ' Cal');
 }
 function repDate(iso, withDay){
   var d = isoToDate(iso);
@@ -9680,8 +9691,8 @@ function renderReport(r){
   var html =
   '<div class="rp-hd"><div class="rp-mark">Eat <i>&amp;</i> Train</div>' +
     '<div class="rp-kick">Coach report · last ' + r.days + ' days</div>' +
-    '<div class="rp-unit">All energy in <b>' + (isKcal() ? 'Calories' : 'kilojoules') +
-      '</b> — athlete&rsquo;s setting</div></div>' +
+    '<div class="rp-unit">All energy in <b>Calories</b>' +
+      (isKcal() ? '' : ' — the athlete&rsquo;s own app shows kilojoules') + '</div></div>' +
   '<div class="rp-who"><div class="nm">' + esc(name) + ' <em>' + esc(sub) + '</em></div>' +
     '<div class="win">Window: <b>' + esc(r.range) + '</b> · deltas vs ' + esc(r.prevRange) + '</div></div>';
 
@@ -9706,7 +9717,7 @@ function renderReport(r){
           '<span class="rp-r ser">' + esc(b.dw) + '</span></div>';
       }).join('') +
       (r.measured ? '<div style="font-size:10.5px;color:#6E7568;padding:3px 0 0">Measured maintenance ' +
-        '<b class="ser" style="color:#1F2A22">' + fmtE(r.measured, true) + ' / day</b> — 28-day estimate, live.</div>' : '') +
+        '<b class="ser" style="color:#1F2A22">' + repE(r.measured, true) + ' / day</b> — 28-day estimate, live.</div>' : '') +
       '<div class="rp-box"><div class="lb">Rate of change — this window</div><div class="pair">' +
         '<div><div class="big ser">' + esc(r.rate.actual) + '</div><div class="cap">actual, from weigh-ins</div></div>' +
         '<div><div class="big ser" style="color:#8A6F3C">' + esc(r.rate.pred) + '</div><div class="cap">predicted from logged intake</div></div>' +
@@ -9722,10 +9733,10 @@ function renderReport(r){
       return '<div class="rp-g rp-tr" style="' + ecol + '">' +
         '<span style="font-size:11.5px">' + esc(repDate(x.iso, 1)) + '</span>' +
         (x.logged
-          ? '<span class="rp-r ser">' + fmtE(x.e.eaten) + '</span>' +
-            '<span class="rp-r ser">' + fmtE(x.e.target) + '</span>' +
+          ? '<span class="rp-r ser">' + repE(x.e.eaten) + '</span>' +
+            '<span class="rp-r ser">' + repE(x.e.target) + '</span>' +
             '<span class="rp-r ser">' + esc(repSignedE(x.e.eaten - x.e.target, 1)) + '</span>'
-          : '<span class="rp-r rp-dim">not logged</span><span class="rp-r ser">' + fmtE(x.e.target) + '</span><span class="rp-r ser">—</span>') +
+          : '<span class="rp-r rp-dim">not logged</span><span class="rp-r ser">' + repE(x.e.target) + '</span><span class="rp-r ser">—</span>') +
         '<span class="rp-r" style="font-size:11.5px">' + (x.d.workouts.length ? 'Y' : '') + '</span></div>';
     }).join('') +
     '<div style="margin-top:7px"></div>' + repLV(r.efig) + '</div>';
@@ -9741,11 +9752,11 @@ function renderReport(r){
       if (!x.logged) return head + '<div style="padding:5px 10px" class="rp-dim">Nothing logged.</div></div>';
       return head + x.meals.map(function(m){
         return '<div class="rp-g rp-meal" style="' + MEAL_COLS + '">' +
-          repCells([m.n, m.has ? fmtE(m.kj) : '—', m.has ? g(m.p) : '—', m.has ? g(m.c) : '—',
+          repCells([m.n, m.has ? repE(m.kj) : '—', m.has ? g(m.p) : '—', m.has ? g(m.c) : '—',
                     m.has ? g(m.f) : '—', m.has ? g(m.fib) : '—']) + '</div>';
       }).join('') +
       '<div class="rp-g rp-tot" style="' + MEAL_COLS + '">' +
-        repCells(['Day total', fmtE(x.t.kj), g(x.t.p), g(x.t.c), g(x.t.f), g(x.t.fib)]) + '</div></div>';
+        repCells(['Day total', repE(x.t.kj), g(x.t.p), g(x.t.c), g(x.t.f), g(x.t.fib)]) + '</div></div>';
     }).join('') +
     '<div class="rp-p" style="margin-top:7px">' +
       '<div class="rp-g rp-th" style="' + MEAL_COLS + ';padding:2px 11px"><span>Window average</span>' +
@@ -9753,7 +9764,7 @@ function renderReport(r){
       '<span class="rp-r">Fat</span><span class="rp-r">Fibre</span></div>' +
       r.mealAvg.map(function(m){
         return '<div class="rp-g rp-tr" style="' + MEAL_COLS + ';padding:2px 11px">' +
-          repCells([m.n, m.n2 ? fmtE(m.kj) : '—', m.n2 ? g(m.p) : '—', m.n2 ? g(m.c) : '—',
+          repCells([m.n, m.n2 ? repE(m.kj) : '—', m.n2 ? g(m.p) : '—', m.n2 ? g(m.c) : '—',
                     m.n2 ? g(m.f) : '—', m.n2 ? g(m.fib) : '—']) + '</div>';
       }).join('') +
       '<div style="font-size:9.5px;color:#8A8E7F;padding:3px 0 0">Averaged over the days each meal ' +
@@ -14238,7 +14249,7 @@ function renderOffResults(q, via){
 /* Bumped on every deploy. When something fails, knowing which build is
    actually loaded is the difference between debugging the bug and debugging
    a stale cache. */
-var APP_VERSION = '2026.09.04-59';
+var APP_VERSION = '2026.09.04-60';
 var SB_URL = 'https://lsrxqviwgqjpuzzcqcpu.supabase.co';
 var SB_KEY = 'sb_publishable_0lk-0UAlfW-tALEgPiqFHg_8vF9Hp63';
 var AUTH_KEY = 'eatandtrain.auth';
