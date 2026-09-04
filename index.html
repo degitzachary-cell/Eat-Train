@@ -736,30 +736,10 @@ body.dragging{cursor:grabbing}
 .rp-dim{color:#8A8E7F; font-style:italic; font-family:'Newsreader',Georgia,serif; font-size:11.5px}
 .rp-foot{display:none}
 
-#rep-pages{display:none}
-@media print{
-  body > *{display:none !important}
-  .rep-imgprint #rep-scroll{display:none !important}
-  .rep-imgprint #rep-pages{display:block}
-  #rep-pages img.pg{display:block; width:100%; height:auto; break-inside:avoid; break-after:page}
-  #rep-pages img.pg:last-child{break-after:auto}
-  body > #rep{display:block !important; position:static; inset:auto; background:none}
-  #rep-scroll{overflow:visible; min-height:0}
-  #rep-bar{display:none !important}
-  /* important, so it beats the inline zoom the preview sets. */
-  #rep-sheet{width:auto !important; zoom:1 !important; max-width:none; margin:0; padding:0;
-    box-shadow:none}
-  #rep-scale{padding:0}
-  .rp-foot{display:flex; position:fixed; bottom:0; left:0; right:0; justify-content:space-between;
-    background:#fff; padding-top:4px;
-    font-size:8.5px; letter-spacing:.14em; text-transform:uppercase; color:#8A8E7F}
-  @page{size:A4; margin:13mm}
-  .rp-day, .rp-box, .rp-lv, .rp-tr, .rp-meal, .rp-tot, tr{break-inside:avoid}
-  /* A heading never sits alone at the foot of a page. */
-  .rp-h{break-after:avoid}
-  .rp-th{break-after:avoid}
-  .rp-buck{break-after:avoid}
-}
+/* Both outputs are built by hand from a snapshot and never go through
+   window.print(), so there is no print stylesheet at all — the browser's
+   own pagination was the whole source of the trouble. The footer that only
+   showed at print now always shows in the snapshot instead. */
 
 </style>
 </head>
@@ -9889,63 +9869,6 @@ window.addEventListener('resize', function(){
    snapshotted exactly as the app renders it, rastered, and wrapped in a
    single-page PDF written byte by byte — then handed to the share sheet for
    WhatsApp or email. No print dialog, no engine to disagree with. */
-/* A4 prints the same snapshot the share file uses, sliced into pages. Not
-   the live DOM: handing this layout to each engine's print pipeline is how
-   Safari grew phantom rules down the left margin that no screen ever showed.
-   A raster page is beyond an engine's opinion. Slices are cut where a band of
-   pixels is blank, so no line of text is ever halved at a page boundary. */
-function repPrint(){
-  toast('Preparing pages…');
-  repSnapshot().then(function(cv){
-    /* Well under the 271 mm content box. An image is width:100% of the page,
-       so its printed height is its own aspect ratio times the content width —
-       at full height, rounding tips it a fraction past the page and drags a
-       blank sheet behind every slice. 262 mm leaves margin the rounding can
-       never eat. */
-    var pageH = Math.floor(cv.width * 262 / 184);
-    var ctx = cv.getContext('2d');
-    function cleanCut(target){
-      /* walk up from the target looking for a blank band to cut in */
-      for (var y = target; y > target - 90 && y > 0; y -= 2){
-        var row = ctx.getImageData(0, y, cv.width, 1).data, ink = 0;
-        for (var i = 0; i < row.length; i += 16) if (row[i] < 235) ink++;
-        if (!ink) return y;
-      }
-      return target;
-    }
-    var holder = el('rep-pages');
-    if (!holder){
-      holder = document.createElement('div'); holder.id = 'rep-pages';
-      el('rep').appendChild(holder);
-    }
-    holder.innerHTML = '';
-    var y = 0;
-    while (y < cv.height - 4){
-      var end = y + pageH >= cv.height ? cv.height : cleanCut(y + pageH);
-      var pg = document.createElement('canvas');
-      pg.width = cv.width; pg.height = pageH;
-      var pctx = pg.getContext('2d');
-      pctx.fillStyle = '#fff'; pctx.fillRect(0, 0, pg.width, pg.height);
-      pctx.drawImage(cv, 0, y, cv.width, end - y, 0, 0, cv.width, end - y);
-      var img = new Image();
-      img.src = pg.toDataURL('image/jpeg', 0.9);
-      img.className = 'pg';
-      holder.appendChild(img);
-      y = end;
-    }
-    var st = document.getElementById('rep-page');
-    if (!st){ st = document.createElement('style'); st.id = 'rep-page'; document.head.appendChild(st); }
-    st.textContent = '@page{size:A4; margin:13mm}';
-    document.documentElement.classList.add('rep-imgprint');
-    window.print();
-  }).catch(function(e){
-    toast('Could not prepare pages' + (e && e.message ? ' — ' + e.message : ''));
-  });
-}
-window.addEventListener('afterprint', function(){
-  document.documentElement.classList.remove('rep-imgprint');
-});
-
 /* The report's own CSS, pulled from the stylesheet so the snapshot carries
    everything the live sheet had. Screen rules only — the snapshot is the
    screen rendering, which is the thing the user was promised. */
@@ -10039,61 +9962,117 @@ function repSnapshot(){
   });
 }
 
-/* A one-page PDF, written by hand. It holds exactly one JPEG on a page with
-   the sheet's own proportions — about sixty lines of format instead of a
-   third of a megabyte of library, and no engine's paper size anywhere in it. */
-function repPdf(jpeg, pxW, pxH, mmW){
-  var ptW = +(mmW * 72 / 25.4).toFixed(2), ptH = +(ptW * pxH / pxW).toFixed(2);
+/* A PDF built by hand, one JPEG per page — used for both outputs, so neither
+   touches the print dialog and no engine's pagination can disagree. Each page
+   is {jpeg, pxW, pxH, ptW, ptH, drawW, drawH, x, y}: the image is placed at
+   (x, y) from the bottom-left in points, scaled to drawW x drawH. About a
+   hundred lines of format against a third of a megabyte of library. */
+function repPdf(pages){
   var enc = new TextEncoder();
-  var parts = [], offsets = [], pos = 0;
-  function push(x){
-    var b = typeof x === 'string' ? enc.encode(x) : x;
-    parts.push(b); pos += b.length;
-  }
+  var parts = [], offsets = [], pos = 0, obj = 0;
+  function push(x){ var b = typeof x === 'string' ? enc.encode(x) : x; parts.push(b); pos += b.length; }
+  function begin(){ offsets[++obj] = pos; push(obj + ' 0 obj\n'); return obj; }
+  function end(){ push('endobj\n'); }
   push('%PDF-1.4\n');
-  function obj(n, body, stream){
-    offsets[n] = pos;
-    push(n + ' 0 obj\n' + body + '\n');
-    if (stream){ push('stream\n'); push(stream); push('\nendstream\n'); }
-    push('endobj\n');
-  }
-  obj(1, '<</Type/Catalog/Pages 2 0 R>>');
-  obj(2, '<</Type/Pages/Kids[3 0 R]/Count 1>>');
-  obj(3, '<</Type/Page/Parent 2 0 R/MediaBox[0 0 ' + ptW + ' ' + ptH + ']' +
-         '/Resources<</XObject<</Im0 4 0 R>>>>/Contents 5 0 R>>');
-  obj(4, '<</Type/XObject/Subtype/Image/Width ' + pxW + '/Height ' + pxH +
-         '/ColorSpace/DeviceRGB/BitsPerComponent 8/Filter/DCTDecode/Length ' + jpeg.length + '>>', jpeg);
-  var draw = 'q ' + ptW + ' 0 0 ' + ptH + ' 0 0 cm /Im0 Do Q';
-  obj(5, '<</Length ' + draw.length + '>>', draw);
-  var xref = pos;
-  push('xref\n0 6\n0000000000 65535 f \n');
-  for (var n = 1; n <= 5; n++) push(('0000000000' + offsets[n]).slice(-10) + ' 00000 n \n');
-  push('trailer\n<</Size 6/Root 1 0 R>>\nstartxref\n' + xref + '\n%%EOF');
+
+  var catalog = 1, pagesObj = 2;
+  offsets[1] = 0;                       /* reserve 1 and 2, written after kids */
+  obj = 2;
+  var kids = [], streams = [];
+  pages.forEach(function(pg){
+    var img = begin();
+    push('<</Type/XObject/Subtype/Image/Width ' + pg.pxW + '/Height ' + pg.pxH +
+         '/ColorSpace/DeviceRGB/BitsPerComponent 8/Filter/DCTDecode/Length ' + pg.jpeg.length + '>>\n');
+    push('stream\n'); push(pg.jpeg); push('\nendstream\n'); end();
+    var draw = 'q ' + fx(pg.drawW) + ' 0 0 ' + fx(pg.drawH) + ' ' + fx(pg.x) + ' ' + fx(pg.y) + ' cm /Im0 Do Q';
+    var cs = begin();
+    push('<</Length ' + draw.length + '>>\nstream\n' + draw + '\nendstream\n'); end();
+    var page = begin();
+    push('<</Type/Page/Parent 2 0 R/MediaBox[0 0 ' + fx(pg.ptW) + ' ' + fx(pg.ptH) + ']' +
+         '/Resources<</XObject<</Im0 ' + img + ' 0 R>>>>/Contents ' + cs + ' 0 R>>\n'); end();
+    kids.push(page + ' 0 R');
+  });
+  /* now the reserved catalog + pages tree */
+  offsets[1] = pos; push('1 0 obj\n<</Type/Catalog/Pages 2 0 R>>\nendobj\n');
+  offsets[2] = pos; push('2 0 obj\n<</Type/Pages/Kids[' + kids.join(' ') + ']/Count ' + pages.length + '>>\nendobj\n');
+
+  var xref = pos, n = obj;
+  push('xref\n0 ' + (n + 1) + '\n0000000000 65535 f \n');
+  for (var i = 1; i <= n; i++) push(('0000000000' + offsets[i]).slice(-10) + ' 00000 n \n');
+  push('trailer\n<</Size ' + (n + 1) + '/Root 1 0 R>>\nstartxref\n' + xref + '\n%%EOF');
   var out = new Uint8Array(pos), at = 0;
   parts.forEach(function(b){ out.set(b, at); at += b.length; });
   return out;
 }
+function fx(n){ return (Math.round(n * 100) / 100).toString(); }
+function jpegBytes(cv){
+  var bin = atob(cv.toDataURL('image/jpeg', 0.9).split(',')[1]);
+  var a = new Uint8Array(bin.length);
+  for (var i = 0; i < bin.length; i++) a[i] = bin.charCodeAt(i);
+  return a;
+}
 
+var PT = 72 / 25.4;                 /* points per millimetre */
+function repDeliver(pdf){
+  var blob = new Blob([pdf], {type:'application/pdf'});
+  var name = 'truecount-' + repWindow + 'day-' + todayISO() + '.pdf';
+  var file = null;
+  try { file = new File([blob], name, {type:'application/pdf'}); } catch(e){}
+  if (file && navigator.canShare && navigator.canShare({files:[file]})){
+    return navigator.share({files:[file], title:'TrueCount report'}).catch(function(err){
+      if (!err || err.name !== 'AbortError') repSaveBlob(blob, name);
+    });
+  }
+  repSaveBlob(blob, name);
+}
+
+/* One continuous page as tall as the report — for sending. */
 function repShare(){
   toast('Building the file…');
   repSnapshot().then(function(cv){
-    var b64 = cv.toDataURL('image/jpeg', 0.9).split(',')[1];
-    var bin = atob(b64), jpeg = new Uint8Array(bin.length);
-    for (var i = 0; i < bin.length; i++) jpeg[i] = bin.charCodeAt(i);
-    var pdf = repPdf(jpeg, cv.width, cv.height, 186);
-    var blob = new Blob([pdf], {type:'application/pdf'});
-    var name = 'truecount-' + repWindow + 'day-' + todayISO() + '.pdf';
-    var file = null;
-    try { file = new File([blob], name, {type:'application/pdf'}); } catch(e){}
-    if (file && navigator.canShare && navigator.canShare({files:[file]})){
-      return navigator.share({files:[file], title:'TrueCount report'}).catch(function(err){
-        if (!err || err.name !== 'AbortError') repSaveBlob(blob, name);
-      });
-    }
-    repSaveBlob(blob, name);
+    var wMM = 186, hMM = wMM * cv.height / cv.width;
+    repDeliver(repPdf([{jpeg:jpegBytes(cv), pxW:cv.width, pxH:cv.height,
+      ptW:wMM * PT, ptH:hMM * PT, drawW:wMM * PT, drawH:hMM * PT, x:0, y:0}]));
   }).catch(function(e){
-    toast('Could not build the file' + (e && e.message ? ' — ' + e.message : '') +
-          '. Print A4 still works.');
+    toast('Could not build the file' + (e && e.message ? ' — ' + e.message : '') + '.');
+  });
+}
+
+/* A4 pages — for printing. Same snapshot, sliced at blank bands so no line is
+   cut, each slice its own A4 page built by hand: exact page count, no engine
+   flow, no phantom rules, no trailing blank. */
+function repA4(){
+  toast('Building the file…');
+  repSnapshot().then(function(cv){
+    var W = cv.width, ctx = cv.getContext('2d');
+    var boxWmm = 184, boxHmm = 271, m = 13;          /* A4 content box + margin */
+    var pageH = Math.round(W * boxHmm / boxWmm);
+    function cleanCut(t){
+      for (var yy = t; yy > t - 120 && yy > 0; yy -= 2){
+        var row = ctx.getImageData(0, yy, W, 1).data, ink = 0;
+        for (var i = 0; i < row.length; i += 16) if (row[i] < 235) ink++;
+        if (!ink) return yy;
+      }
+      return t;
+    }
+    var pages = [], y = 0;
+    while (y < cv.height - 4){
+      var end = y + pageH >= cv.height ? cv.height : cleanCut(y + pageH);
+      var hpx = end - y;
+      var slice = document.createElement('canvas');
+      slice.width = W; slice.height = hpx;
+      slice.getContext('2d').drawImage(cv, 0, y, W, hpx, 0, 0, W, hpx);
+      /* drawn at the content width; height follows the slice's own ratio, so a
+         short last page sits at the top of the sheet, not stretched. */
+      var drawWmm = boxWmm, drawHmm = drawWmm * hpx / W;
+      pages.push({jpeg:jpegBytes(slice), pxW:W, pxH:hpx,
+        ptW:210 * PT, ptH:297 * PT, drawW:drawWmm * PT, drawH:drawHmm * PT,
+        x:m * PT, y:(297 - m - drawHmm) * PT});
+      y = end;
+    }
+    repDeliver(repPdf(pages));
+  }).catch(function(e){
+    toast('Could not build the file' + (e && e.message ? ' — ' + e.message : '') + '.');
   });
 }
 function repSaveBlob(blob, name){
@@ -10105,8 +10084,6 @@ function repSaveBlob(blob, name){
 }
 
 function closeReport(){
-  var pgs = el('rep-pages'); if (pgs) pgs.innerHTML = '';
-  document.documentElement.classList.remove('rep-imgprint');
   el('rep').classList.remove('on');
   document.body.style.overflow = '';
 }
@@ -14529,7 +14506,7 @@ function renderOffResults(q, via){
 /* Bumped on every deploy. When something fails, knowing which build is
    actually loaded is the difference between debugging the bug and debugging
    a stale cache. */
-var APP_VERSION = '2026.09.04-67';
+var APP_VERSION = '2026.09.04-69';
 var SB_URL = 'https://lsrxqviwgqjpuzzcqcpu.supabase.co';
 var SB_KEY = 'sb_publishable_0lk-0UAlfW-tALEgPiqFHg_8vF9Hp63';
 var AUTH_KEY = 'eatandtrain.auth';
@@ -15040,7 +15017,7 @@ function bind(){
   el('rep-3').addEventListener('click', function(){ openReport(3); });
   el('rep-7').addEventListener('click', function(){ openReport(7); });
   el('rep-close').addEventListener('click', closeReport);
-  el('rep-a4').addEventListener('click', function(){ repPrint(); });
+  el('rep-a4').addEventListener('click', repA4);
   el('rep-long').addEventListener('click', repShare);
 
   /* delegated: everything that lives in re-rendered HTML */
