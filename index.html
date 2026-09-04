@@ -657,14 +657,17 @@ body.dragging{cursor:grabbing}
    On screen it sits over the app as one white sheet; at print everything
    else is display:none and this is the page.
    ------------------------------------------------------------------------- */
-#rep{display:none; position:fixed; inset:0; z-index:120; background:#E9E7E0; overflow-y:auto;
-  -webkit-overflow-scrolling:touch}
-#rep.on{display:block}
-/* At the bottom, where a thumb is. At the top it sat under the status bar on
-   a phone — the clock and the wifi icon printed straight over the buttons and
-   took the taps with them. */
-#rep-bar{position:fixed; left:0; right:0; bottom:0; z-index:2; display:flex; gap:8px;
-  align-items:center; padding:10px 14px calc(10px + env(safe-area-inset-bottom));
+/* Two rows of a flex column: the page scrolls, the bar does not. The bar was
+   position:fixed inside this scroller, which iOS Safari does not honour — a
+   fixed child of a -webkit-overflow-scrolling:touch container drifts with the
+   content or lands off screen, which is how the controls stayed unreachable
+   after being moved off the status bar. Nothing here is fixed, so there is
+   nothing for that bug to get hold of. */
+#rep{display:none; position:fixed; inset:0; z-index:120; background:#E9E7E0}
+#rep.on{display:flex; flex-direction:column}
+#rep-scroll{flex:1 1 auto; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch}
+#rep-bar{flex:none; display:flex; gap:8px; align-items:center;
+  padding:10px 14px calc(10px + env(safe-area-inset-bottom));
   background:#1F2A22; color:#F5F2E9}
 #rep-bar b{font-size:12.5px; font-weight:600; margin-right:auto; min-width:0;
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
@@ -678,7 +681,7 @@ body.dragging{cursor:grabbing}
 #rep-sheet{background:#fff; color:#1F2A22; width:186mm; margin:16px auto 40px;
   padding:13mm; font-family:'Hanken Grotesk',system-ui,sans-serif; font-size:12px;
   line-height:1.45; box-shadow:0 2px 10px rgba(20,20,19,.18)}
-#rep-scale{padding-bottom:calc(64px + env(safe-area-inset-bottom))}
+#rep-scale{padding-bottom:24px}
 #rep-sheet .num, #rep-sheet .ser{font-family:'Newsreader',Georgia,serif; font-variant-numeric:tabular-nums}
 #rep-sheet h1,#rep-sheet h2,#rep-sheet h3{font-weight:inherit; font-size:inherit; margin:0}
 .rp-hd{display:flex; align-items:baseline; gap:14px; border-bottom:2px solid #1F2A22; padding-bottom:9px}
@@ -731,7 +734,8 @@ body.dragging{cursor:grabbing}
 
 @media print{
   body > *{display:none !important}
-  body > #rep{display:block !important; position:static; inset:auto; background:none; overflow:visible}
+  body > #rep{display:block !important; position:static; inset:auto; background:none}
+  #rep-scroll{overflow:visible; min-height:0}
   #rep-bar{display:none !important}
   /* important, so it beats the inline zoom the preview sets. */
   #rep-sheet{width:auto !important; zoom:1 !important; max-width:none; margin:0; padding:0;
@@ -1444,10 +1448,10 @@ body.dragging{cursor:grabbing}
 
 <!-- coach report: a print document that lives over the app -->
 <div id="rep" role="dialog" aria-modal="true" aria-label="Coach report">
+  <div id="rep-scroll"><div id="rep-scale"><div id="rep-sheet"></div></div></div>
   <div id="rep-bar"><b id="rep-title">Coach report</b>
     <button id="rep-close">Close</button>
     <button class="go" id="rep-print">Print / Save PDF</button></div>
-  <div id="rep-scale"><div id="rep-sheet"></div></div>
 </div>
 
 <!-- first run -->
@@ -9844,7 +9848,7 @@ function openReport(days){
    rather than reflowed. */
 function repFit(){
   var sheet = el('rep-sheet'); if (!sheet) return;
-  var avail = el('rep').clientWidth - 20;
+  var avail = el('rep-scroll').clientWidth - 20;
   sheet.style.zoom = Math.min(1, avail / 703).toFixed(3);
 }
 window.addEventListener('resize', function(){
@@ -14274,7 +14278,7 @@ function renderOffResults(q, via){
 /* Bumped on every deploy. When something fails, knowing which build is
    actually loaded is the difference between debugging the bug and debugging
    a stale cache. */
-var APP_VERSION = '2026.09.04-61';
+var APP_VERSION = '2026.09.04-62';
 var SB_URL = 'https://lsrxqviwgqjpuzzcqcpu.supabase.co';
 var SB_KEY = 'sb_publishable_0lk-0UAlfW-tALEgPiqFHg_8vF9Hp63';
 var AUTH_KEY = 'eatandtrain.auth';
