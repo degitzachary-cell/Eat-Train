@@ -660,15 +660,25 @@ body.dragging{cursor:grabbing}
 #rep{display:none; position:fixed; inset:0; z-index:120; background:#E9E7E0; overflow-y:auto;
   -webkit-overflow-scrolling:touch}
 #rep.on{display:block}
-#rep-bar{position:sticky; top:0; z-index:2; display:flex; gap:8px; align-items:center;
-  padding:10px 14px; background:#1F2A22; color:#F5F2E9}
-#rep-bar b{font-size:12.5px; font-weight:600; margin-right:auto}
+/* At the bottom, where a thumb is. At the top it sat under the status bar on
+   a phone — the clock and the wifi icon printed straight over the buttons and
+   took the taps with them. */
+#rep-bar{position:fixed; left:0; right:0; bottom:0; z-index:2; display:flex; gap:8px;
+  align-items:center; padding:10px 14px calc(10px + env(safe-area-inset-bottom));
+  background:#1F2A22; color:#F5F2E9}
+#rep-bar b{font-size:12.5px; font-weight:600; margin-right:auto; min-width:0;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
 #rep-bar button{padding:7px 13px; border-radius:7px; font:inherit; font-size:12.5px;
   font-weight:700; border:1px solid #F5F2E9; background:none; color:#F5F2E9}
 #rep-bar button.go{background:#C8A96A; border-color:#C8A96A; color:#1F2A22}
-#rep-sheet{background:#fff; color:#1F2A22; max-width:186mm; margin:16px auto 40px;
+/* The sheet is a page, not a screen: it lays out at its printed width and is
+   scaled down to fit the phone, so what you check is what comes out. Letting
+   it reflow to 414px would wrap the header four ways and preview a document
+   that will never exist. */
+#rep-sheet{background:#fff; color:#1F2A22; width:186mm; margin:16px auto 40px;
   padding:13mm; font-family:'Hanken Grotesk',system-ui,sans-serif; font-size:12px;
   line-height:1.45; box-shadow:0 2px 10px rgba(20,20,19,.18)}
+#rep-scale{padding-bottom:calc(64px + env(safe-area-inset-bottom))}
 #rep-sheet .num, #rep-sheet .ser{font-family:'Newsreader',Georgia,serif; font-variant-numeric:tabular-nums}
 #rep-sheet h1,#rep-sheet h2,#rep-sheet h3{font-weight:inherit; font-size:inherit; margin:0}
 .rp-hd{display:flex; align-items:baseline; gap:14px; border-bottom:2px solid #1F2A22; padding-bottom:9px}
@@ -723,7 +733,10 @@ body.dragging{cursor:grabbing}
   body > *{display:none !important}
   body > #rep{display:block !important; position:static; inset:auto; background:none; overflow:visible}
   #rep-bar{display:none !important}
-  #rep-sheet{max-width:none; margin:0; padding:0; box-shadow:none}
+  /* important, so it beats the inline zoom the preview sets. */
+  #rep-sheet{width:auto !important; zoom:1 !important; max-width:none; margin:0; padding:0;
+    box-shadow:none}
+  #rep-scale{padding:0}
   .rp-foot{display:flex; position:fixed; bottom:0; left:0; right:0; justify-content:space-between;
     font-size:8.5px; letter-spacing:.14em; text-transform:uppercase; color:#8A8E7F}
   @page{size:A4; margin:13mm}
@@ -1434,7 +1447,7 @@ body.dragging{cursor:grabbing}
   <div id="rep-bar"><b id="rep-title">Coach report</b>
     <button id="rep-close">Close</button>
     <button class="go" id="rep-print">Print / Save PDF</button></div>
-  <div id="rep-sheet"></div>
+  <div id="rep-scale"><div id="rep-sheet"></div></div>
 </div>
 
 <!-- first run -->
@@ -9822,10 +9835,22 @@ var repWindow = 7;
 function openReport(days){
   repWindow = days;
   el('rep-sheet').innerHTML = renderReport(reportData(days));
-  el('rep-title').textContent = 'Coach report · last ' + days + ' days';
+  el('rep-title').textContent = days + '-day report';
   el('rep').classList.add('on');
   document.body.style.overflow = 'hidden';
+  repFit();
 }
+/* 186mm at 96dpi is 703px. Anything narrower gets the whole page scaled down
+   rather than reflowed. */
+function repFit(){
+  var sheet = el('rep-sheet'); if (!sheet) return;
+  var avail = el('rep').clientWidth - 20;
+  sheet.style.zoom = Math.min(1, avail / 703).toFixed(3);
+}
+window.addEventListener('resize', function(){
+  if (el('rep') && el('rep').classList.contains('on')) repFit();
+});
+
 function closeReport(){
   el('rep').classList.remove('on');
   document.body.style.overflow = '';
@@ -14249,7 +14274,7 @@ function renderOffResults(q, via){
 /* Bumped on every deploy. When something fails, knowing which build is
    actually loaded is the difference between debugging the bug and debugging
    a stale cache. */
-var APP_VERSION = '2026.09.04-60';
+var APP_VERSION = '2026.09.04-61';
 var SB_URL = 'https://lsrxqviwgqjpuzzcqcpu.supabase.co';
 var SB_KEY = 'sb_publishable_0lk-0UAlfW-tALEgPiqFHg_8vF9Hp63';
 var AUTH_KEY = 'eatandtrain.auth';
