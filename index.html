@@ -695,7 +695,11 @@ body.dragging{cursor:grabbing}
 .rp-who .nm{font-family:'Newsreader',Georgia,serif; font-size:16px}
 .rp-who .nm em{font-size:12px; color:#6E7568}
 .rp-who .win{font-size:10.5px; color:#6E7568; margin-left:auto}
-.rp-p{break-inside:avoid}
+/* Not break-inside:avoid. A panel that is taller than the space left on the
+   page jumps to the next one whole and leaves a hand's width of nothing
+   behind it — which is what made every page end early. Panels flow; only the
+   small things that would read as broken stay atomic. */
+.rp-p{}
 .rp-h{display:flex; align-items:center; gap:10px; margin:16px 0 6px}
 .rp-h span{font-size:9.5px; font-weight:700; letter-spacing:.2em; text-transform:uppercase;
   color:#8A6F3C; white-space:nowrap}
@@ -742,9 +746,21 @@ body.dragging{cursor:grabbing}
     box-shadow:none}
   #rep-scale{padding:0}
   .rp-foot{display:flex; position:fixed; bottom:0; left:0; right:0; justify-content:space-between;
+    background:#fff; padding-top:4px;
     font-size:8.5px; letter-spacing:.14em; text-transform:uppercase; color:#8A8E7F}
   @page{size:A4; margin:13mm}
-  .rp-p, .rp-day, .rp-box, tr{break-inside:avoid}
+  .rp-day, .rp-box, .rp-lv, .rp-tr, .rp-meal, .rp-tot, tr{break-inside:avoid}
+  /* On one continuous page there is nothing to break across, and these rules
+     only push a block past the end of it — which spilled the whole tail onto
+     a second sheet and defeated the point. */
+  .rep-long .rp-day, .rep-long .rp-box, .rep-long .rp-lv, .rep-long .rp-tr,
+  .rep-long .rp-meal, .rep-long .rp-tot, .rep-long tr{break-inside:auto}
+  .rep-long .rp-h, .rep-long .rp-th, .rep-long .rp-buck{break-after:auto}
+  .rep-long .rp-foot{position:static; margin-top:10px}
+  /* A heading never sits alone at the foot of a page. */
+  .rp-h{break-after:avoid}
+  .rp-th{break-after:avoid}
+  .rp-buck{break-after:avoid}
 }
 
 </style>
@@ -1451,7 +1467,8 @@ body.dragging{cursor:grabbing}
   <div id="rep-scroll"><div id="rep-scale"><div id="rep-sheet"></div></div></div>
   <div id="rep-bar"><b id="rep-title">Coach report</b>
     <button id="rep-close">Close</button>
-    <button class="go" id="rep-print">Print / Save PDF</button></div>
+    <button id="rep-a4">A4 pages</button>
+    <button class="go" id="rep-long">One page</button></div>
 </div>
 
 <!-- first run -->
@@ -9855,6 +9872,47 @@ window.addEventListener('resize', function(){
   if (el('rep') && el('rep').classList.contains('on')) repFit();
 });
 
+/* Two ways out, because they are two different objects. A4 pages are for
+   paper and for anyone who wants to hold it. One page is a single sheet as
+   long as the report — no breaks to land badly, no half-empty pages, and it
+   reads on a phone the way it looks on screen. The page box is set here
+   rather than in the stylesheet because its height is the content's. */
+function repPrint(mode){
+  var st = document.getElementById('rep-page');
+  if (!st){ st = document.createElement('style'); st.id = 'rep-page'; document.head.appendChild(st); }
+  if (mode === 'long'){
+    /* Measured in the geometry it will print in, not the one it is being
+       previewed in: full printed width, no sheet padding, no preview zoom.
+       Measuring the on-screen sheet gave a height for a narrower page and the
+       document spilled onto a second sheet anyway. */
+    var sheet = el('rep-sheet');
+    var was = {zoom:sheet.style.zoom, width:sheet.style.width, padding:sheet.style.padding};
+    /* The class first: it turns the running footer from fixed to static,
+       which adds to the height being measured. Measuring before applying it
+       came up seven millimetres short and spilled a second page. */
+    document.documentElement.classList.add('rep-long');
+    sheet.style.zoom = 1; sheet.style.width = '184mm'; sheet.style.padding = '0';
+    /* Measured under screen styles, where the running footer is still hidden
+       and the print-only rules have not applied — so the figure runs about a
+       centimetre under the printed height. The slack below covers that and
+       leaves a bottom margin rather than a second sheet. */
+    var mm = sheet.scrollHeight / (96 / 25.4);
+    sheet.style.zoom = was.zoom; sheet.style.width = was.width; sheet.style.padding = was.padding;
+    /* Measured against the real thing rather than reasoned about: for a
+       seven-day report the estimate came in 21 mm under the smallest page
+       that holds it on one sheet. The shortfall grows with the document, so
+       the allowance is proportional, plus the margins and the footer. */
+    st.textContent = '@page{size:210mm ' + (Math.ceil(mm * 1.03) + 34) + 'mm; margin:13mm}';
+  } else {
+    document.documentElement.classList.remove('rep-long');
+    st.textContent = '@page{size:A4; margin:13mm}';
+  }
+  window.print();
+}
+window.addEventListener('afterprint', function(){
+  document.documentElement.classList.remove('rep-long');
+});
+
 function closeReport(){
   el('rep').classList.remove('on');
   document.body.style.overflow = '';
@@ -14278,7 +14336,7 @@ function renderOffResults(q, via){
 /* Bumped on every deploy. When something fails, knowing which build is
    actually loaded is the difference between debugging the bug and debugging
    a stale cache. */
-var APP_VERSION = '2026.09.04-62';
+var APP_VERSION = '2026.09.04-63';
 var SB_URL = 'https://lsrxqviwgqjpuzzcqcpu.supabase.co';
 var SB_KEY = 'sb_publishable_0lk-0UAlfW-tALEgPiqFHg_8vF9Hp63';
 var AUTH_KEY = 'eatandtrain.auth';
@@ -14789,7 +14847,8 @@ function bind(){
   el('rep-3').addEventListener('click', function(){ openReport(3); });
   el('rep-7').addEventListener('click', function(){ openReport(7); });
   el('rep-close').addEventListener('click', closeReport);
-  el('rep-print').addEventListener('click', function(){ window.print(); });
+  el('rep-a4').addEventListener('click', function(){ repPrint('a4'); });
+  el('rep-long').addEventListener('click', function(){ repPrint('long'); });
 
   /* delegated: everything that lives in re-rendered HTML */
   document.addEventListener('click', function(ev){
