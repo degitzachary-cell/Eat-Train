@@ -1112,9 +1112,12 @@ body.dragging{cursor:grabbing}
     <p class="note">One window of your log, laid out for someone reading it away from the app —
       energy, macros, body markers, micronutrients and training. Always in Calories, whichever
       unit you use here.</p>
-    <div class="btnrow" style="margin-top:12px">
-      <button class="btn sm" id="rep-3" style="flex:1">Last 3 days</button>
-      <button class="btn sm" id="rep-7" style="flex:1">Last 7 days</button>
+    <label class="f" style="margin-top:12px"><span>Last day of the report</span>
+      <input type="date" id="rep-end"></label>
+    <p class="hint" id="rep-span" style="margin:-4px 0 10px">&mdash;</p>
+    <div class="btnrow">
+      <button class="btn sm" id="rep-3" style="flex:1">3 days</button>
+      <button class="btn sm" id="rep-7" style="flex:1">7 days</button>
     </div>
   </div>
 
@@ -9846,10 +9849,32 @@ function renderReport(r){
   return html;
 }
 
-var repWindow = 7;
+var repWindow = 7, repEnd = null;
+
+/* The report ends on the day the coach chooses, not on whatever today happens
+   to be. Generating at 12:30 am, "today" is a few hours of one meal — so the
+   picker defaults to yesterday, the last full day, and never runs past today. */
+function repEndISO(){
+  var v = el('rep-end') && el('rep-end').value;
+  var t = todayISO();
+  if (!v) return shiftISO(t, -1);
+  return v > t ? t : v;                          /* never the future */
+}
+function repSpan(end, days){
+  var start = shiftISO(end, -(days - 1));
+  return repDate(start, 1) + ' – ' + repDate(end, 1);
+}
+function refreshRepSpan(){
+  var line = el('rep-span'); if (!line) return;
+  var end = repEndISO();
+  line.innerHTML = '<b>3 days</b> ' + esc(repSpan(end, 3)) +
+    ' &nbsp;·&nbsp; <b>7 days</b> ' + esc(repSpan(end, 7));
+}
+
 function openReport(days){
   repWindow = days;
-  el('rep-sheet').innerHTML = renderReport(reportData(days));
+  repEnd = repEndISO();
+  el('rep-sheet').innerHTML = renderReport(reportData(days, repEnd));
   el('rep-title').textContent = days + '-day report';
   el('rep').classList.add('on');
   document.body.style.overflow = 'hidden';
@@ -10026,7 +10051,7 @@ function jpegBytes(cv){
 var PT = 72 / 25.4;                 /* points per millimetre */
 function repDeliver(pdf){
   var blob = new Blob([pdf], {type:'application/pdf'});
-  var name = 'truecount-' + repWindow + 'day-' + todayISO() + '.pdf';
+  var name = 'truecount-' + repWindow + 'day-' + (repEnd || todayISO()) + '.pdf';
   var file = null;
   try { file = new File([blob], name, {type:'application/pdf'}); } catch(e){}
   if (file && navigator.canShare && navigator.canShare({files:[file]})){
@@ -11790,6 +11815,13 @@ function renderTrends(){
         (weekly > 0 ? '+' : '') + g(weekly, 2) + ' kg/wk</div></div>';
   }
 
+  var re = el('rep-end');
+  if (re){
+    re.max = todayISO();
+    if (!re.value) re.value = shiftISO(todayISO(), -1);
+    else if (re.value > re.max) re.value = re.max;
+    refreshRepSpan();
+  }
   drawEnergyChart();
   drawWeightChart();
   drawCompChart();
@@ -14549,7 +14581,7 @@ function renderOffResults(q, via){
 /* Bumped on every deploy. When something fails, knowing which build is
    actually loaded is the difference between debugging the bug and debugging
    a stale cache. */
-var APP_VERSION = '2026.09.05-71';
+var APP_VERSION = '2026.09.05-72';
 var SB_URL = 'https://lsrxqviwgqjpuzzcqcpu.supabase.co';
 var SB_KEY = 'sb_publishable_0lk-0UAlfW-tALEgPiqFHg_8vF9Hp63';
 var AUTH_KEY = 'eatandtrain.auth';
@@ -15057,6 +15089,8 @@ function bind(){
     }
   });
 
+  el('rep-end').addEventListener('change', refreshRepSpan);
+  el('rep-end').addEventListener('input', refreshRepSpan);
   el('rep-3').addEventListener('click', function(){ openReport(3); });
   el('rep-7').addEventListener('click', function(){ openReport(7); });
   el('rep-close').addEventListener('click', closeReport);
