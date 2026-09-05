@@ -8458,7 +8458,7 @@ var CAT_SERVES = {
 /* Portions offered for a food, always ending with the raw 100 g / 100 mL unit
    and a free-entry option so nothing is ever un-loggable. */
 function serveOptions(f){
-  if (f.serves) return f.serves.concat([{label:'g — type the amount', g:1, raw:true}]);
+  if (f.serves) return f.serves.concat([{label:(f.liquid ? 'mL' : 'g') + ' — type the amount', g:1, raw:true}]);
   /* FSANZ's own measures come first where they exist. The hand-written rules
      below still run afterwards, since AUSNUT records the sizes the survey met
      and misses local ones — it has no schooner. Anything within 8% of a weight
@@ -13782,6 +13782,7 @@ function onBarcode(code){
    the per-100 basis they are stored on, in whichever energy unit is on screen.
    ------------------------------------------------------------------------- */
 var customIdx = null, customMicro = null, customOwnMicro = null, customOwnExtra = null;
+var customLiquid = false, customServeG = 0;
 
 /* Shown as a choice rather than as twenty-seven more boxes, because nobody is
    typing twenty-seven boxes off a tub of yoghurt and the honest answer is
@@ -13870,6 +13871,12 @@ function openCustom(i){
   customMicro = c && c.microFrom ? c.microFrom : null;
   customOwnMicro = c && c.m && Object.keys(c.m).length ? c.m : null;
   customOwnExtra = (c && c.x && c.x.length) ? c.x.slice() : null;
+  /* Editing keeps what the scan found: the millilitre wording and the serve
+     size survive a re-save instead of reverting to grams and 100. */
+  customLiquid = !!(c && c.liquid);
+  customServeG = (c && c.serves && c.serves[0] && c.serves[0].g !== 100) ? c.serves[0].g : 0;
+  if (customServeG) el('c-serveg').value = g(customServeG, customServeG < 10 ? 1 : 0);
+  panelUnitLabels();
   panelStatus('', false);
   renderCustomMicro();
   sheet('sh-custom');
@@ -13920,11 +13927,12 @@ var PANEL_SYSTEM =
   'You read Australian and New Zealand Nutrition Information Panels from a photograph.\n\n' +
   'Reply with JSON Lines: one complete JSON object per line, nothing else. No prose, no ' +
   'markdown, no code fences, no wrapping array. Emit each line as soon as you are sure of it.\n\n' +
-  'Order: name, then serve_g and serves, then the eight rows every panel must carry — kj, ' +
+  'Order: name, then unit, then serve_g and serves, then the eight rows every panel must carry — kj, ' +
   'protein, fat, sat, carbs, sugars, fibre, sodium — and only then anything else the panel ' +
   'declares. Sodium is on every Australian panel; do not leave it out.\n\n' +
   'Line shapes:\n' +
   '  {"f":"name","v":"<product name, including the brand>"}\n' +
+  '  {"f":"unit","v":"g" or "ml"}   — is the panel written per 100 g or per 100 mL?\n' +
   '  {"f":"serve_g","v":<grams or millilitres in one serving>}\n' +
   '  {"f":"serves","v":<servings per package>}\n' +
   '  {"f":"<nutrient>","p100":<per 100 g>,"serve":<per serve>}\n\n' +
@@ -13933,6 +13941,10 @@ var PANEL_SYSTEM =
   '  ca mg · fe mg · mg mg · ph mg · k mg · zn mg · se ug · i ug\n' +
   '  va ug · vc mg · vd ug · ve mg · b1 mg · b2 mg · b3 mg · fol ug · b6 mg · b12 ug\n' +
   '  chol mg · caf mg · tfa mg\n\n' +
+  'A drink, gel or anything measured by volume is written "per 100mL" and its serving in mL — ' +
+  'report unit "ml" and read the millilitres. A solid is "per 100g"; report unit "g". When the ' +
+  'panel shows both a per-serve column and per-100, the serving size is the number of g or mL ' +
+  'in one serve — for this gel, 60.\n\n' +
   'Rules. Energy is kJ — if the panel gives only calories, multiply by 4.184. Sodium is mg. ' +
   '"Less than 1g" is 0. Omit any row the panel does not print rather than guessing it, and ' +
   'omit "serve" if the panel has no per-serve column. Report only what you can actually read; ' +
@@ -14009,6 +14021,19 @@ function panelSet(id, val){
   setTimeout(function(){ e.classList.remove('justread'); }, 1400);
 }
 
+/* The New food form is worded for grams by default; a panel read of a drink
+   or gel flips it to millilitres, so the serve size and the per-100 basis read
+   in the unit that is actually on the pack. */
+function panelUnitLabels(){
+  var u = customLiquid ? 'mL' : 'g';
+  var sw = el('c-serve-wrap'); if (sw){ var sp = sw.querySelector('span');
+    if (sp) sp.textContent = 'Serve size (' + u + ')'; }
+  var b100 = el('c-basis') && el('c-basis').querySelector('[data-basis="100"]');
+  if (b100) b100.textContent = 'Per 100 ' + u;
+  var bserve = el('c-basis') && el('c-basis').querySelector('[data-basis="serve"]');
+  if (bserve) bserve.textContent = 'Per serve';
+}
+
 function panelLine(obj){
   if (!obj || !obj.f) return;
   var c = panelCtx;
@@ -14022,9 +14047,15 @@ function panelLine(obj){
     }
     return;
   }
+  if (obj.f === 'unit'){
+    c.liquid = String(obj.v).toLowerCase().indexOf('ml') >= 0;
+    customLiquid = c.liquid;
+    panelUnitLabels();
+    return;
+  }
   if (obj.f === 'serve_g'){
     var sg = +obj.v;
-    if (sg > 0){ c.serveG = sg; el('c-serveg').value = g(sg, 1); c.got++; }
+    if (sg > 0){ c.serveG = sg; customServeG = sg; el('c-serveg').value = g(sg, 1); c.got++; }
     return;
   }
   if (obj.f === 'serves') return;                 /* read, not used yet */
@@ -14084,8 +14115,9 @@ function panelStatus(msg, busy){
 }
 
 function readPanel(dataUrl){
-  panelCtx = {got:0, serveG:0, micros:null, extra:null, done:false};
+  panelCtx = {got:0, serveG:0, micros:null, extra:null, liquid:false, done:false};
   customOwnMicro = null; customOwnExtra = null;
+  customLiquid = false; customServeG = 0; panelUnitLabels();
   panelStatus('Reading the panel…', true);
   var b64 = dataUrl.split(',')[1] || '';
 
@@ -14517,7 +14549,7 @@ function renderOffResults(q, via){
 /* Bumped on every deploy. When something fails, knowing which build is
    actually loaded is the difference between debugging the bug and debugging
    a stale cache. */
-var APP_VERSION = '2026.09.05-70';
+var APP_VERSION = '2026.09.05-71';
 var SB_URL = 'https://lsrxqviwgqjpuzzcqcpu.supabase.co';
 var SB_KEY = 'sb_publishable_0lk-0UAlfW-tALEgPiqFHg_8vF9Hp63';
 var AUTH_KEY = 'eatandtrain.auth';
@@ -15334,11 +15366,22 @@ function bind(){
     function v(id){ return Math.max(+el(id).value || 0, 0) * k; }
     var kjIn = v('c-kj') * (isKcal() ? KJ_PER_KCAL : 1);
     invalidateFoods();
-    var food = {name:name, cat:'Your foods', liquid:false,
+    var liquid = !!customLiquid;
+    var food = {name:name, cat:'Your foods', liquid:liquid,
       code:(el('c-code').value || '').replace(/\D/g, '') || null,
       kj:kjIn, p:v('c-p'), f:v('c-f'), sat:v('c-sat'), c:v('c-c'),
       sug:v('c-sug'), fib:v('c-fib'), na:v('c-na'), alc:0,
       microFrom: customMicro || null};
+    /* A serving size — read off the panel, or typed on the per-serve basis —
+       becomes the first, default portion, so a single-serve gel or drink logs
+       as one tap of "serve" instead of a fraction of 100. The unit follows
+       whether it is a liquid. */
+    var serveG = customServeG || (perServe ? sg : 0);
+    if (serveG > 0 && Math.abs(serveG - 100) > 0.5){
+      var u = liquid ? 'mL' : 'g';
+      food.serves = [{label:'serve (' + g(serveG, serveG < 10 ? 1 : 0) + ' ' + u + ')', g:serveG},
+                     {label:'100 ' + u, g:100}];
+    }
     if (customOwnExtra && customOwnExtra.length) food.x = customOwnExtra.slice();
     if (customOwnMicro){
       /* Only the rows the panel printed. A nutrient it never mentioned stays
@@ -15357,6 +15400,7 @@ function bind(){
       S.custom.push(food);
     }
     customIdx = null; customMicro = null; customOwnMicro = null; customOwnExtra = null;
+    customLiquid = false; customServeG = 0;
     save();
     ['c-name','c-code','c-kj','c-p','c-f','c-sat','c-c','c-sug','c-fib','c-na'].forEach(function(i){ el(i).value = ''; });
     el('c-hint').innerHTML = '';
