@@ -543,19 +543,30 @@ select{background-image:linear-gradient(45deg,transparent 50%,var(--ink-3) 50%),
 .sheet-bg{position:fixed; inset:0; z-index:60; background:rgba(4,10,7,.62);
   backdrop-filter:blur(2px); display:none}
 .sheet-bg.on{display:block}
-.sheet{position:fixed; left:0; right:0; bottom:0; z-index:61; max-height:92vh;
+/* --kb is how much of the layout viewport the keyboard is covering, --vvh how
+   tall what is left is. iOS does not shrink the page for the keyboard; it
+   scrolls the focused field into view and leaves anything fixed to the bottom
+   sitting behind the keys — which is where a two-row result list used to go. */
+.sheet{position:fixed; left:0; right:0; bottom:var(--kb, 0px); z-index:61;
+  max-height:min(92vh, var(--vvh, 92vh));
   background:var(--surface); border-radius:20px 20px 0 0; border-top:1px solid var(--accent);
   display:none; flex-direction:column; box-shadow:0 -10px 40px -14px rgba(0,0,0,.45)}
 .sheet.on{display:flex; animation:up .24s cubic-bezier(.2,.8,.3,1)}
 @keyframes up{from{transform:translateY(26px); opacity:.6}to{transform:none; opacity:1}}
 @media(min-width:600px){.sheet{left:50%; transform:translateX(-50%); width:560px; border-radius:20px;
-  bottom:24px; max-height:82vh}
+  bottom:calc(24px + var(--kb, 0px)); max-height:min(82vh, var(--vvh, 82vh))}
   .sheet.on{animation:none}}
 .sheet-head{display:flex; align-items:center; gap:10px; padding:13px 14px;
   border-bottom:1px solid var(--line); flex:none}
 .sheet-head h2{font-family:var(--disp); font-size:17px; font-weight:400; margin-right:auto}
-.sheet-body{overflow-y:auto; -webkit-overflow-scrolling:touch; padding:14px;
+.sheet-body{overflow-y:auto; -webkit-overflow-scrolling:touch; padding:14px; min-height:0;
   padding-bottom:calc(14px + env(safe-area-inset-bottom))}
+/* Above the keyboard there is no home indicator to clear, and no room to
+   spare; the categories go too while a search is being typed, unless one of
+   them is doing the filtering. */
+.kb-up .sheet-body{padding-bottom:14px}
+.kb-up .sheet-body.tight, .kb-up .searchfoot{padding-bottom:0}
+.kb-up #sh-search.typing .catrow{display:none}
 .sheet-body.tight{padding:0}
 
 .searchwrap{padding:11px 14px; border-bottom:1px solid var(--line); position:sticky; top:0;
@@ -9892,6 +9903,25 @@ window.addEventListener('resize', function(){
   if (el('rep') && el('rep').classList.contains('on')) repFit();
 });
 
+/* The visual viewport is the part of the page not under the keyboard. Its
+   bottom edge, in layout coordinates, is offsetTop + height; whatever the
+   window has below that is keys. Sheets pin to that edge instead of the
+   window's, so a list under a search field is drawn in the space above the
+   keyboard rather than behind it. Without visualViewport nothing changes. */
+function fitKeyboard(){
+  var vv = window.visualViewport; if (!vv) return;
+  var kb = Math.max(0, Math.round(window.innerHeight - vv.height - vv.offsetTop));
+  var root = document.documentElement;
+  root.style.setProperty('--kb', kb + 'px');
+  root.style.setProperty('--vvh', Math.round(vv.height) + 'px');
+  root.classList.toggle('kb-up', kb > 40);
+}
+if (window.visualViewport){
+  window.visualViewport.addEventListener('resize', fitKeyboard);
+  window.visualViewport.addEventListener('scroll', fitKeyboard);
+  fitKeyboard();
+}
+
 /* Two ways out, because they are two different objects.
 
    A4 pages go through the print dialog, which every engine can do.
@@ -13130,6 +13160,7 @@ function openSearch(meal, pick, title, back){
     (pickFood ? 'Borrow micronutrients from' : 'Add to ' +
      (MEALS.filter(function(m){ return m[0] === searchTarget; })[0] || ['','food'])[1].toLowerCase());
   el('q').value = ''; activeCat = '';
+  el('sh-search').classList.remove('typing');
   Array.prototype.forEach.call(el('cats').children, function(b){
     b.setAttribute('aria-pressed', b.dataset.cat === '' ? 'true' : 'false');
   });
@@ -14604,7 +14635,7 @@ function renderOffResults(q, via){
 /* Bumped on every deploy. When something fails, knowing which build is
    actually loaded is the difference between debugging the bug and debugging
    a stale cache. */
-var APP_VERSION = '2026.09.06-74';
+var APP_VERSION = '2026.09.06-75';
 var SB_URL = 'https://lsrxqviwgqjpuzzcqcpu.supabase.co';
 var SB_KEY = 'sb_publishable_0lk-0UAlfW-tALEgPiqFHg_8vF9Hp63';
 var AUTH_KEY = 'eatandtrain.auth';
@@ -15313,6 +15344,7 @@ function bind(){
 
   /* search */
   el('q').addEventListener('input', function(){
+    el('sh-search').classList.toggle('typing', !!el('q').value.trim() && !activeCat);
     clearTimeout(searchTimer);
     offResults = []; if (el('off-slot')) el('off-slot').innerHTML = '';
     searchTimer = setTimeout(runSearch, 110);
