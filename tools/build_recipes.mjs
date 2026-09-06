@@ -9,13 +9,16 @@ const MAP = JSON.parse(fs.readFileSync(path.join(ROOT,'tools','foodmap.json'),'u
 const SERVES = 2;   // written for one; doubled so a batch feeds two and one serve is the original
 
 const recipes = R.map(r => {
-  const items = r.items.map(([q, g, label]) => ({key:MAP[q], q, grams:+(g*SERVES).toFixed(1), label}));
+  // A recipe that states its own servings is already written for that many,
+  // so its weights go through as they are; the rest are doubled as before.
+  const serves = r.servings || SERVES, k = r.servings ? 1 : SERVES;
+  const items = r.items.map(([q, g, label]) => ({key:MAP[q], q, grams:+(g*k).toFixed(1), label}));
   const mods = (r.mods||[]).map(m => ({
     name:m.name, note:m.note,
-    set:(m.set||[]).map(([q,g]) => ({key:MAP[q], grams:+(g*SERVES).toFixed(1)})),
-    add:(m.add||[]).map(([q,g,label]) => ({key:MAP[q], grams:+(g*SERVES).toFixed(1), label}))
+    set:(m.set||[]).map(([q,g]) => ({key:MAP[q], grams:+(g*k).toFixed(1)})),
+    add:(m.add||[]).map(([q,g,label]) => ({key:MAP[q], grams:+(g*k).toFixed(1), label}))
   }));
-  return {name:r.name, servings:SERVES, cuisine:r.cuisine, base:r.base, time:r.time,
+  return {name:r.name, servings:serves, cuisine:r.cuisine, base:r.base, time:r.time,
           meal:r.meal, items, method:r.method, mods, check:r.check,
           // Carried through so a photograph or a partner kitchen's dish needs
           // no change to the pipeline, only a field in recipes.json.

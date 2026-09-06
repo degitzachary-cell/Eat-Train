@@ -1197,5 +1197,149 @@
     ]
    }
   ]
+ },
+ {
+  "name": "Slow-cooked lamb leg ragu",
+  "servings": 2,
+  "cuisine": "Italian",
+  "base": "pasta",
+  "time": 150,
+  "meal": [
+   "dinner"
+  ],
+  "check": {
+   "kcal": 1210,
+   "p": 76,
+   "c": 140,
+   "f": 38
+  },
+  "items": [
+   [
+    "lamb leg lean raw",
+    450,
+    "Diced lamb leg"
+   ],
+   [
+    "carrot mature peeled raw",
+    140,
+    "Carrots, 2 medium, finely diced"
+   ],
+   [
+    "onion mature brown peeled raw",
+    150,
+    "Brown onion, 1, finely diced"
+   ],
+   [
+    "celery fresh raw",
+    80,
+    "Celery, 2 small stalks, finely diced"
+   ],
+   [
+    "oil olive",
+    15,
+    "Olive oil, 1 tbsp"
+   ],
+   [
+    "butter",
+    20,
+    "Butter"
+   ],
+   [
+    "wine white cooked",
+    100,
+    "Dry white wine, 100 ml, reduced to almost dry"
+   ],
+   [
+    "milk cow fluid regular",
+    77,
+    "Milk, 75 ml"
+   ],
+   [
+    "tomato puree commercial",
+    100,
+    "Passata"
+   ],
+   [
+    "tomato canned in juice",
+    400,
+    "Tinned diced tomatoes, 1 tin"
+   ],
+   [
+    "stock liquid",
+    1000,
+    "Stock, 1 litre, added slowly"
+   ],
+   [
+    "oregano dried",
+    1,
+    "Dried oregano, 1 tsp"
+   ],
+   [
+    "salt",
+    6,
+    "Salt, 1 tsp"
+   ],
+   [
+    "pepper black ground",
+    1.2,
+    "Cracked black pepper, ½ tsp"
+   ],
+   [
+    "pasta plain dried",
+    300,
+    "Dried pasta, pappardelle or rigatoni"
+   ],
+   [
+    "cheese parmesan",
+    60,
+    "Parmesan, finely grated, at the table"
+   ]
+  ],
+  "method": [
+   "Prep the soffritto. Dice the carrots, onion and celery as fine as you can be bothered. Small pieces disappear into the sauce, big ones stay as chunks of vegetable.",
+   "Brown the lamb hard. Get a heavy pan properly hot with the olive oil. Brown the lamb in two or three batches, leaving space around each piece. Crowding steams it and you lose the fond, which is most of the flavour in a sauce this simple. Leg has less fat to render so keep the heat up and the batches small. Set the lamb aside.",
+   "Soften the vegetables. Drop the heat, add the butter to the same pan and cook the soffritto until soft and just starting to colour. Scrape at the browned bits as they loosen.",
+   "Deglaze with the wine. Pour it in and let it bubble hard until the pan is almost dry and the raw alcohol smell has gone.",
+   "Milk in. Return the lamb, add the milk and simmer gently until it's mostly absorbed. Traditional in a bolognese, softens the acidity of the tomato later, and it's calcium you're not otherwise getting.",
+   "Tomato and herbs. Add the passata, tinned tomatoes, oregano, salt and pepper. Stir and bring to a bare simmer.",
+   "Simmer, first 90 minutes. Add the stock a ladle at a time, keeping the meat properly submerged the whole way. Barest simmer, lid ajar. Lean cuts dry out if they sit above the liquid line.",
+   "Start checking. Push a piece against the side of the pan. If it gives with no resistance, stop adding stock and take it off the heat. If it's still firm, keep going and check every 15 minutes. Leg can go from right to overcooked inside half an hour, so don't leave it and forget.",
+   "Break up and taste. Break the meat up with two forks, leaving some chunks intact. Taste and correct the salt now, before the pasta water goes in.",
+   "Cook the pasta. Salt the water heavily and cook the pasta a minute short of the packet time. Save a mug of the water before you drain.",
+   "Bring it together. Pasta straight into the sauce with a splash of the cooking water. Toss over heat for a minute so it emulsifies and coats rather than sits. Finish with the parmesan at the table.",
+   "Leg has less collagen than shoulder or neck, so it won't shred into strands the same way. Expect tender chunks that break up when pushed. It also has a narrower window: tender, then dry and stringy, without much warning. Start checking at 90 minutes. A bay leaf in with the tomato is a decent addition. No need to skim, leg is lean enough that there won't be much on the surface."
+  ],
+  "mods": [
+   {
+    "name": "Less carbs",
+    "note": "A third less pasta. The ragu carries the plate on its own.",
+    "set": [
+     [
+      "pasta plain dried",
+      200
+     ]
+    ]
+   },
+   {
+    "name": "More carbs",
+    "note": "More pappardelle for a session day, with a bigger splash of pasta water to stretch the sauce.",
+    "set": [
+     [
+      "pasta plain dried",
+      400
+     ]
+    ]
+   },
+   {
+    "name": "More protein",
+    "note": "A third more lamb in the same pot. Brown it in an extra batch and keep it under the stock.",
+    "set": [
+     [
+      "lamb leg lean raw",
+      600
+     ]
+    ]
+   }
+  ]
  }
 ]
