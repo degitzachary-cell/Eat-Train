@@ -12453,8 +12453,12 @@ var itemsCtx = null;
 
 function openItems(ctx){
   itemsCtx = ctx;
+  /* label rides along: it is what the cook view puts in bold — "Diced lamb leg"
+     over the FSANZ name — and dropping it here would quietly rewrite every
+     ingredient of a recipe to its database name the first time it was edited. */
   itemsCtx.draft = (ctx.items || []).map(function(it){
-    return {key:it.key || '', name:it.name, grams:+it.grams || 0, liquid:!!it.liquid};
+    return {key:it.key || '', name:it.name, grams:+it.grams || 0,
+            liquid:!!it.liquid, label:it.label || ''};
   });
   el('items-title').textContent = ctx.title;
   renderItems();
@@ -12467,10 +12471,15 @@ function renderItems(){
     var f = resolveItem(it), unit = it.liquid ? 'mL' : 'g';
     var kj = f ? f.kj * (it.grams / 100) : 0;
     return '<div class="row" style="align-items:center">' +
-      '<div class="row-main"><div class="t">' + esc(it.name) + '</div>' +
-      '<div class="s">' + (f ? fmtE(kj) + ' ' + unitName() : 'not in the database any more') + '</div></div>' +
+      '<div class="row-main"><div class="t">' + esc(it.label || it.name) + '</div>' +
+      '<div class="s">' + (it.label ? esc(it.name) + ' · ' : '') +
+        (f ? fmtE(kj) + ' ' + unitName() : 'not in the database any more') + '</div></div>' +
+      /* Not g(): it groups thousands, and a number input shown "1,000" is not a
+         valid value, so the browser renders the field empty — a litre of stock
+         would look like an ingredient with no amount. */
       '<input type="number" inputmode="decimal" min="0" step="1" data-item="' + i + '" value="' +
-        g(it.grams, it.grams < 20 ? 1 : 0) + '" style="width:82px;text-align:right;padding:7px 8px">' +
+        (Math.round(it.grams * (it.grams < 20 ? 10 : 1)) / (it.grams < 20 ? 10 : 1)) +
+        '" style="width:82px;text-align:right;padding:7px 8px">' +
       '<span class="s" style="width:20px;color:var(--ink-3)">' + unit + '</span>' +
       '<button class="row-del" data-item-del="' + i + '" aria-label="Remove ' + esc(it.name) + '">' +
       '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">' +
@@ -12496,7 +12505,12 @@ function renderItems(){
     : '';
 
   el('items-body').innerHTML = headFields +
-    '<div class="pane" style="margin-bottom:14px">' + (rows || '<div class="empty">Nothing left</div>') + '</div>' +
+    '<div class="pane" style="margin-bottom:10px">' + (rows || '<div class="empty">Nothing left</div>') + '</div>' +
+    /* Weights and removals were the whole editor, which made it a subtractive
+       one: a recipe could only ever lose an ingredient. */
+    '<button class="btn sm ghost" id="items-add" style="margin-bottom:14px">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+      'width="14" height="14"><path d="M12 5v14M5 12h14"/></svg>Add ingredient</button>' +
     (t.missing && t.missing.length
       ? '<p class="hint" style="color:var(--warn);margin-bottom:10px">' + t.missing.length +
         ' ingredient' + (t.missing.length === 1 ? '' : 's') + ' could not be found in the food ' +
@@ -12598,6 +12612,13 @@ function sheet(id){
 }
 function closeSheet(){
   if (openSheet === 'sh-scan') stopScan();
+  /* Backing out of a picker is not the same as being done. Whatever sent you
+     looking is still half-finished behind it, and closing the search outright
+     would throw that away — a changed weight, a half-typed panel. */
+  if (openSheet === 'sh-search' && pickBack){
+    var back = pickBack; pickBack = null; pickFood = null;
+    back(); return;
+  }
   if (openSheet){ el(openSheet).classList.remove('on'); openSheet = null; }
   el('sheet-bg').classList.remove('on');
   document.body.style.overflow = '';
@@ -13100,12 +13121,14 @@ function renderCats(){
   el('cats').innerHTML = '<button data-cat="" aria-pressed="true">All</button>' +
     ks.map(function(k){ return '<button data-cat="' + esc(k) + '" aria-pressed="false">' + esc(k) + '</button>'; }).join('');
 }
-var pickFood = null;
-function openSearch(meal, pick){
+var pickFood = null, pickBack = null;
+function openSearch(meal, pick, title, back){
   pickFood = pick || null;
+  pickBack = back || null;
   searchTarget = meal || 'snack';
-  el('sh-search-title').textContent = pickFood ? 'Borrow micronutrients from' : 'Add to ' +
-    (MEALS.filter(function(m){ return m[0] === searchTarget; })[0] || ['','food'])[1].toLowerCase();
+  el('sh-search-title').textContent = title ||
+    (pickFood ? 'Borrow micronutrients from' : 'Add to ' +
+     (MEALS.filter(function(m){ return m[0] === searchTarget; })[0] || ['','food'])[1].toLowerCase());
   el('q').value = ''; activeCat = '';
   Array.prototype.forEach.call(el('cats').children, function(b){
     b.setAttribute('aria-pressed', b.dataset.cat === '' ? 'true' : 'false');
@@ -14581,7 +14604,7 @@ function renderOffResults(q, via){
 /* Bumped on every deploy. When something fails, knowing which build is
    actually loaded is the difference between debugging the bug and debugging
    a stale cache. */
-var APP_VERSION = '2026.09.06-73';
+var APP_VERSION = '2026.09.06-74';
 var SB_URL = 'https://lsrxqviwgqjpuzzcqcpu.supabase.co';
 var SB_KEY = 'sb_publishable_0lk-0UAlfW-tALEgPiqFHg_8vF9Hp63';
 var AUTH_KEY = 'eatandtrain.auth';
@@ -15157,6 +15180,22 @@ function bind(){
       return;
     }
     if (t.closest('#items-save')){ saveItems(); return; }
+    /* The search sheet replaces this one rather than stacking on it, so the
+       draft has to be what survives the trip — it is held in itemsCtx, not in
+       the DOM, and the half-typed name and serving count are still sitting in
+       the inputs when the sheet comes back. */
+    if (t.closest('#items-add')){
+      if (!itemsCtx) return;
+      openSearch('snack', function(f){
+        var first = serveOptions(f)[0];
+        itemsCtx.draft.push({key:f.key || '', name:f.name,
+          grams:(first && !first.raw ? first.g : 100), liquid:!!f.liquid, label:''});
+        sheet('sh-items');
+        renderItems();
+        toast('Added ' + f.name + '. Set the amount.');
+      }, 'Add an ingredient', function(){ sheet('sh-items'); renderItems(); });
+      return;
+    }
     var idel = t.closest('[data-item-del]');
     if (idel){ itemsCtx.draft.splice(+idel.dataset.itemDel, 1); renderItems(); return; }
     var mv = t.closest('[data-move]');
@@ -15225,7 +15264,7 @@ function bind(){
     var res = t.closest('[data-food]');
     if (res){
       var f = foodByName(res.dataset.food);
-      if (f && pickFood){ var cb = pickFood; pickFood = null; cb(f); return; }
+      if (f && pickFood){ var cb = pickFood; pickFood = null; pickBack = null; cb(f); return; }
       if (f) openQty(f);
       return;
     }
@@ -15339,16 +15378,19 @@ function bind(){
       .forEach(function(id){ draft[id] = el(id).value; });
     var basis = el('c-basis').querySelector('[aria-pressed="true"]').dataset.basis;
     var serveg = el('c-serveg').value;
-    openSearch('snack', function(f){
-      customMicro = f.key ? {key:f.key, name:f.name} : null;
-      if (!f.key) toast('That one has no key to borrow from.');
+    var restore = function(){
       sheet('sh-custom');
       Object.keys(draft).forEach(function(id){ el(id).value = draft[id]; });
       press('c-basis', 'basis', basis);
       el('c-serve-wrap').hidden = basis !== 'serve';
       el('c-serveg').value = serveg;
       renderCustomMicro();
-    });
+    };
+    openSearch('snack', function(f){
+      customMicro = f.key ? {key:f.key, name:f.name} : null;
+      if (!f.key) toast('That one has no key to borrow from.');
+      restore();
+    }, null, restore);
   });
   el('scan-panel').addEventListener('click', function(){
     var video = el('scan-video');
