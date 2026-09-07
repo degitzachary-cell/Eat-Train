@@ -547,14 +547,17 @@ select{background-image:linear-gradient(45deg,transparent 50%,var(--ink-3) 50%),
    tall what is left is. iOS does not shrink the page for the keyboard; it
    scrolls the focused field into view and leaves anything fixed to the bottom
    sitting behind the keys — which is where a two-row result list used to go. */
+/* The visible height runs under the status bar when the app is installed, so
+   a sheet allowed all of it would put its close button behind the clock. */
 .sheet{position:fixed; left:0; right:0; bottom:var(--kb, 0px); z-index:61;
-  max-height:min(92vh, var(--vvh, 92vh));
+  max-height:min(92vh, calc(var(--vvh, 92vh) - env(safe-area-inset-top, 0px) - 12px));
   background:var(--surface); border-radius:20px 20px 0 0; border-top:1px solid var(--accent);
   display:none; flex-direction:column; box-shadow:0 -10px 40px -14px rgba(0,0,0,.45)}
 .sheet.on{display:flex; animation:up .24s cubic-bezier(.2,.8,.3,1)}
 @keyframes up{from{transform:translateY(26px); opacity:.6}to{transform:none; opacity:1}}
 @media(min-width:600px){.sheet{left:50%; transform:translateX(-50%); width:560px; border-radius:20px;
-  bottom:calc(24px + var(--kb, 0px)); max-height:min(82vh, var(--vvh, 82vh))}
+  bottom:calc(24px + var(--kb, 0px));
+  max-height:min(82vh, calc(var(--vvh, 82vh) - env(safe-area-inset-top, 0px) - 36px))}
   .sheet.on{animation:none}}
 .sheet-head{display:flex; align-items:center; gap:10px; padding:13px 14px;
   border-bottom:1px solid var(--line); flex:none}
@@ -14635,7 +14638,7 @@ function renderOffResults(q, via){
 /* Bumped on every deploy. When something fails, knowing which build is
    actually loaded is the difference between debugging the bug and debugging
    a stale cache. */
-var APP_VERSION = '2026.09.06-75';
+var APP_VERSION = '2026.09.07-76';
 var SB_URL = 'https://lsrxqviwgqjpuzzcqcpu.supabase.co';
 var SB_KEY = 'sb_publishable_0lk-0UAlfW-tALEgPiqFHg_8vF9Hp63';
 var AUTH_KEY = 'eatandtrain.auth';
