@@ -9222,6 +9222,14 @@ function dayEnergy(iso){
           remaining:target - eaten, balance:burn - eaten, goal:goal,
           measured:mb !== null, coached:!!coach, periodise:pf};
 }
+/* The resting-day target: what today would ask for with no session in it and
+   nothing moving it around the week. The coach measures against this, and
+   seeds from it — not from dayEnergy().target, which has today's training in
+   it, and would put that training into the base to be added again tomorrow. */
+function restBase(){
+  var e = dayEnergy(todayISO());
+  return e.base * e.goal.mult;
+}
 /* --------------------------- carb periodisation ---------------------------
    Training energy already lifts a session day's target, so carbs rise on hard
    days by themselves — protein and fat are fixed per kilogram, so carbs absorb
@@ -9294,7 +9302,7 @@ function coachAdherence(){
   var days = lastDays(CHECK_DAYS, todayISO());
   var logged = days.filter(function(d){ return dayTotals(d).kj > 0; });
   var c = coachState();
-  var ref = c.target || dayEnergy(todayISO()).target;
+  var ref = c.target || restBase();
   var hits = logged.filter(function(d){
     var k = dayTotals(d).kj;
     return ref > 0 && Math.abs(k - ref) / ref <= 0.15;
@@ -9310,7 +9318,7 @@ function coachProposal(){
   var rate = trendRate(21);
   var goal = S.profile.goal || 'maintain';
   var want = (GOAL_RATE[goal] || 0) * bodyKg();          // kg per week wanted
-  var cur = c.target || dayEnergy(todayISO()).target;
+  var cur = c.target || restBase();
   var out = {adh:adh, rate:rate, want:want, current:cur, next:cur, delta:0, why:'', ok:false};
 
   if (adh.coverage < 0.7){
@@ -9351,6 +9359,29 @@ function coachAccept(){
   c.last = todayISO();
   save(); renderAll();
   toast('Target set to ' + fmtE(p.next, true) + ' a day.');
+}
+/* Before restBase() the first check-in seeded from the whole of that day's
+   target, training included, and stored it as the resting base — so that
+   day's session was counted again on top, every day after. The seed date is
+   on the oldest adjustment and that day's training is still recorded, so the
+   base it should have been can be recovered and every later step moved with
+   it. Where the day's training no longer squares with the record — a session
+   logged after the check-in — today's resting base stands in. Runs once. */
+function repairCoachSeed(){
+  var c = S.coach;
+  if (!c || c.seedFixed || !c.target || !c.history || !c.history.length) return;
+  var first = c.history[c.history.length - 1];
+  var pf = periodiseFactor(first.d) || 1;
+  var want = (first.from - dayTraining(first.d)) / pf;
+  var sane = restBase();
+  if (!(sane > 0)) return;                              // no body yet to measure against
+  if (Math.abs(want - sane) > sane * 0.15) want = sane;
+  var shift = want - first.from;
+  c.seedFixed = 1;
+  if (Math.abs(shift) < 1) return;                      // nothing was double counted
+  c.history.forEach(function(x){ x.from += shift; x.to += shift; });
+  c.target = Math.max(c.target + shift, rmr());
+  save();
 }
 function coachSkip(){
   var c = coachState();
@@ -14638,7 +14669,7 @@ function renderOffResults(q, via){
 /* Bumped on every deploy. When something fails, knowing which build is
    actually loaded is the difference between debugging the bug and debugging
    a stale cache. */
-var APP_VERSION = '2026.09.07-76';
+var APP_VERSION = '2026.09.07-77';
 var SB_URL = 'https://lsrxqviwgqjpuzzcqcpu.supabase.co';
 var SB_KEY = 'sb_publishable_0lk-0UAlfW-tALEgPiqFHg_8vF9Hp63';
 var AUTH_KEY = 'eatandtrain.auth';
@@ -14935,7 +14966,7 @@ function syncNow(){
         S.ui.microFill = 0;
         backfillMicros();
       }
-      if (d.coach) S.coach = d.coach;
+      if (d.coach){ S.coach = d.coach; repairCoachSeed(); }
       S.profileU = tsOf(rProf[0].updated_at);
       /* A profile stored before the flag existed still describes a real body,
          and pulling it must not send a returning user back through setup. */
@@ -16032,6 +16063,7 @@ bindOnboard();
 backfillRecipeKeys();
 seedRecipes();
 backfillMicros();
+repairCoachSeed();
 /* Online lookup used to be off until you found it. It is on from here, which
    only puts the button in the search sheet — a request still needs your tap,
    still carries the search text and nothing else, and the switch is still in
