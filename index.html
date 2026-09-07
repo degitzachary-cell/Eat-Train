@@ -8611,6 +8611,7 @@ var DERIVED = `
 Kiwifruit, green (hayward), unpeeled, raw|16|230|1.2|0.7|0.17|9.1|8.8|4.5|2|0|0|28|0.26|15|31|279|0.1|1.3|0.5|9|85|0|1.43|0|0.05|0.35|43|0.36|0|0|0|0|0.06|0.14|0|0|0|0|D000001
 Kiwifruit, gold, unpeeled, raw|16|244|1.2|0.5|0|11.1|10.9|2.7|3|0|0|18|0.21|14|26|306|0.11|0.4|0.5|8|110|0|1.29|0.02|0.05|0.63|52|0.05|0|0|0|0|0|0|0|0|0|0|D000002
 Bread, light rye sourdough, bakery|12|1057|9|2.4|0.52|45.6|2.2|5.2|430|0|0|51|1.67|37|115|143|1|10|59|1|0|0|0.21|0.218|0.053|2.76|320|0.08|0|0|0|0|0.85|0.1|0|13|0|161|D000003
+Croissant, almond, with caramel praline, bakery|13|1707|10.7|23.5|8.96|37.4|16.5|4|316|0|0|80.5|1.48|68.7|148.6|244.9|1.44|5.84|1.09|95|0|0|4.95|0.105|0.076|3.42|37.1|0.049|0.085|11.9|0|5.08|3.09|0.149|15.4|632.2|91.6|0|D000004
 `;
 /* One whole fruit against FSANZ's 78 g of peeled flesh: skin is around an
    eighth of a kiwifruit by weight. */
@@ -8618,6 +8619,7 @@ var DERIVED_MEASURES = `
 D000001|kiwifruit:90
 D000002|kiwifruit:90
 D000003|slice:45;slice thin:35;slice thick:60
+D000004|croissant, artisan:165;croissant, small:120;croissant, large:200
 `;
 DERIVED_MEASURES.trim().split('\n').forEach(function(line){
   var i = line.indexOf('|'); if (i < 0) return;
@@ -8634,7 +8636,12 @@ var DERIVED_NOTES = {
   D000003: 'Bakeries do not publish a panel for fresh unpackaged bread, so these are the FSANZ ' +
     'figures for analysed light rye — a light rye sourdough is the same flour, water and salt, ' +
     'and long fermentation changes how the starch is digested, not the kilojoules, protein or ' +
-    'carbohydrate on the plate. Portioned by the slice. Not the bakery\'s own numbers.'
+    'carbohydrate on the plate. Portioned by the slice. Not the bakery\'s own numbers.',
+  D000004: 'An artisan almond croissant with a set caramel praline crust, which no bakery ' +
+    'publishes a panel for. Built from the analysed FSANZ almond croissant at 140 g plus 25 g ' +
+    'of praline, taken as the standard half toasted almond, half caramelised sugar. The pastry ' +
+    'is the uncertainty, not the praline: bakery croissants run 100 to 170 g, so weigh yours ' +
+    'and use the gram amount if you want it exact. Derived, not analysed.'
 };
 var DERIVED_FOODS = DERIVED.trim().split('\n').map(function(l, i){
   var f = parseFoodLine(l, 'd', i);
@@ -14669,7 +14676,7 @@ function renderOffResults(q, via){
 /* Bumped on every deploy. When something fails, knowing which build is
    actually loaded is the difference between debugging the bug and debugging
    a stale cache. */
-var APP_VERSION = '2026.09.07-77';
+var APP_VERSION = '2026.09.07-78';
 var SB_URL = 'https://lsrxqviwgqjpuzzcqcpu.supabase.co';
 var SB_KEY = 'sb_publishable_0lk-0UAlfW-tALEgPiqFHg_8vF9Hp63';
 var AUTH_KEY = 'eatandtrain.auth';
