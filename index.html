@@ -12238,6 +12238,20 @@ var SEED_RECIPES = JSON.parse(`[{"name":"Pad grapao","servings":2,"items":[{"key
    matched on the key each carries rather than on its name, so renaming one or
    rewriting its ingredients keeps your version — the check is whether the
    recipe is there at all, not whether it is untouched. */
+/* A recipe needs a name-independent identity before it can be a row of its
+   own: renaming one must move the row, not orphan it and write a second. */
+function ridFor(r){
+  if (r.rid) return r.rid;
+  r.rid = r.bi ? 'b:' + r.bi
+               : 'r:' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  return r.rid;
+}
+function stampRecipeIds(){
+  var dirty = false;
+  (S.recipes || []).forEach(function(r){ if (!r.rid){ ridFor(r); dirty = true; } });
+  (S.recipeGone || []).forEach(function(){});
+  if (dirty) save();
+}
 function seedRecipes(){
   var have = {};
   (S.recipes || []).forEach(function(r){ if (r.bi) have[r.bi] = 1; });
@@ -14676,7 +14690,7 @@ function renderOffResults(q, via){
 /* Bumped on every deploy. When something fails, knowing which build is
    actually loaded is the difference between debugging the bug and debugging
    a stale cache. */
-var APP_VERSION = '2026.09.07-78';
+var APP_VERSION = '2026.09.08-79';
 var SB_URL = 'https://lsrxqviwgqjpuzzcqcpu.supabase.co';
 var SB_KEY = 'sb_publishable_0lk-0UAlfW-tALEgPiqFHg_8vF9Hp63';
 var AUTH_KEY = 'eatandtrain.auth';
@@ -14889,10 +14903,14 @@ function bodyOf(o){
   for (var k in o) if (k !== 'u') c[k] = o[k];
   return JSON.stringify(c);
 }
+/* Recipes used to ride inside the profile as one blob, which made them all
+   one row with one timestamp: a device that stamped its profile newer — a
+   reinstall that went through setup before signing in — pushed its whole
+   recipe list over the server's. They are rows now, like days and foods. */
 function stampChanges(){
   var now = Date.now();
-  var prev = _snap || {days:{}, weights:{}, foods:{}, profile:''};
-  var next = {days:{}, weights:{}, foods:{}, profile:''};
+  var prev = _snap || {days:{}, weights:{}, foods:{}, recipes:{}, profile:''};
+  var next = {days:{}, weights:{}, foods:{}, recipes:{}, profile:''};
 
   Object.keys(S.days).forEach(function(d){
     var b = bodyOf(S.days[d]); next.days[d] = b;
@@ -14907,8 +14925,14 @@ function stampChanges(){
     var b = bodyOf(f); next.foods[f.name] = b;
     if (prev.foods[f.name] !== b || !f.u) f.u = now;
   });
+  (S.recipes || []).forEach(function(r){
+    var id = ridFor(r), b = bodyOf(r); next.recipes[id] = b;
+    if (prev.recipes[id] !== b || !r.u) r.u = now;
+  });
+  /* The profile no longer carries the recipe list, so editing a recipe does
+     not restamp the profile and a stale profile cannot carry recipes away. */
   var pb = JSON.stringify({p:S.profile, fav:S.fav, recent:S.recent, runLast:S.runLast,
-                           recipes:S.recipes, coach:S.coach});
+                           coach:S.coach, recipeGone:S.recipeGone});
   next.profile = pb;
   if (prev.profile !== pb) S.profileU = now;
   else if (!S.profileU) S.profileU = now;
@@ -14929,9 +14953,11 @@ function syncNow(){
     sbRest('et_days?select=d,data,updated_at'),
     sbRest('et_weights?select=*'),
     sbRest('et_foods?select=name,data,updated_at'),
-    sbRest('et_profile?select=data,updated_at')
+    sbRest('et_profile?select=data,updated_at'),
+    sbRest('et_recipes?select=rid,data,deleted,updated_at')
   ]).then(function(r){
-    var rDays = r[0] || [], rWts = r[1] || [], rFoods = r[2] || [], rProf = r[3] || [];
+    var rDays = r[0] || [], rWts = r[1] || [], rFoods = r[2] || [], rProf = r[3] || [],
+        rRecs = r[4] || [];
     var pulled = 0;
 
     rDays.forEach(function(row){
@@ -14957,23 +14983,53 @@ function syncNow(){
         pulled++;
       }
     });
+    S.recipes = S.recipes || [];
+    S.recipeGone = S.recipeGone || {};
+    rRecs.forEach(function(row){
+      var rt = tsOf(row.updated_at);
+      var i = S.recipes.findIndex(function(x){ return x.rid === row.rid; });
+      if (row.deleted){
+        /* Deleted elsewhere. Drop it here unless this device has since
+           changed it, which is a revival rather than a stale copy. */
+        if (i >= 0 && rt > (S.recipes[i].u || 0)){ S.recipes.splice(i, 1); pulled++; }
+        if (!(S.recipeGone[row.rid] > rt)) S.recipeGone[row.rid] = rt;
+        return;
+      }
+      if (S.recipeGone[row.rid] >= rt) return;      // deleted here, and since
+      if (i < 0 || rt > (S.recipes[i].u || 0)){
+        var rec = row.data; rec.rid = row.rid; rec.u = rt;
+        if (i < 0) S.recipes.push(rec); else S.recipes[i] = rec;
+        pulled++;
+      }
+    });
+    /* One migration: a profile written before recipes had rows still carries
+       the list, and it is the only copy those recipes have. Adopt any the
+       rows did not already supply, then let the rows own them from here. */
+    if (rProf.length && (rProf[0].data || {}).recipes && !rRecs.length){
+      (rProf[0].data.recipes || []).forEach(function(rec){
+        var id = ridFor(rec);
+        if (S.recipeGone[id]) return;
+        if (!S.recipes.some(function(x){ return x.rid === id; })){
+          rec.u = tsOf(rProf[0].updated_at); S.recipes.push(rec); pulled++;
+        }
+      });
+    }
     if (rProf.length && tsOf(rProf[0].updated_at) > (S.profileU || 0)){
       var d = rProf[0].data || {};
       if (d.p) S.profile = d.p;
       if (d.fav) S.fav = d.fav;
       if (d.recent) S.recent = d.recent;
       if (d.runLast) S.runLast = d.runLast;
-      if (d.recipes){
-        S.recipes = d.recipes;
-        /* A pull can arrive without the recipes that ship with the app — from
-           a device that predates them, or one they were deleted on before
-           they were protected. They go back in. */
-        seedRecipes();
-        /* Days pulled from another device can predate a nutrient here too. */
-        S.ui.microFill = 0;
-        backfillMicros();
+      if (d.recipeGone){
+        Object.keys(d.recipeGone).forEach(function(k){
+          if (!(S.recipeGone[k] > d.recipeGone[k])) S.recipeGone[k] = d.recipeGone[k];
+        });
       }
+      /* Days pulled from another device can predate a nutrient here. */
+      S.ui.microFill = 0;
+      backfillMicros();
       if (d.coach){ S.coach = d.coach; repairCoachSeed(); }
+      seedRecipes();
       S.profileU = tsOf(rProf[0].updated_at);
       /* A profile stored before the flag existed still describes a real body,
          and pulling it must not send a returning user back through setup. */
@@ -15003,7 +15059,23 @@ function syncNow(){
         var c = {}; for (var k in f) if (k !== 'u') c[k] = f[k];
         return {user_id:uid, name:f.name, data:c, updated_at:new Date(f.u).toISOString()};
       });
-    var pushed = pushDays.length + pushWts.length + pushFoods.length;
+    var remoteRec = {};
+    rRecs.forEach(function(x){ remoteRec[x.rid] = tsOf(x.updated_at); });
+    var pushRecs = S.recipes.filter(function(rec){
+        return (rec.u || 0) > (remoteRec[ridFor(rec)] || 0);
+      }).map(function(rec){
+        var c = {}; for (var k in rec) if (k !== 'u') c[k] = rec[k];
+        return {user_id:uid, rid:rec.rid, data:c, deleted:false,
+                updated_at:new Date(rec.u).toISOString()};
+      });
+    Object.keys(S.recipeGone).forEach(function(id){
+      var t = S.recipeGone[id];
+      if (t > (remoteRec[id] || 0)){
+        pushRecs.push({user_id:uid, rid:id, data:{}, deleted:true,
+                       updated_at:new Date(t).toISOString()});
+      }
+    });
+    var pushed = pushDays.length + pushWts.length + pushFoods.length + pushRecs.length;
 
     var jobs = [];
     var UP = {method:'POST', prefer:'resolution=merge-duplicates,return=minimal'};
@@ -15011,10 +15083,11 @@ function syncNow(){
     chunk(pushDays, 200).forEach(function(c){ jobs.push(sbRest('et_days', {method:UP.method, prefer:UP.prefer, body:c})); });
     chunk(pushWts, 200).forEach(function(c){ jobs.push(sbRest('et_weights', {method:UP.method, prefer:UP.prefer, body:c})); });
     chunk(pushFoods, 200).forEach(function(c){ jobs.push(sbRest('et_foods', {method:UP.method, prefer:UP.prefer, body:c})); });
+    chunk(pushRecs, 200).forEach(function(c){ jobs.push(sbRest('et_recipes', {method:UP.method, prefer:UP.prefer, body:c})); });
     if (!rProf.length || (S.profileU || 0) > tsOf(rProf[0].updated_at)){
       jobs.push(sbRest('et_profile', {method:UP.method, prefer:UP.prefer, body:[{
         user_id:uid, data:{p:S.profile, fav:S.fav, recent:S.recent, runLast:S.runLast,
-                           recipes:S.recipes, coach:S.coach},
+                           coach:S.coach, recipeGone:S.recipeGone},
         updated_at:new Date(S.profileU || Date.now()).toISOString()}]}));
     }
     return Promise.all(jobs).then(function(){
@@ -15303,6 +15376,14 @@ function bind(){
     if (dr){
       var drr = S.recipes[+dr.dataset.delRec];
       if (drr && drr.bi){ toast('That one ships with the app.'); return; }
+      /* A row on a server cannot be un-sent by removing it here: without a
+         note that it went, the next pull reads it as a recipe this device is
+         missing and puts it back. */
+      var goneR = S.recipes[+dr.dataset.delRec];
+      if (goneR && goneR.rid){
+        S.recipeGone = S.recipeGone || {};
+        S.recipeGone[goneR.rid] = Date.now();
+      }
       S.recipes.splice(+dr.dataset.delRec, 1); save();
              if (openSheet === 'sh-cook') closeSheet();
              renderRecipesView(); renderFoodView(); renderCats(); return; }
@@ -16069,6 +16150,7 @@ bind();
 bindOnboard();
 backfillRecipeKeys();
 seedRecipes();
+stampRecipeIds();
 backfillMicros();
 repairCoachSeed();
 /* Online lookup used to be off until you found it. It is on from here, which
