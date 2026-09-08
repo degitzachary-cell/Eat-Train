@@ -13955,16 +13955,24 @@ var NOMINAL_UNIT_G = 1;
    label, number and unit as the pack wrote them — because the alternative is
    reading a line off the panel and then throwing it away. */
 function extraChips(){
+  /* per-unit display, same rule as the micronutrient chips */
   var x = customOwnExtra;
   if (!x || !x.length) return '';
   return '<div class="chips" style="margin-top:8px">' + x.map(function(e){
-    return '<span class="chip"><b>' + g(e.v, 2) + (e.u ? ' ' + esc(e.u) : '') + '</b> ' +
+    return '<span class="chip"><b>' + g(microShown(e.v), 2) + (e.u ? ' ' + esc(e.u) : '') + '</b> ' +
       esc(e.label.toLowerCase()) + '</span>';
   }).join('') + '</div>' +
   '<p class="hint">Also printed on the pack. Saved with the food and shown here, but not counted ' +
   'against a daily target — the database has no figure for these to compare against.</p>';
 }
 
+/* True while the sheet is describing one capsule rather than 100 grams. */
+function panelPerUnit(){
+  return !!(customForm && customForm !== 'ml' && customServeG > 0);
+}
+function microShown(v){
+  return panelPerUnit() ? v * customServeG / 100 : v;
+}
 function renderCustomMicro(){
   var st = el('c-mic-state'), row = el('c-mic-row');
   if (!st) return;
@@ -13974,12 +13982,13 @@ function renderCustomMicro(){
     st.textContent = 'off the panel';
     row.innerHTML = '<div class="chips">' + have.map(function(k){
       var r = NRV[k] || EXTRA_MICROS[k];
-      return '<span class="chip"><b>' + g(customOwnMicro[k], 2) + ' ' +
+      return '<span class="chip"><b>' + g(microShown(customOwnMicro[k]), 2) + ' ' +
         (r ? r.u : (MICRO_UNIT[k] || '')) + '</b> ' +
         esc(r ? r.n.toLowerCase() : k) + '</span>';
     }).join('') + '</div>' +
     '<p class="hint">Declared on the pack, so these are the product\'s own — not borrowed and ' +
-    'not estimated.</p>' + extraChips() + borrowSection(have.length);
+    'not estimated.' + (panelPerUnit() ? ' Shown per ' + esc(customForm) + '.' : '') +
+    '</p>' + extraChips() + borrowSection(have.length);
     return;
   }
   if (customOwnExtra && customOwnExtra.length){
@@ -14216,12 +14225,13 @@ function panelSet(id, val){
    in the unit that is actually on the pack. */
 function panelUnitLabels(){
   var u = customLiquid ? 'mL' : 'g';
+  var unit = customForm && customForm !== 'ml';
   var sw = el('c-serve-wrap'); if (sw){ var sp = sw.querySelector('span');
-    if (sp) sp.textContent = 'Serve size (' + u + ')'; }
+    if (sp) sp.textContent = unit ? 'One ' + customForm + ' counts as (g)' : 'Serve size (' + u + ')'; }
   var b100 = el('c-basis') && el('c-basis').querySelector('[data-basis="100"]');
   if (b100) b100.textContent = 'Per 100 ' + u;
   var bserve = el('c-basis') && el('c-basis').querySelector('[data-basis="serve"]');
-  if (bserve) bserve.textContent = 'Per serve';
+  if (bserve) bserve.textContent = unit ? 'Per ' + customForm : 'Per serve';
 }
 
 function panelLine(obj){
@@ -14263,6 +14273,14 @@ function panelLine(obj){
       el('c-serveg').value = String(NOMINAL_UNIT_G);
     }
     customForm = fm;
+    /* Per serve, where the serve is one capsule: the fields then show the
+       figures printed on the label — 500 mg of niacinamide, not the 50,000
+       mg per 100 g that the same capsule works out to and that reads like a
+       fault. Saving converts, as it does for any per-serve panel. */
+    press('c-basis', 'basis', 'serve');
+    el('c-serve-wrap').hidden = false;
+    panelUnitLabels();
+    renderPanelMicros();
     return;
   }
 
@@ -14293,7 +14311,8 @@ function panelLine(obj){
   if (!isFinite(per100) || per100 < 0) return;
 
   if (PANEL_MACRO[obj.f]){
-    panelSet(PANEL_MACRO[obj.f], obj.f === 'kj' && isKcal() ? per100 / KJ_PER_KCAL : per100);
+    var shown = panelPerUnit() && obj.serve != null ? +obj.serve : per100;
+    panelSet(PANEL_MACRO[obj.f], obj.f === 'kj' && isKcal() ? shown / KJ_PER_KCAL : shown);
     c.got++;
     return;
   }
@@ -14755,7 +14774,7 @@ function renderOffResults(q, via){
 /* Bumped on every deploy. When something fails, knowing which build is
    actually loaded is the difference between debugging the bug and debugging
    a stale cache. */
-var APP_VERSION = '2026.09.08-81';
+var APP_VERSION = '2026.09.08-82';
 var SB_URL = 'https://lsrxqviwgqjpuzzcqcpu.supabase.co';
 var SB_KEY = 'sb_publishable_0lk-0UAlfW-tALEgPiqFHg_8vF9Hp63';
 var AUTH_KEY = 'eatandtrain.auth';
