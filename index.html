@@ -12516,6 +12516,7 @@ function renderCook(){
    and the entry carries the ingredients so it stays editable afterwards. */
 function logCooked(meal){
   var r = S.recipes[cookCtx.i]; if (!r) return;
+  pushRecent(r.name, meal);
   var items = applyMods(r, cookCtx.mods);
   var t = nutritionOf(items); if (!t) return;
   var n = Math.max(+r.servings || 1, 0.1), share = 1 / n;
@@ -13115,8 +13116,18 @@ function runSearch(){
   if (!q && !activeCat){
     var picks = [];
     (S.fav || []).forEach(function(n){ var f = foodByName(n); if (f) picks.push({f:f, fav:true}); });
-    (S.recent || []).forEach(function(n){
-      if ((S.fav || []).indexOf(n) >= 0) return;
+    /* Saved foods are a deliberate choice and stay pinned. Below them the
+       meal's own history leads, and the flat recent list fills in behind so
+       nothing you have used lately disappears from a meal you are new to. */
+    var mine = S.mealUse && S.mealUse[searchTarget] ? Object.keys(S.mealUse[searchTarget]) : [];
+    mine.sort(function(a, b){
+      return useScore(mealUseOf(b, searchTarget)) - useScore(mealUseOf(a, searchTarget));
+    });
+    var seen = {};
+    (S.fav || []).forEach(function(n){ seen[n] = 1; });
+    mine.concat(S.recent || []).forEach(function(n){
+      if (seen[n]) return;
+      seen[n] = 1;
       var f = foodByName(n); if (f) picks.push({f:f, fav:false});
     });
     if (!picks.length){
@@ -13140,7 +13151,14 @@ function runSearch(){
     var scored = [];
     for (var i = 0; i < all.length; i++){
       var s = scoreFood(all[i], terms);
-      if (s >= 0) scored.push({f:all[i], s:s});
+      /* A bounded lift, not an override: it settles the order between foods
+         that match the words about equally well — your oats above the other
+         nine oats — while a genuinely better name match still wins. */
+      if (s >= 0){
+        var use = mealUseOf(all[i].name, searchTarget);
+        if (use) s += Math.min(useScore(use) / 12, 3) * 9;
+        scored.push({f:all[i], s:s});
+      }
     }
     scored.sort(function(a,b){ return b.s - a.s; });
     list = scored.slice(0, 120).map(function(x){ return x.f; });
@@ -14690,7 +14708,7 @@ function renderOffResults(q, via){
 /* Bumped on every deploy. When something fails, knowing which build is
    actually loaded is the difference between debugging the bug and debugging
    a stale cache. */
-var APP_VERSION = '2026.09.08-79';
+var APP_VERSION = '2026.09.08-80';
 var SB_URL = 'https://lsrxqviwgqjpuzzcqcpu.supabase.co';
 var SB_KEY = 'sb_publishable_0lk-0UAlfW-tALEgPiqFHg_8vF9Hp63';
 var AUTH_KEY = 'eatandtrain.auth';
@@ -15186,10 +15204,39 @@ function renderDataSheet(){
 }
 
 /* ------------------------------- events ---------------------------------- */
-function pushRecent(name){
+/* What you eat is a habit with a time of day attached: porridge is a
+   breakfast food and cumin lamb is not, and one flat recent list cannot say
+   so. Each meal keeps its own tally — how often a food goes there and when it
+   last did — so the list you open on the way to breakfast is your breakfasts.
+   The flat list stays as the fallback, and as what a brand new meal shows. */
+function pushRecent(name, meal){
   S.recent = (S.recent || []).filter(function(n){ return n !== name; });
   S.recent.unshift(name);
   if (S.recent.length > 40) S.recent.length = 40;
+  if (!meal) return;
+  S.mealUse = S.mealUse || {};
+  var m = S.mealUse[meal] = S.mealUse[meal] || {};
+  var e = m[name] || {n:0, t:0};
+  e.n++; e.t = Date.now();
+  m[name] = e;
+  /* Bounded, or a year of logging turns the profile into a ledger. The least
+     used and least recent go first, which is the same order they rank in. */
+  var keys = Object.keys(m);
+  if (keys.length > 60){
+    keys.sort(function(a, b){ return useScore(m[b]) - useScore(m[a]); })
+        .slice(60).forEach(function(k){ delete m[k]; });
+  }
+}
+/* Weight by how often, then nudge by how lately: something eaten twenty times
+   should not fall behind a one-off just because the one-off was yesterday,
+   but between two habits the live one comes first. */
+function useScore(e){
+  if (!e) return 0;
+  var days = e.t ? (Date.now() - e.t) / 86400000 : 999;
+  return Math.min(e.n, 30) * 12 + Math.max(0, 24 - days);
+}
+function mealUseOf(name, meal){
+  return (S.mealUse && S.mealUse[meal] && S.mealUse[meal][name]) || null;
 }
 /* Sub-tab choice is remembered per tab, so coming back lands where you left. */
 function setSub(view, name){
@@ -15480,7 +15527,7 @@ function bind(){
     var e = qtyEntry();
     if (!(e.grams > 0)){ toast('Enter an amount first.'); return; }
     day(DAY).meals[el('qty-meal').value].push(e);
-    pushRecent(qtyFood.name);
+    pushRecent(qtyFood.name, el('qty-meal').value);
     save(); renderToday(); closeSheet();
     toast(fmtE(e.kj, true) + ' added');
   });
