@@ -12249,7 +12249,6 @@ function ridFor(r){
 function stampRecipeIds(){
   var dirty = false;
   (S.recipes || []).forEach(function(r){ if (!r.rid){ ridFor(r); dirty = true; } });
-  (S.recipeGone || []).forEach(function(){});
   if (dirty) save();
 }
 function seedRecipes(){
@@ -14774,7 +14773,7 @@ function renderOffResults(q, via){
 /* Bumped on every deploy. When something fails, knowing which build is
    actually loaded is the difference between debugging the bug and debugging
    a stale cache. */
-var APP_VERSION = '2026.09.08-82';
+var APP_VERSION = '2026.09.08-83';
 var SB_URL = 'https://lsrxqviwgqjpuzzcqcpu.supabase.co';
 var SB_KEY = 'sb_publishable_0lk-0UAlfW-tALEgPiqFHg_8vF9Hp63';
 var AUTH_KEY = 'eatandtrain.auth';
