@@ -13941,7 +13941,12 @@ function onBarcode(code){
    the per-100 basis they are stored on, in whichever energy unit is on screen.
    ------------------------------------------------------------------------- */
 var customIdx = null, customMicro = null, customOwnMicro = null, customOwnExtra = null;
-var customLiquid = false, customServeG = 0;
+var customLiquid = false, customServeG = 0, customForm = '';
+/* The stand-in mass of one capsule or tablet. It is not the real mass — that
+   varies with the shell and the filler and is rarely printed — but a capsule
+   is logged as a capsule, and at one gram the per-unit numbers come back out
+   exactly as they went in. */
+var NOMINAL_UNIT_G = 1;
 
 /* Shown as a choice rather than as twenty-seven more boxes, because nobody is
    typing twenty-seven boxes off a tub of yoghurt and the honest answer is
@@ -14083,7 +14088,8 @@ function fillNewFood(f, code){
 var PANEL_MODEL = 'claude-opus-5';
 
 var PANEL_SYSTEM =
-  'You read Australian and New Zealand Nutrition Information Panels from a photograph.\n\n' +
+  'You read Australian and New Zealand Nutrition Information Panels from a photograph. ' +
+  'You also read supplement labels, which are a different document and are covered at the end.\n\n' +
   'Reply with JSON Lines: one complete JSON object per line, nothing else. No prose, no ' +
   'markdown, no code fences, no wrapping array. Emit each line as soon as you are sure of it.\n\n' +
   'Order: name, then unit, then serve_g and serves, then the eight rows every panel must carry — kj, ' +
@@ -14120,6 +14126,31 @@ var PANEL_SYSTEM =
   'is {"f":"ca","p100":120,"serve":300} if that 300 mg sits in the per-serve column, never 38. ' +
   'Dairy packs — milk, yoghurt, cheese, custard — nearly always declare calcium below sodium; ' +
   'look for it there.\n\n' +
+  'SUPPLEMENTS. A vitamin, mineral or protein supplement does not carry a Nutrition ' +
+  'Information Panel. It carries a list of actives — headed "Active ingredients", "Supplement ' +
+  'Facts", "Each capsule contains" or "Each tablet contains" — and it is normal for such a ' +
+  'label to print no energy, protein, fat, carbohydrate or sodium at all. Do not refuse to ' +
+  'read one, do not invent the eight rows, and do not report zeroes for rows the label does ' +
+  'not print. Read the actives.\n\n' +
+  'For a supplement, first emit {"f":"form","v":"capsule"} — or "tablet", "softgel", "gummy", ' +
+  '"sachet", "scoop", "ml". That line is what tells the app it is holding a supplement rather ' +
+  'than a food, so send it before anything else except the name. Then give every active as a ' +
+  'per-serve value, using the same nutrient ids and units as above: one capsule of niacinamide ' +
+  '500 mg is {"f":"b3","serve":500}. Emit serve_g only if the label actually prints the mass ' +
+  'of one capsule or scoop; leave it out when it does not, which is the usual case. If the ' +
+  'label states a dose of more than one unit — "two capsules daily" — still report the amount ' +
+  'in ONE unit, dividing if the label totals them.\n\n' +
+  'Supplement actives are named as compounds, and the nutrient is what the body gets:\n' +
+  '  niacinamide, nicotinamide, nicotinic acid → b3 · ascorbic acid, sodium ascorbate → vc\n' +
+  '  cholecalciferol, ergocalciferol → vd · retinol, retinyl palmitate → va\n' +
+  '  thiamine → b1 · riboflavin → b2 · pyridoxine → b6 · cyanocobalamin, methylcobalamin → b12\n' +
+  '  folic acid, levomefolate → fol · d-alpha-tocopherol, tocopheryl acetate → ve\n' +
+  '  any magnesium, zinc, iron, calcium, potassium, selenium, iodine salt → mg zn fe ca k se i\n' +
+  'A mineral is printed as its salt with the elemental amount beside it — "Magnesium oxide ' +
+  '400 mg (equiv. magnesium 241 mg)". Report the elemental figure, 241, never the salt. ' +
+  'Vitamin D and B12 are in ug; an IU figure for vitamin D is IU divided by 40. Anything with ' +
+  'no nutrient id — herbs, probiotics, amino acids, CoQ10 — comes back as an "other" row with ' +
+  'its label and unit exactly as printed.\n\n' +
   'Finish with {"f":"done"}.';
 
 /* Four frames over half a second, and the sharpest one is sent. A hand shakes,
@@ -14218,6 +14249,22 @@ function panelLine(obj){
     return;
   }
   if (obj.f === 'serves') return;                 /* read, not used yet */
+  /* A supplement label counts in capsules, and almost never prints what one
+     weighs. The app stores per 100 g, so a unit needs some mass to convert
+     through: one gram, declared rather than guessed at, which makes the
+     per-capsule figures exact whenever a capsule is what gets logged. */
+  if (obj.f === 'form'){
+    var fm = String(obj.v || '').toLowerCase().trim();
+    if (!fm) return;
+    c.form = fm;
+    if (fm === 'ml'){ c.liquid = true; customLiquid = true; panelUnitLabels(); return; }
+    if (!(c.serveG > 0)){
+      c.serveG = NOMINAL_UNIT_G; customServeG = NOMINAL_UNIT_G;
+      el('c-serveg').value = String(NOMINAL_UNIT_G);
+    }
+    customForm = fm;
+    return;
+  }
 
   /* A row the panel printed that this app has no column for. It is still read,
      still shown and still saved with the food — dropping it would make the app
@@ -14274,9 +14321,9 @@ function panelStatus(msg, busy){
 }
 
 function readPanel(dataUrl){
-  panelCtx = {got:0, serveG:0, micros:null, extra:null, liquid:false, done:false};
+  panelCtx = {got:0, serveG:0, micros:null, extra:null, liquid:false, form:'', done:false};
   customOwnMicro = null; customOwnExtra = null;
-  customLiquid = false; customServeG = 0; panelUnitLabels();
+  customLiquid = false; customServeG = 0; customForm = ''; panelUnitLabels();
   panelStatus('Reading the panel…', true);
   var b64 = dataUrl.split(',')[1] || '';
 
@@ -14708,7 +14755,7 @@ function renderOffResults(q, via){
 /* Bumped on every deploy. When something fails, knowing which build is
    actually loaded is the difference between debugging the bug and debugging
    a stale cache. */
-var APP_VERSION = '2026.09.08-80';
+var APP_VERSION = '2026.09.08-81';
 var SB_URL = 'https://lsrxqviwgqjpuzzcqcpu.supabase.co';
 var SB_KEY = 'sb_publishable_0lk-0UAlfW-tALEgPiqFHg_8vF9Hp63';
 var AUTH_KEY = 'eatandtrain.auth';
@@ -15654,7 +15701,13 @@ function bind(){
        as one tap of "serve" instead of a fraction of 100. The unit follows
        whether it is a liquid. */
     var serveG = customServeG || (perServe ? sg : 0);
-    if (serveG > 0 && Math.abs(serveG - 100) > 0.5){
+    if (customForm && customForm !== 'ml' && serveG > 0){
+      /* Counted, not weighed: nobody measures out 4.2 g of capsules. */
+      food.serves = [{label:customForm, g:serveG},
+                     {label:'2 ' + customForm + 's', g:serveG * 2},
+                     {label:'3 ' + customForm + 's', g:serveG * 3}];
+      food.unitForm = customForm;
+    } else if (serveG > 0 && Math.abs(serveG - 100) > 0.5){
       var u = liquid ? 'mL' : 'g';
       food.serves = [{label:'serve (' + g(serveG, serveG < 10 ? 1 : 0) + ' ' + u + ')', g:serveG},
                      {label:'100 ' + u, g:100}];
@@ -15677,7 +15730,7 @@ function bind(){
       S.custom.push(food);
     }
     customIdx = null; customMicro = null; customOwnMicro = null; customOwnExtra = null;
-    customLiquid = false; customServeG = 0;
+    customLiquid = false; customServeG = 0; customForm = '';
     save();
     ['c-name','c-code','c-kj','c-p','c-f','c-sat','c-c','c-sug','c-fib','c-na'].forEach(function(i){ el(i).value = ''; });
     el('c-hint').innerHTML = '';
