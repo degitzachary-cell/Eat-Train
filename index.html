@@ -12240,6 +12240,24 @@ var SEED_RECIPES = JSON.parse(`[{"name":"Pad grapao","servings":2,"items":[{"key
    recipe is there at all, not whether it is untouched. */
 /* A recipe needs a name-independent identity before it can be a row of its
    own: renaming one must move the row, not orphan it and write a second. */
+/* Deleting a synced row locally is only half the job. The row is still on the
+   server, the next pull sees something this device has not got, and puts it
+   back — which reads as a delete button that does not work. Every kind of row
+   that can be deleted keeps a dated note that it went. */
+function markGone(kind, id){
+  var k = kind + 'Gone';
+  S[k] = S[k] || {};
+  S[k][id] = Date.now();
+  var keys = Object.keys(S[k]);
+  if (keys.length > 200){
+    keys.sort(function(a, b){ return S[k][a] - S[k][b]; })
+        .slice(0, keys.length - 200).forEach(function(x){ delete S[k][x]; });
+  }
+}
+function isGone(kind, id, rowTime){
+  var m = S[kind + 'Gone'];
+  return !!(m && m[id] >= rowTime);
+}
 function ridFor(r){
   if (r.rid) return r.rid;
   r.rid = r.bi ? 'b:' + r.bi
@@ -14773,7 +14791,7 @@ function renderOffResults(q, via){
 /* Bumped on every deploy. When something fails, knowing which build is
    actually loaded is the difference between debugging the bug and debugging
    a stale cache. */
-var APP_VERSION = '2026.09.08-83';
+var APP_VERSION = '2026.09.09-84';
 var SB_URL = 'https://lsrxqviwgqjpuzzcqcpu.supabase.co';
 var SB_KEY = 'sb_publishable_0lk-0UAlfW-tALEgPiqFHg_8vF9Hp63';
 var AUTH_KEY = 'eatandtrain.auth';
@@ -15015,7 +15033,8 @@ function stampChanges(){
   /* The profile no longer carries the recipe list, so editing a recipe does
      not restamp the profile and a stale profile cannot carry recipes away. */
   var pb = JSON.stringify({p:S.profile, fav:S.fav, recent:S.recent, runLast:S.runLast,
-                           coach:S.coach, recipeGone:S.recipeGone});
+                           coach:S.coach, recipeGone:S.recipeGone,
+                           weightGone:S.weightGone, foodGone:S.foodGone});
   next.profile = pb;
   if (prev.profile !== pb) S.profileU = now;
   else if (!S.profileU) S.profileU = now;
@@ -15043,6 +15062,19 @@ function syncNow(){
         rRecs = r[4] || [];
     var pulled = 0;
 
+    /* Deletions first, before a single row is judged. They are additive facts
+       rather than a rival copy of the profile, so they merge whatever the
+       profile's own timestamp says — and they have to be known here, or a row
+       this device still holds gets pushed back up before it learns it went. */
+    var rp = (rProf[0] || {}).data || {};
+    ['recipeGone', 'weightGone', 'foodGone'].forEach(function(gk){
+      S[gk] = S[gk] || {};
+      if (!rp[gk]) return;
+      Object.keys(rp[gk]).forEach(function(k){
+        if (!(S[gk][k] > rp[gk][k])) S[gk][k] = rp[gk][k];
+      });
+    });
+
     rDays.forEach(function(row){
       var local = S.days[row.d], rt = tsOf(row.updated_at);
       if (!local || rt > (local.u || 0)){ S.days[row.d] = row.data; S.days[row.d].u = rt; pulled++; }
@@ -15050,6 +15082,7 @@ function syncNow(){
     rWts.forEach(function(row){
       var i = S.weights.findIndex(function(w){ return w.d === row.d; });
       var rt = tsOf(row.updated_at);
+      if (isGone('weight', row.d, rt)) return;
       if (i < 0 || rt > (S.weights[i].u || 0)){
         var w = {d:row.d, kg:row.kg, bf:row.bf, smm:row.smm, smmUnit:row.smm_unit,
                  bone:row.bone, water:row.water, u:rt};
@@ -15060,6 +15093,7 @@ function syncNow(){
     rFoods.forEach(function(row){
       var i = S.custom.findIndex(function(f){ return f.name === row.name; });
       var rt = tsOf(row.updated_at);
+      if (isGone('food', row.name, rt)) return;
       if (i < 0 || rt > (S.custom[i].u || 0)){
         var f = row.data; f.name = row.name; f.u = rt;
         if (i < 0) S.custom.push(f); else S.custom[i] = f;
@@ -15103,11 +15137,6 @@ function syncNow(){
       if (d.fav) S.fav = d.fav;
       if (d.recent) S.recent = d.recent;
       if (d.runLast) S.runLast = d.runLast;
-      if (d.recipeGone){
-        Object.keys(d.recipeGone).forEach(function(k){
-          if (!(S.recipeGone[k] > d.recipeGone[k])) S.recipeGone[k] = d.recipeGone[k];
-        });
-      }
       /* Days pulled from another device can predate a nutrient here. */
       S.ui.microFill = 0;
       backfillMicros();
@@ -15132,12 +15161,16 @@ function syncNow(){
       var c = {}; for (var k in S.days[d]) if (k !== 'u') c[k] = S.days[d][k];
       return {user_id:uid, d:d, data:c, updated_at:new Date(S.days[d].u).toISOString()};
     });
-    var pushWts = S.weights.filter(function(w){ return (w.u || 0) > (remoteWt[w.d] || 0); })
+    var pushWts = S.weights.filter(function(w){
+        return (w.u || 0) > (remoteWt[w.d] || 0) && !isGone('weight', w.d, w.u || 0);
+      })
       .map(function(w){
         return {user_id:uid, d:w.d, kg:w.kg, bf:w.bf, smm:w.smm, smm_unit:w.smmUnit,
                 bone:w.bone, water:w.water, updated_at:new Date(w.u).toISOString()};
       });
-    var pushFoods = S.custom.filter(function(f){ return (f.u || 0) > (remoteFood[f.name] || 0); })
+    var pushFoods = S.custom.filter(function(f){
+        return (f.u || 0) > (remoteFood[f.name] || 0) && !isGone('food', f.name, f.u || 0);
+      })
       .map(function(f){
         var c = {}; for (var k in f) if (k !== 'u') c[k] = f[k];
         return {user_id:uid, name:f.name, data:c, updated_at:new Date(f.u).toISOString()};
@@ -15145,7 +15178,8 @@ function syncNow(){
     var remoteRec = {};
     rRecs.forEach(function(x){ remoteRec[x.rid] = tsOf(x.updated_at); });
     var pushRecs = S.recipes.filter(function(rec){
-        return (rec.u || 0) > (remoteRec[ridFor(rec)] || 0);
+        return (rec.u || 0) > (remoteRec[ridFor(rec)] || 0) &&
+               !isGone('recipe', ridFor(rec), rec.u || 0);
       }).map(function(rec){
         var c = {}; for (var k in rec) if (k !== 'u') c[k] = rec[k];
         return {user_id:uid, rid:rec.rid, data:c, deleted:false,
@@ -15158,7 +15192,22 @@ function syncNow(){
                        updated_at:new Date(t).toISOString()});
       }
     });
-    var pushed = pushDays.length + pushWts.length + pushFoods.length + pushRecs.length;
+    /* A weigh-in and a custom food are one row each, keyed by date and by
+       name, so the row itself goes rather than being flagged. The dated note
+       stays behind in the profile, which is what stops a device that still
+       holds the row from pushing it straight back. */
+    var dropWts = Object.keys(S.weightGone || {}).filter(function(d){
+      return remoteWt[d] && S.weightGone[d] >= remoteWt[d];
+    });
+    var dropFoods = Object.keys(S.foodGone || {}).filter(function(n){
+      return remoteFood[n] && S.foodGone[n] >= remoteFood[n];
+    });
+    var pushed = pushDays.length + pushWts.length + pushFoods.length + pushRecs.length +
+                 dropWts.length + dropFoods.length;
+
+    /* Deleted elsewhere while this device still had it. */
+    S.weights = S.weights.filter(function(w){ return !isGone('weight', w.d, w.u || 0); });
+    S.custom = S.custom.filter(function(f){ return !isGone('food', f.name, f.u || 0); });
 
     var jobs = [];
     var UP = {method:'POST', prefer:'resolution=merge-duplicates,return=minimal'};
@@ -15167,10 +15216,19 @@ function syncNow(){
     chunk(pushWts, 200).forEach(function(c){ jobs.push(sbRest('et_weights', {method:UP.method, prefer:UP.prefer, body:c})); });
     chunk(pushFoods, 200).forEach(function(c){ jobs.push(sbRest('et_foods', {method:UP.method, prefer:UP.prefer, body:c})); });
     chunk(pushRecs, 200).forEach(function(c){ jobs.push(sbRest('et_recipes', {method:UP.method, prefer:UP.prefer, body:c})); });
+    dropWts.forEach(function(d){
+      jobs.push(sbRest('et_weights?user_id=eq.' + uid + '&d=eq.' + encodeURIComponent(d),
+                       {method:'DELETE', prefer:'return=minimal'}));
+    });
+    dropFoods.forEach(function(n){
+      jobs.push(sbRest('et_foods?user_id=eq.' + uid + '&name=eq.' + encodeURIComponent(n),
+                       {method:'DELETE', prefer:'return=minimal'}));
+    });
     if (!rProf.length || (S.profileU || 0) > tsOf(rProf[0].updated_at)){
       jobs.push(sbRest('et_profile', {method:UP.method, prefer:UP.prefer, body:[{
         user_id:uid, data:{p:S.profile, fav:S.fav, recent:S.recent, runLast:S.runLast,
-                           coach:S.coach, recipeGone:S.recipeGone},
+                           coach:S.coach, recipeGone:S.recipeGone,
+                           weightGone:S.weightGone, foodGone:S.foodGone},
         updated_at:new Date(S.profileU || Date.now()).toISOString()}]}));
     }
     return Promise.all(jobs).then(function(){
@@ -15565,11 +15623,17 @@ function bind(){
     if (dWa){ (day(DAY).water || []).splice(+dWa.dataset.delWater, 1); save(); renderAll(); return; }
     var dWt = t.closest('[data-del-wt]');
     if (dWt){
+      markGone('weight', dWt.dataset.delWt);
       S.weights = S.weights.filter(function(w){ return w.d !== dWt.dataset.delWt; });
-      save(); renderBodyView(); renderTrends(); return;
+      save(); renderBodyView(); renderTrends(); scheduleSync(); return;
     }
     var dC = t.closest('[data-del-custom]');
-    if (dC){ S.custom.splice(+dC.dataset.delCustom, 1); invalidateFoods(); save(); renderFoodView(); renderCats(); return; }
+    if (dC){
+      var goneF = S.custom[+dC.dataset.delCustom];
+      if (goneF) markGone('food', goneF.name);
+      S.custom.splice(+dC.dataset.delCustom, 1);
+      invalidateFoods(); save(); renderFoodView(); renderCats(); scheduleSync(); return;
+    }
 
     if (t.closest('.sheet-close')) closeSheet();
   });
